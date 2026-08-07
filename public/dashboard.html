@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Admin - Sorteios</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg-1: #171226; --bg-2: #0b0d12; --text: #e6edf3; --text-dim: #9ca3af;
+        --card: #14151c; --card-2: #171a24; --border: #22242e; --input-bg: #12131a;
+        --accent: #8b5cf6; --accent-2: #6d28d9; --hover: #1c1f2b;
+    }
+    html.light {
+        --bg-1: #f3f0ff; --bg-2: #eef1f7; --text: #1f2430; --text-dim: #6b7280;
+        --card: #ffffff; --card-2: #f7f7fb; --border: #e5e7eb; --input-bg: #ffffff;
+        --accent: #7c3aed; --accent-2: #a855f7; --hover: #ede9fe;
+    }
+    body { background: radial-gradient(circle at 0% 0%, var(--bg-1) 0%, var(--bg-2) 45%) fixed; color: var(--text); font-family: 'Inter', sans-serif; transition: background .3s, color .3s; }
+    .bg-darkCard { background-color: var(--card); }
+    .sidebar-item { color: var(--text-dim); border-radius: 10px; margin: 2px 8px; cursor: pointer; transition: all .15s; }
+    .sidebar-item:hover { background-color: var(--hover); color: var(--text); }
+    .sidebar-item.active { background: linear-gradient(135deg,var(--accent),var(--accent-2)); color: #fff; box-shadow: 0 4px 14px rgba(139,92,246,0.4); }
+    .input-dark { background-color: var(--input-bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; width: 100%; }
+    .input-dark:focus { outline: none; border-color: var(--accent); }
+    .btn-primary { background: linear-gradient(135deg,var(--accent),var(--accent-2)); color: #fff; padding: 9px 18px; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 10px rgba(139,92,246,0.35); border: none; }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .page-section { display: none; }
+    .page-section.active { display: block; animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
+    .tab-content { display: none; }
+    .tab-content.block { display: block; }
+    .tab-btn { padding: 8px 16px; border-radius: 8px 8px 0 0; color: var(--text-dim); cursor: pointer; font-weight: 600; }
+    .tab-btn.active { background-color: var(--card); color: var(--text); border-bottom: 2px solid var(--accent); }
+    .img-preview-box { width: 100%; height: 180px; border: 2px dashed var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-size: cover; background-position: center; color: var(--text-dim); overflow: hidden; }
+    .modal-box { background-color: var(--card-2); border-radius: 12px; padding: 24px; max-width: 480px; width: 92%; }
+    .pedido-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .funil-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .badge { font-size: 0.7rem; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+    .badge-ads { background:#1d4ed8; color:#fff; }
+    .badge-organico { background:#059669; color:#fff; }
+    .badge-outro { background:#4b5563; color:#fff; }
+    .badge-bonus { background:#f59e0b; color:#1a1a1a; }
+    .badge-padrao { background:#374151; color:#e5e7eb; }
+    .metric-card { background: linear-gradient(160deg,var(--card-2),var(--bg-2)); border: 1px solid var(--border); border-radius: 14px; padding: 18px; position: relative; overflow: hidden; transition: transform .2s; }
+    .metric-card:hover { transform: translateY(-3px); }
+    .metric-card .metric-icon { position: absolute; right: 12px; top: 12px; font-size: 1.6rem; opacity: 0.15; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--hover); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; text-decoration: none; }
+    .chip button { color: var(--text-dim); font-weight: bold; }
+    .chip button:hover { color: #f87171; }
+    .table-clean th { font-weight: 600; color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.03em; }
+    .link-row:hover { background-color: var(--hover); }
+
+    /* ---------- TOGGLE SWITCH (liga/desliga) ---------- */
+    .toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: background .2s; }
+    .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .toggle-switch input:checked + .toggle-track { background: linear-gradient(135deg,var(--accent),var(--accent-2)); }
+    .toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
+
+    /* ---------- BOTÕES DE PERÍODO/FILTRO (pill buttons) ---------- */
+    .periodo-btn { color: var(--text-dim); background: transparent; transition: all .15s; }
+    .periodo-btn:hover { color: var(--text); }
+    .periodo-btn.active { background: linear-gradient(135deg,var(--accent),var(--accent-2)); color: #fff; }
+
+    /* ---------- IDENTIDADE VISUAL DA MARCA ---------- */
+    #brand-box { position: relative; overflow: hidden; }
+    #sidebar-brand-name { font-family: 'Poppins', sans-serif; }
+    #sidebar-brand-name .brand-word-1 { color: var(--text); font-weight: 700; }
+    #sidebar-brand-name .brand-word-2 {
+        font-weight: 900;
+        background: linear-gradient(90deg, #fde68a, #f59e0b, #fde68a);
+        background-size: 200% auto;
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        animation: shine 3s linear infinite;
+    }
+    @keyframes shine { to { background-position: -200% center; } }
+    .money-particle { position: absolute; top: -20px; font-size: 14px; opacity: 0.5; animation: fall linear infinite; pointer-events: none; }
+    @keyframes fall { to { transform: translateY(220px) rotate(360deg); opacity: 0; } }
+
+    /* ---------- OVERRIDES DO TEMA CLARO PARA CLASSES TAILWIND FIXAS ---------- */
+    html.light .text-white { color: var(--text) !important; }
+    html.light .text-gray-300, html.light .text-gray-400, html.light .text-gray-500, html.light .text-gray-600 { color: var(--text-dim) !important; }
+    html.light .bg-gray-700, html.light .bg-gray-800, html.light .bg-gray-900 { background-color: var(--hover) !important; }
+    html.light .border-gray-600, html.light .border-gray-700, html.light .border-gray-800 { border-color: var(--border) !important; }
+    html.light .divide-gray-700 > * + * { border-color: var(--border) !important; }
+    html.light .bg-black, html.light .bg-opacity-60, html.light .bg-opacity-75 { background-color: rgba(0,0,0,0.35) !important; }
+    html.light .hover\:bg-gray-700:hover { background-color: var(--hover) !important; }
+</style>
+
+</head>
+<body>
+
+<div id="overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center;">
+    <div class="text-white">Carregando...</div>
+</div>
+
+<div id="modal-confirm" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+    <div class="modal-box" id="modal-confirm-box">
+        <h3 class="text-xl font-bold text-white mb-2" id="confirm-title">Confirmação</h3>
+        <p class="text-gray-400 mb-6" id="confirm-msg">Tem certeza que deseja realizar esta ação?</p>
+        <div class="flex justify-end gap-3">
+            <button id="btn-confirm-no" class="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition">Cancelar</button>
+            <button id="btn-confirm-yes" class="btn-primary bg-red-600">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div class="flex min-h-screen">
+    <aside class="w-64 bg-darkCard border-r border-gray-800 flex-shrink-0 flex flex-col">
+        <div class="p-4 border-b border-gray-800 flex justify-between items-start" id="brand-box">
+            <div>
+                <h1 class="text-lg font-bold leading-tight" id="sidebar-brand-name">Carregando...</h1>
+                <p class="text-xs opacity-60" id="sidebar-brand-sub">painel administrativo</p>
+            </div>
+            <div class="flex items-center gap-1 relative">
+                <button id="btn-notificacoes" class="text-lg opacity-70 hover:opacity-100 relative" title="Notificações"><i class="bi bi-bell"></i><span id="badge-notificacoes" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">0</span></button>
+                <button id="btn-tema" class="text-lg opacity-70 hover:opacity-100" title="Alternar dia/noite">🌙</button>
+            </div>
+        </div>
+        <div id="dropdown-notificacoes" class="hidden mx-4 mt-2 mb-2 bg-[var(--card-2)] border border-[var(--border)] rounded-lg max-h-80 overflow-y-auto"></div>
+        <ul class="py-4 flex-1 overflow-y-auto">
+            <li><a id="nav-dashboard" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('dashboard', this)"><i class="bi bi-house-door w-6 text-lg"></i> Visão Geral</a></li>
+            <li><a id="nav-sorteios" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('sorteios', this)"><i class="bi bi-ticket-perforated w-6 text-lg"></i> Sorteios</a></li>
+            <li><a id="nav-pedidos" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('pedidos', this)"><i class="bi bi-cart w-6 text-lg"></i> Pedidos</a></li>
+            <li><a id="nav-clientes" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('clientes', this)"><i class="bi bi-people w-6 text-lg"></i> Clientes</a></li>
+            <li><a id="nav-relatorios" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('relatorios', this)"><i class="bi bi-pie-chart w-6 text-lg"></i> Relatórios</a></li>
+            <li><a id="nav-links" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('links', this)"><i class="bi bi-link-45deg w-6 text-lg"></i> Comparativo de Links</a></li>
+            <li class="border-t border-gray-800 my-2"></li>
+            <li class="px-4 py-1 text-xs uppercase tracking-wide opacity-40">Ao vivo / Sorteio</li>
+            <li><a id="nav-buscar-ganhador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('buscar-ganhador', this)"><i class="bi bi-trophy w-6 text-lg"></i> Buscar Ganhador</a></li>
+            <li><a id="nav-bilhete-premiado" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('bilhete-premiado', this)"><i class="bi bi-ticket-detailed w-6 text-lg"></i> Bilhete Premiado</a></li>
+            <li><a id="nav-roleta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('roleta', this)"><i class="bi bi-circle w-6 text-lg"></i> Roleta</a></li>
+            <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
+            <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
+            <li class="border-t border-gray-800 my-2"></li>
+            <li><a id="nav-minha-conta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('minha-conta', this)"><i class="bi bi-gear w-6 text-lg"></i> Conta & Identidade</a></li>
+            <li><a id="nav-gateway" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('gateway', this)"><i class="bi bi-credit-card w-6 text-lg"></i> Gateway Pix</a></li>
+            <li><a id="nav-marketing" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('marketing', this)"><i class="bi bi-megaphone w-6 text-lg"></i> Pixels & Marketing</a></li>
+            <li class="border-t border-gray-800 my-2"></li>
+            <li><a id="nav-logout" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="logout()"><i class="bi bi-box-arrow-right w-6 text-lg"></i> Sair</a></li>
+        </ul>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto">
+
+        <!-- ===================== DASHBOARD ===================== -->
+        <div id="page-dashboard" class="page-section active">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                <h2 class="text-2xl font-bold">Visão Geral</h2>
+                <div class="flex gap-2 flex-wrap items-center">
+                    <div id="periodo-presets" class="flex gap-1 bg-darkCard border border-gray-800 rounded-lg p-1">
+                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="hoje">Hoje</button>
+                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="ontem">Ontem</button>
+                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="7dias">7 dias</button>
+                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold active" data-p="mes">Este mês</button>
+                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="tudo">Tudo</button>
+                    </div>
+                    <input type="date" id="dash-data-de" class="input-dark text-xs" style="width:140px">
+                    <input type="date" id="dash-data-ate" class="input-dark text-xs" style="width:140px">
+                </div>
+            </div>
+
+            <div id="cards-metricas" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+                <div class="metric-card"><i class="bi bi-cash-coin metric-icon text-green-400"></i><p class="text-sm opacity-60">Faturamento</p><p class="text-2xl font-bold text-green-400" id="card-faturamento">R$ 0,00</p></div>
+                <div class="metric-card"><i class="bi bi-hourglass-split metric-icon text-yellow-400"></i><p class="text-sm opacity-60">Pendente</p><p class="text-2xl font-bold text-yellow-400" id="card-pendente">R$ 0,00</p></div>
+                <div class="metric-card"><i class="bi bi-cart-check metric-icon text-blue-400"></i><p class="text-sm opacity-60">Pedidos</p><p class="text-2xl font-bold text-blue-400" id="card-pedidos">0</p></div>
+                <div class="metric-card"><i class="bi bi-graph-up-arrow metric-icon text-purple-400"></i><p class="text-sm opacity-60">Ticket Médio</p><p class="text-2xl font-bold text-purple-400" id="card-ticket">R$ 0,00</p></div>
+                <div class="metric-card"><i class="bi bi-cursor metric-icon text-pink-400"></i><p class="text-sm opacity-60">Acessos</p><p class="text-2xl font-bold text-pink-400" id="card-acessos">0</p></div>
+            </div>
+
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 mb-8">
+                <h3 class="font-bold mb-4">Vendas no período</h3>
+                <canvas id="grafico-vendas-dash" height="70"></canvas>
+            </div>
+
+            <h3 class="text-lg font-bold mb-3">📊 Desempenho por Sorteio</h3>
+            <div class="bg-darkCard rounded-xl border border-gray-800 overflow-x-auto">
+                <table class="w-full text-sm table-clean">
+                    <thead><tr class="text-left border-b border-gray-800">
+                        <th class="p-3">Sorteio</th><th class="p-3">Acessos</th><th class="p-3">Pedidos</th><th class="p-3">Faturamento</th><th class="p-3">Pendente</th><th class="p-3">Ticket Médio</th><th class="p-3">Conversão</th>
+                    </tr></thead>
+                    <tbody id="tabela-por-sorteio"><tr><td colspan="7" class="p-4 text-center opacity-60">Carregando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===================== BUSCAR GANHADOR (aba própria) ===================== -->
+        <div id="page-buscar-ganhador" class="page-section">
+            <h2 class="text-2xl font-bold mb-2">🏆 Buscar Ganhador</h2>
+            <p class="text-sm opacity-60 mb-6">Digite o número sorteado e clique em buscar — a tela do ganhador abre em destaque, ótimo pra mostrar ao vivo numa live.</p>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-lg">
+                <form id="form-buscar-ganhador">
+                    <select name="raffle" id="select-buscar-ganhador" class="select-sorteio-dash input-dark mb-3"><option value="">Carregando...</option></select>
+                    <input name="number" id="input-buscar-ganhador" class="input-dark mb-3" placeholder="Número Sorteado (Ex: 0123456)" required>
+                    <button class="btn-primary w-full" id="btn-buscar-ganhador"><i class="bi bi-search"></i> Buscar Ganhador</button>
+                </form>
+                <div id="resultado-ganhador" class="mt-3 p-3 rounded bg-gray-800 text-center hidden"></div>
+            </div>
+        </div>
+
+        <!-- ===================== BILHETE PREMIADO (aba própria) ===================== -->
+        <div id="page-bilhete-premiado" class="page-section">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 class="text-2xl font-bold">🎫 Bilhete Premiado</h2>
+                <div class="flex gap-2">
+                    <select id="select-bilhete-sorteio" class="input-dark text-sm" style="width:220px"><option value="">Selecione um sorteio...</option></select>
+                    <input id="input-buscar-bilhete" class="input-dark text-sm" placeholder="Buscar número...">
+                </div>
+            </div>
+            <div class="flex gap-4 text-xs opacity-70 mb-4">
+                <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Já saiu (clique pra chamar o ganhador no WhatsApp)</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Ainda não saiu</span>
+            </div>
+            <div id="grid-bilhetes-premiados" class="bg-darkCard rounded-xl border border-gray-800 p-4 flex flex-wrap gap-2 min-h-[120px]"><p class="opacity-60 text-sm">Selecione um sorteio acima.</p></div>
+        </div>
+
+        <!-- ===================== ROLETA (aba própria) ===================== -->
+        <div id="page-roleta" class="page-section">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 class="text-2xl font-bold">🎡 Roleta Premiada</h2>
+                <select id="select-roleta-sorteio" class="input-dark text-sm" style="width:220px"><option value="">Selecione um sorteio...</option></select>
+            </div>
+            <p class="text-sm opacity-60 mb-4">A roleta não expõe o número da cota — só o título, o valor do prêmio e (quando já saiu) o ganhador.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="metric-card"><i class="bi bi-circle metric-icon text-pink-400"></i><p class="text-sm opacity-60">Roletas disponíveis</p><p class="text-2xl font-bold text-pink-400" id="roleta-disponiveis">0</p></div>
+                <div class="metric-card"><i class="bi bi-trophy metric-icon text-green-400"></i><p class="text-sm opacity-60">Já sorteadas</p><p class="text-2xl font-bold text-green-400" id="roleta-sorteadas">0</p></div>
+            </div>
+            <div id="lista-roleta-resultados" class="space-y-3"><p class="opacity-60 text-sm">Selecione um sorteio acima.</p></div>
+        </div>
+
+        <!-- ===================== TOP COMPRADOR (aba própria) ===================== -->
+        <div id="page-top-comprador" class="page-section">
+            <h2 class="text-2xl font-bold mb-2">💰 Top Comprador</h2>
+            <p class="text-sm opacity-60 mb-6">Ranking por valor gasto em R$ — quem comprou mais em dinheiro, não em quantidade de cotas.</p>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-lg mb-6">
+                <form id="form-buscar-top-comprador">
+                    <select name="raffle" id="select-top-raffle" class="select-sorteio-dash input-dark mb-3"><option value="">Todos os sorteios</option></select>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <select name="tipo" id="filtro-top-tipo" class="input-dark">
+                            <option value="maior">Maior comprador</option>
+                            <option value="menor">Menor comprador</option>
+                        </select>
+                        <select id="filtro-top-periodo" class="input-dark" onchange="aplicarPresetDatetime('top', this.value)">
+                            <option value="tudo">Todo o período</option>
+                            <option value="hoje">Hoje</option>
+                            <option value="7dias">Últimos 7 dias</option>
+                            <option value="mes">Este mês</option>
+                            <option value="custom">Data e hora exatas...</option>
+                        </select>
+                    </div>
+                    <div id="top-datetime-custom" class="grid grid-cols-2 gap-2 mb-3 hidden">
+                        <div><label class="text-xs opacity-60">De</label><input type="datetime-local" id="top-datetime-de" class="input-dark"></div>
+                        <div><label class="text-xs opacity-60">Até</label><input type="datetime-local" id="top-datetime-ate" class="input-dark"></div>
+                    </div>
+                    <button class="btn-primary w-full">Buscar</button>
+                </form>
+            </div>
+            <div id="resultado-top-comprador" class="space-y-2"></div>
+        </div>
+
+        <!-- ===================== MAIOR/MENOR COTA (aba própria) ===================== -->
+        <div id="page-maior-menor-cota" class="page-section">
+            <h2 class="text-2xl font-bold mb-2">🔢 Maior/Menor Cota</h2>
+            <p class="text-sm opacity-60 mb-6">Ranking por quantidade de cotas compradas — não pelo valor em R$.</p>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-lg mb-6">
+                <form id="form-maior-menor-cota">
+                    <select name="raffle" id="select-cota-raffle" class="select-sorteio-dash input-dark mb-3"><option value="">Todos os sorteios</option></select>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <select name="tipo" id="filtro-cota-tipo" class="input-dark">
+                            <option value="maior">Maior quantidade</option>
+                            <option value="menor">Menor quantidade</option>
+                        </select>
+                        <select id="filtro-cota-periodo" class="input-dark" onchange="aplicarPresetDatetime('cota', this.value)">
+                            <option value="tudo">Todo o período</option>
+                            <option value="hoje">Hoje</option>
+                            <option value="7dias">Últimos 7 dias</option>
+                            <option value="mes">Este mês</option>
+                            <option value="custom">Data e hora exatas...</option>
+                        </select>
+                    </div>
+                    <div id="cota-datetime-custom" class="grid grid-cols-2 gap-2 mb-3 hidden">
+                        <div><label class="text-xs opacity-60">De</label><input type="datetime-local" id="cota-datetime-de" class="input-dark"></div>
+                        <div><label class="text-xs opacity-60">Até</label><input type="datetime-local" id="cota-datetime-ate" class="input-dark"></div>
+                    </div>
+                    <button class="btn-primary w-full">Buscar</button>
+                </form>
+            </div>
+            <div id="resultado-maior-menor-cota" class="space-y-2"></div>
+        </div>
+
+        <!-- Tela cheia de revelação do ganhador (efeito "ao vivo") -->
+        <div id="tela-ganhador" class="fixed inset-0 z-[100] hidden items-center justify-center" style="background: radial-gradient(circle, rgba(109,40,217,0.35) 0%, rgba(5,6,10,0.97) 70%);">
+            <canvas id="confete-canvas" class="fixed inset-0 pointer-events-none"></canvas>
+            <div class="text-center relative z-10 px-6">
+                <p class="text-yellow-300 text-xl font-bold tracking-widest uppercase mb-2">🎉 Temos um ganhador! 🎉</p>
+                <h1 id="ganhador-nome-grande" class="text-white font-black leading-tight" style="font-size: clamp(2rem, 7vw, 5rem);">—</h1>
+                <p class="text-gray-300 text-lg mt-4">Telefone: <span id="ganhador-tel-grande" class="font-mono"></span></p>
+                <p class="text-gray-400 mt-1">Cota sorteada: <span id="ganhador-cota-grande" class="font-mono text-2xl text-yellow-300"></span></p>
+                <button onclick="fecharTelaGanhador()" class="mt-8 px-6 py-3 rounded-lg border border-gray-500 text-gray-300 hover:bg-gray-800">Fechar</button>
+            </div>
+        </div>
+
+        <!-- ===================== SORTEIOS (lista) ===================== -->
+        <div id="page-sorteios" class="page-section">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Sorteios</h2>
+                <button class="btn-primary" onclick="abrirFormSorteio(null)"><i class="bi bi-plus-lg"></i> Novo Sorteio</button>
+            </div>
+            <div class="bg-darkCard rounded-xl border border-gray-800 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="text-left text-gray-400 border-b border-gray-800">
+                        <th class="p-4">Nome</th><th class="p-4">Status</th><th class="p-4">Cotas Vendidas</th><th class="p-4">Ações</th>
+                    </tr></thead>
+                    <tbody id="tabela-sorteios" class="divide-y divide-gray-800"><tr><td colspan="4" class="p-4 text-center">Carregando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===================== CRIAR/EDITAR SORTEIO ===================== -->
+        <div id="page-criar-sorteio" class="page-section">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-white" id="form-sorteio-titulo">Novo Sorteio</h2>
+                <button class="text-gray-400 hover:text-white" onclick="navTo('sorteios')"><i class="bi bi-x-lg"></i> Fechar</button>
+            </div>
+
+            <div class="flex gap-1 border-b border-gray-800 mb-4 flex-wrap">
+                <div class="tab-btn active" data-tab="geral" onclick="mudarTab('geral', this)">Geral</div>
+                <div class="tab-btn" data-tab="imagens" onclick="mudarTab('imagens', this)">Imagens</div>
+                <div class="tab-btn" data-tab="premios" onclick="mudarTab('premios', this)">🏆 Bilhete Premiado</div>
+                <div class="tab-btn" data-tab="funis" onclick="mudarTab('funis', this)">🧩 Funis</div>
+                <div class="tab-btn" data-tab="links" onclick="mudarTab('links', this)">🔗 Links</div>
+                <div class="tab-btn" data-tab="config" onclick="mudarTab('config', this)">Config</div>
+            </div>
+
+            <form id="form-criar-sorteio" class="p-2" enctype="multipart/form-data">
+                <input type="hidden" name="sorteio_id" id="input-sorteio-id">
+
+                <div id="tab-geral" class="tab-content block space-y-4">
+                    <div><label class="text-sm text-gray-400">Nome do Sorteio</label><input name="nome" id="inp-nome" class="input-dark mt-1" required></div>
+                    <div><label class="text-sm text-gray-400">Descrição</label><textarea name="descricao" id="inp-descricao" class="input-dark mt-1" rows="3"></textarea></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-sm text-gray-400">Preço por cota</label><input name="preco_cota_display" id="inp-preco-display" class="input-dark mt-1" placeholder="R$ 0,00" oninput="mascaraMoeda(this)"><input type="hidden" name="preco_cota" id="inp-preco"></div>
+                        <div><label class="text-sm text-gray-400">Total de Cotas</label>
+                            <select id="inp-total-cotas-select" class="input-dark mt-1" onchange="onTotalCotasChange()">
+                                <option value="1000000">1 milhão de cotas</option>
+                                <option value="10000000">10 milhões de cotas</option>
+                                <option value="outro">Outro valor...</option>
+                            </select>
+                            <input name="total_cotas" id="inp-total-cotas" class="input-dark mt-2 hidden" placeholder="Ex: 500000">
+                        </div>
+                        <div><label class="text-sm text-gray-400">Mínimo por compra</label><input name="minimo_cotas_compra" id="inp-min" class="input-dark mt-1"></div>
+                        <div><label class="text-sm text-gray-400">Máximo por compra</label><input name="maximo_cotas_compra" id="inp-max" class="input-dark mt-1"></div>
+                        <div><label class="text-sm text-gray-400">Mín. visível no seletor</label><input name="minimo_visivel_seletor" id="inp-min-visivel" class="input-dark mt-1"></div>
+                        <div><label class="text-sm text-gray-400">Tempo p/ pagamento</label>
+                            <select name="tempo_pagamento" id="inp-tempo" class="input-dark mt-1">
+                                <option value="5">5 minutos</option>
+                                <option value="15" selected>15 minutos</option>
+                                <option value="30">30 minutos</option>
+                                <option value="60">1 hora</option>
+                                <option value="1440">24 horas</option>
+                                <option value="0">Sem tempo limite</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div><label class="text-sm text-gray-400">Link Grupo VIP (Whatsapp) — aparece pro cliente só depois que ele compra</label><input name="link_grupo_vip" id="inp-link-vip" class="input-dark mt-1"></div>
+                    <div><label class="text-sm text-gray-400">WhatsApp de suporte — aparece só dentro do menu (☰) do site, não fica flutuando na tela</label><input name="suporte_whatsapp_display" id="inp-whatsapp-display" class="input-dark mt-1" placeholder="(11) 98888-8888" maxlength="16" oninput="mascaraTelefone(this)"><input type="hidden" name="suporte_whatsapp" id="inp-whatsapp"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-sm text-gray-400">Status</label>
+                            <select name="status" id="inp-status" class="input-dark mt-1" onchange="onStatusChange()">
+                                <option value="rascunho">Rascunho</option>
+                                <option value="ativo">Ativo</option>
+                                <option value="concluido">Concluído</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end pb-2">
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <span class="toggle-switch"><input type="checkbox" name="is_featured" id="inp-featured"><span class="toggle-track"><span class="toggle-thumb"></span></span></span>
+                                <span class="text-sm text-gray-300">Destacar na Home</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-gray-800 rounded-lg p-4">
+                        <h4 class="font-semibold text-white mb-1">Dados coletados no checkout</h4>
+                        <p class="text-xs text-gray-500 mb-3">Nome e telefone são sempre coletados. Ative o que mais precisar pra este sorteio:</p>
+                        <div class="flex flex-wrap gap-6">
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <span class="toggle-switch"><input type="checkbox" name="coletar_cpf" id="inp-coletar-cpf"><span class="toggle-track"><span class="toggle-thumb"></span></span></span>
+                                <span class="text-sm text-gray-300">Coletar CPF</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <span class="toggle-switch"><input type="checkbox" name="coletar_email" id="inp-coletar-email"><span class="toggle-track"><span class="toggle-thumb"></span></span></span>
+                                <span class="text-sm text-gray-300">Coletar Email</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <span class="toggle-switch"><input type="checkbox" name="coletar_endereco" id="inp-coletar-endereco"><span class="toggle-track"><span class="toggle-thumb"></span></span></span>
+                                <span class="text-sm text-gray-300">Coletar Endereço</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="box-ganhador" class="hidden bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 space-y-3">
+                        <h4 class="font-semibold text-yellow-400"><i class="bi bi-trophy-fill"></i> Ganhador (opcional)</h4>
+                        <p class="text-xs text-gray-400">Busque por número da cota (preenche o nome sozinho, se a cota já tiver comprador) ou digite o nome manualmente.</p>
+                        <div class="flex gap-2">
+                            <input id="ganhador-busca-cota" class="input-dark" placeholder="Número da cota">
+                            <button type="button" class="btn-primary" onclick="buscarGanhadorPorCota()">Buscar</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs text-gray-400">Nome do ganhador</label><input name="ganhador_nome" id="inp-ganhador-nome" class="input-dark mt-1"></div>
+                            <div><label class="text-xs text-gray-400">Cota ganhadora</label><input name="ganhador_cota" id="inp-ganhador-cota" class="input-dark mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-imagens" class="tab-content space-y-3">
+                    <label class="text-sm text-gray-400">Fotos do sorteio — escolha 1 foto (fica única) ou várias (vira carrossel automático no site)</label>
+                    <div class="img-preview-box" id="img-preview-box" onclick="document.getElementById('foto-input').click()">
+                        <div id="img-placeholder"><i class="bi bi-camera text-3xl"></i><br><span class="text-xs">Clique aqui — pode selecionar várias fotos</span></div>
+                    </div>
+                    <input id="foto-input" name="foto_principal" type="file" class="hidden" accept="image/*" multiple onchange="previewImage(this)">
+                    <div id="preview-extra-imgs" class="flex gap-2 flex-wrap"></div>
+                </div>
+
+                <div id="tab-premios" class="tab-content space-y-6">
+                    <div id="aviso-premios" class="p-3 bg-yellow-900/30 text-yellow-500 border border-yellow-700 rounded mb-2 text-sm">Salve o sorteio na aba "Geral" antes de configurar bilhetes premiados.</div>
+
+                    <div>
+                        <h4 class="font-semibold text-white mb-2">🏆 Bilhete Premiado</h4>
+                        <p class="text-xs text-gray-500 mb-2">Adicione um número de cota e o título do prêmio. Quando essa cota for gerada pra algum cliente, ela aparece como premiada.</p>
+                        <div id="box-add-premio" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
+                            <input id="inp-premio-cota" placeholder="Cota" class="input-dark w-1/3">
+                            <input id="inp-premio-titulo" placeholder="Título do prêmio" class="input-dark w-2/3">
+                            <button type="button" id="btn-add-premio" class="btn-primary" onclick="addPremio()">Add</button>
+                        </div>
+                        <div id="lista-premios" class="space-y-2"></div>
+                    </div>
+
+                    <div class="border-t border-gray-800 pt-4">
+                        <h4 class="font-semibold text-white mb-2">🎡 Roleta Premiada</h4>
+                        <p class="text-xs text-gray-500 mb-2">Igual ao bilhete premiado, mas o número não aparece pro cliente — ele só descobre girando a roleta. Se a cota dele bater, a roleta acerta o prêmio.</p>
+                        <div id="box-add-roleta" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
+                            <input id="inp-roleta-cota" placeholder="Cota" class="input-dark w-1/4">
+                            <input id="inp-roleta-titulo" placeholder="Título do prêmio" class="input-dark w-1/2">
+                            <input id="inp-roleta-valor" placeholder="Valor (opcional)" class="input-dark w-1/4">
+                            <button type="button" class="btn-primary" onclick="addRoleta()">Add</button>
+                        </div>
+                        <div id="lista-roleta" class="space-y-2"></div>
+                    </div>
+
+                    <div class="border-t border-gray-800 pt-4">
+                        <h4 class="font-semibold text-white mb-2">🔒 Bloquear / Liberar cota</h4>
+                        <p class="text-xs text-gray-500 mb-2">Sem data = bloqueio permanente (só sai se você remover). Com data = fica bloqueada até aquele dia/hora e libera sozinha.</p>
+                        <div id="box-bloqueio" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
+                            <input id="inp-bloqueio" placeholder="Cota" class="input-dark">
+                            <input id="inp-bloqueio-data" type="datetime-local" class="input-dark" title="Data/hora para liberar automaticamente (opcional)">
+                            <button type="button" id="btn-bloquear" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg" onclick="addBloqueio()">Bloquear</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-1">Bloqueios permanentes:</p>
+                        <div id="lista-bloqueios" class="max-h-40 overflow-y-auto space-y-2 mb-3"></div>
+                        <p class="text-xs text-gray-500 mb-1">Agendados (liberam sozinhos):</p>
+                        <div id="lista-agendamentos" class="max-h-40 overflow-y-auto space-y-2"></div>
+                    </div>
+                </div>
+
+                <div id="tab-links" class="tab-content space-y-4">
+                    <div id="aviso-links" class="p-3 bg-yellow-900/30 text-yellow-500 border border-yellow-700 rounded mb-2 text-sm">Salve o sorteio antes de criar links.</div>
+                    <p class="text-gray-400 text-sm">Crie um link por canal (WhatsApp, Instagram, Facebook Ads...) pra saber exatamente de onde vêm suas vendas. Escolha também qual funil esse link deve abrir.</p>
+                    <div id="box-add-link" class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4 opacity-50 pointer-events-none">
+                        <input id="link-nome" placeholder="Nome (ex: Grupo do WhatsApp)" class="input-dark md:col-span-2">
+                        <select id="link-canal" class="input-dark">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="instagram_organico">Instagram Orgânico</option>
+                            <option value="facebook_organico">Facebook Orgânico</option>
+                            <option value="facebook_ads">Facebook Ads</option>
+                            <option value="google_ads">Google Ads</option>
+                            <option value="tiktok_ads">TikTok Ads</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                        <select id="link-funil" class="input-dark"><option value="">Sem funil (padrão)</option></select>
+                        <button type="button" class="btn-primary md:col-span-4" onclick="criarLink()">Criar Link</button>
+                    </div>
+                    <div id="lista-links-sorteio" class="space-y-2"></div>
+                </div>
+
+                <!-- ===================== ABA FUNIS (NOVA) ===================== -->
+                <div id="tab-funis" class="tab-content space-y-4">
+                    <div id="aviso-funis" class="p-3 bg-yellow-900/30 text-yellow-500 border border-yellow-700 rounded mb-2 text-sm">Salve o sorteio na aba "Geral" antes de criar funis.</div>
+
+                    <p class="text-gray-400 text-sm">
+                        Crie vários funis/sites diferentes para este mesmo sorteio — por exemplo, um para tráfego pago (Ads) e outro para tráfego orgânico, cada um com sua própria tela de pós-pagamento.
+                    </p>
+
+                    <div id="box-add-funil" class="bg-darkCard border border-gray-800 rounded-xl p-4 opacity-50 pointer-events-none">
+                        <h4 class="font-semibold text-white mb-3">Criar novo funil</h4>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="text-xs text-gray-400">Nome do funil</label><input id="funil-nome" class="input-dark mt-1" placeholder="Ex: Ads - Campanha A"></div>
+                            <div><label class="text-xs text-gray-400">Origem</label>
+                                <select id="funil-origem" class="input-dark mt-1">
+                                    <option value="ads">Ads (tráfego pago)</option>
+                                    <option value="organico">Orgânico</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Arquivo HTML deste funil (página inicial)</label>
+                                <select id="funil-arquivo-html" class="input-dark mt-1">
+                                    <option value="sorteio.html">sorteio.html (padrão)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Arquivo HTML do checkout (pós-clique em comprar)</label>
+                                <select id="funil-arquivo-checkout" class="input-dark mt-1">
+                                    <option value="checkout.html">checkout.html (padrão)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Grupo de teste A/B (opcional)</label>
+                                <input id="funil-grupo-teste" class="input-dark mt-1" placeholder="Ex: teste-headline">
+                            </div>
+                        </div>
+                        <div class="mb-3" id="funil-peso-box" style="display:none;">
+                            <label class="text-xs text-gray-400">% do tráfego para este funil dentro do grupo de teste</label>
+                            <input id="funil-peso" type="number" min="1" max="100" value="50" class="input-dark mt-1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-xs text-gray-400">Pós-pagamento</label>
+                            <select id="funil-pos-tipo" class="input-dark mt-1" onchange="toggleBonusFields()">
+                                <option value="padrao">Padrão (mostra as cotas normalmente)</option>
+                                <option value="bonus">Bônus / Compra premiada (mensagem + cotas extras)</option>
+                            </select>
+                        </div>
+                        <div id="funil-bonus-fields" class="hidden space-y-3 mb-3 border-t border-gray-800 pt-3">
+                            <div><label class="text-xs text-gray-400">Título da tela de bônus</label><input id="funil-bonus-titulo" class="input-dark mt-1" placeholder="Ex: Sua compra foi premiada! 🎉"></div>
+                            <div><label class="text-xs text-gray-400">Mensagem</label><textarea id="funil-bonus-mensagem" class="input-dark mt-1" rows="2" placeholder="Ex: Você ganhou cotas grátis por ter comprado agora!"></textarea></div>
+                            <div><label class="text-xs text-gray-400">Cotas grátis de bônus</label><input id="funil-bonus-cotas" type="number" min="0" class="input-dark mt-1" placeholder="Ex: 5"></div>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="criarFunil()">Criar Funil</button>
+                    </div>
+
+                    <div id="lista-funis" class="space-y-3 mt-4"></div>
+                    <p class="text-xs text-gray-500 mt-2">💡 Pra testar A/B: crie 2 funis com o mesmo "Grupo de teste" e defina o % de tráfego de cada. Use o link <code class="text-purple-300">/sorteio/&lt;slug&gt;/teste/&lt;grupo&gt;</code> na sua campanha — o sistema distribui os visitantes automaticamente.</p>
+                </div>
+
+                <div id="tab-config" class="tab-content space-y-6">
+                    <div>
+                        <label class="text-sm text-gray-400">Botões rápidos de cota</label>
+                        <input type="hidden" name="botoes_rapidos" id="inp-botoes">
+                        <div id="chips-botoes" class="flex flex-wrap gap-2 mt-2 mb-2"></div>
+                        <div class="flex gap-2">
+                            <input id="novo-botao-input" type="number" class="input-dark" placeholder="Ex: 1000" style="max-width:160px">
+                            <button type="button" class="btn-primary" onclick="adicionarChipBotao()">+ Adicionar botão</button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-800 pt-4">
+                        <h4 class="font-semibold text-white mb-2">Pixels específicos deste sorteio</h4>
+                        <p class="text-xs text-gray-500 mb-3">Deixe em branco pra usar o pixel padrão (configurado em "Pixels & Marketing"). Preencha só se este sorteio precisar de um pixel diferente.</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-xs text-gray-400">Facebook Pixel ID</label><input name="pixel_fb_override" id="inp-pixel-fb" class="input-dark mt-1"></div>
+                            <div><label class="text-xs text-gray-400">Google Ads ID</label><input name="pixel_google_override" id="inp-pixel-google" class="input-dark mt-1"></div>
+                            <div><label class="text-xs text-gray-400">TikTok Pixel ID</label><input name="pixel_tiktok_override" id="inp-pixel-tiktok" class="input-dark mt-1"></div>
+                            <div><label class="text-xs text-gray-400">GTM ID</label><input name="pixel_gtm_override" id="inp-pixel-gtm" class="input-dark mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-800">
+                    <button type="button" class="px-4 py-2 rounded-lg border border-gray-700 text-gray-300" onclick="navTo('sorteios')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Sorteio</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ===================== PEDIDOS ===================== -->
+        <div id="page-pedidos" class="page-section">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                <h2 class="text-2xl font-bold text-white">Pedidos</h2>
+                <div class="flex gap-2 items-center flex-wrap">
+                    <input type="date" id="pedidos-data-de" class="input-dark text-xs" style="width:140px">
+                    <input type="date" id="pedidos-data-ate" class="input-dark text-xs" style="width:140px">
+                    <button class="btn-primary text-sm" onclick="carregarPedidos(PEDIDOS_FILTRO_ATUAL)"><i class="bi bi-funnel"></i> Filtrar</button>
+                </div>
+            </div>
+            <div id="pedidos-status-tabs" class="flex gap-1 bg-darkCard border border-gray-800 rounded-lg p-1 mb-4 w-fit">
+                <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold active" data-f="todos" onclick="carregarPedidos('todos')">Todos</button>
+                <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold" data-f="pagos" onclick="carregarPedidos('pagos')">Pagos</button>
+                <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold" data-f="pendentes" onclick="carregarPedidos('pendentes')">Pendentes</button>
+                <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold" data-f="expirados" onclick="carregarPedidos('expirados')">Expirados</button>
+            </div>
+            <div id="lista-pedidos" class="bg-darkCard rounded-xl border border-gray-800 p-4">
+                <div id="tabela-pedidos" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- ===================== CLIENTES ===================== -->
+        <div id="page-clientes" class="page-section">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                <h2 class="text-2xl font-bold text-white">Clientes</h2>
+                <div class="flex gap-2">
+                    <input id="clientes-busca" class="input-dark text-sm" placeholder="Buscar por nome ou telefone..." style="width:240px">
+                    <button class="btn-primary text-sm" onclick="window.location.href='/api/admin/clientes/export'"><i class="bi bi-download"></i> Baixar lista (CSV)</button>
+                </div>
+            </div>
+            <div id="lista-clientes" class="bg-darkCard rounded-xl border border-gray-800 p-4"></div>
+        </div>
+
+        <!-- Modal de detalhe do cliente -->
+        <div id="modal-cliente" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+            <div class="modal-box max-w-lg w-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-white" id="modal-cliente-nome">Cliente</h3>
+                    <button onclick="$('#modal-cliente').addClass('hidden')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="flex gap-2 mb-4 text-sm">
+                    <div class="metric-card flex-1"><p class="text-xs opacity-60">Total gasto</p><p class="text-lg font-bold text-green-400" id="modal-cliente-total">R$ 0,00</p></div>
+                    <div class="metric-card flex-1"><p class="text-xs opacity-60">Pedidos</p><p class="text-lg font-bold text-blue-400" id="modal-cliente-pedidos-count">0</p></div>
+                </div>
+                <div id="modal-cliente-pedidos" class="space-y-2 max-h-72 overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- ===================== RELATÓRIOS ===================== -->
+        <div id="page-relatorios" class="page-section">
+            <h2 class="text-2xl font-bold text-white mb-6">Relatórios</h2>
+            <form id="form-filtro-relatorio" class="flex flex-col md:flex-row gap-4 items-end mb-6">
+                <div class="w-full md:w-1/3"><label class="text-sm text-gray-400">De</label><input type="date" id="filtro-data-de" class="input-dark mt-1"></div>
+                <div class="w-full md:w-1/3"><label class="text-sm text-gray-400">Até</label><input type="date" id="filtro-data-ate" class="input-dark mt-1"></div>
+                <button class="btn-primary">Filtrar</button>
+            </form>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="p-4 rounded-xl bg-darkCard border border-gray-800"><p class="text-sm text-gray-400">Faturamento</p><p class="text-xl font-bold text-green-400" id="rel-faturamento">R$ 0,00</p></div>
+                <div class="p-4 rounded-xl bg-darkCard border border-gray-800"><p class="text-sm text-gray-400">Pedidos</p><p class="text-xl font-bold text-blue-400" id="rel-pedidos">0</p></div>
+            </div>
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800"><h3 class="text-gray-300 mb-4 font-bold">Vendas por dia</h3><canvas id="grafico-vendas" height="80"></canvas></div>
+        </div>
+
+        <!-- ===================== COMPARATIVO DE LINKS ===================== -->
+        <div id="page-links" class="page-section">
+            <h2 class="text-2xl font-bold text-white mb-2">Comparativo de Links</h2>
+            <p class="text-gray-400 text-sm mb-6">Compare o desempenho de todos os links (manuais e detectados automaticamente por Ads/Orgânico) de todos os sorteios, lado a lado.</p>
+            <div class="flex gap-3 mb-4">
+                <select id="filtro-links-sorteio" class="input-dark max-w-xs"><option value="todos">Todos os sorteios</option></select>
+                <button class="btn-primary" onclick="carregarComparativoLinks()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+            </div>
+            <div class="bg-darkCard rounded-xl border border-gray-800 overflow-x-auto">
+                <table class="w-full text-sm table-clean">
+                    <thead><tr class="text-left border-b border-gray-800">
+                        <th class="p-3">Link</th><th class="p-3">Sorteio</th><th class="p-3">Canal</th><th class="p-3">Acessos</th><th class="p-3">Pedidos</th><th class="p-3">Faturamento</th><th class="p-3">Pendente</th><th class="p-3">Ticket Médio</th><th class="p-3">Conversão</th>
+                    </tr></thead>
+                    <tbody id="tabela-links-comparativo"><tr><td colspan="9" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===================== GATEWAY ===================== -->
+        <div id="page-gateway" class="page-section"><h2 class="text-2xl font-bold text-white mb-2">Gateway Pix</h2>
+            <p class="text-gray-400 text-sm mb-6">Escolha o gateway ativo e preencha as credenciais dele. O webhook já vem pronto — só colar no painel do provedor.</p>
+
+            <div class="bg-darkCard border-2 border-yellow-600 rounded-xl p-4 mb-6 max-w-2xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-semibold text-yellow-400"><i class="bi bi-cone-striped"></i> Modo Teste de Pagamento</p>
+                        <p class="text-xs text-gray-400 max-w-md">Enquanto ligado, o checkout mostra um botão "Já paguei" que aprova o pedido na hora, sem gateway real — ótimo pra testar o sistema inteiro antes de configurar um banco de verdade. <strong class="text-yellow-300">Desligue antes de divulgar pra clientes reais.</strong></p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="conf-modo-teste"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button class="tab-btn active" data-gw="mercadopago" onclick="mudarGatewayTab('mercadopago', this)">Mercado Pago</button>
+                <button class="tab-btn" data-gw="pay2m" onclick="mudarGatewayTab('pay2m', this)">Pay2M</button>
+                <button class="tab-btn" data-gw="paggue" onclick="mudarGatewayTab('paggue', this)">Paggue</button>
+            </div>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-2xl">
+                <div class="mb-4 p-3 bg-gray-800/60 rounded text-xs text-gray-400 break-all">
+                    URL do Webhook (cole no painel do gateway escolhido): <span id="webhook-url" class="text-purple-300"></span>
+                </div>
+
+                <div id="gw-tab-mercadopago" class="gw-tab">
+                    <p class="text-xs text-gray-500 mb-3">Pegue o Access Token em: Mercado Pago → Seu negócio → Configurações → Credenciais de produção.</p>
+                    <form id="form-gateway-mp">
+                        <label class="block mb-4"><span class="text-gray-400">Access Token</span><input name="MERCADOPAGO_ACCESS_TOKEN" id="conf-mercadopago-token" class="input-dark mt-1" placeholder="Cole aqui o token do Mercado Pago"></label>
+                        <button type="submit" class="btn-primary">Salvar e ativar Mercado Pago</button>
+                    </form>
+                </div>
+
+                <div id="gw-tab-pay2m" class="gw-tab hidden">
+                    <p class="text-xs text-gray-500 mb-3">Peça o Client ID e Client Secret ao time comercial do Pay2M.</p>
+                    <form id="form-gateway-pay2m">
+                        <label class="block mb-4"><span class="text-gray-400">Client ID</span><input name="PAY2M_CLIENT_ID" id="conf-pay2m-id" class="input-dark mt-1"></label>
+                        <label class="block mb-4"><span class="text-gray-400">Client Secret</span><input name="PAY2M_CLIENT_SECRET" id="conf-pay2m-secret" class="input-dark mt-1"></label>
+                        <button type="submit" class="btn-primary">Salvar e ativar Pay2M</button>
+                    </form>
+                </div>
+
+                <div id="gw-tab-paggue" class="gw-tab hidden">
+                    <p class="text-xs text-gray-500 mb-3">Pegue o Access Token no painel da Paggue → Integrações → API.</p>
+                    <form id="form-gateway-paggue">
+                        <label class="block mb-4"><span class="text-gray-400">Access Token</span><input name="paggue_access_token" id="conf-paggue-token" class="input-dark mt-1"></label>
+                        <button type="submit" class="btn-primary">Salvar e ativar Paggue</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== PIXELS & MARKETING ===================== -->
+        <div id="page-marketing" class="page-section"><h2 class="text-2xl font-bold text-white mb-2">Pixels & Marketing</h2>
+            <p class="text-gray-400 text-sm mb-6">Configure uma vez aqui e o pixel já entra automaticamente em todos os seus sites. Se quiser um pixel diferente só para um sorteio específico, use a aba "Config" dentro da edição daquele sorteio.</p>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-2xl">
+                <form id="form-marketing">
+                    <label class="block mb-4"><span class="text-gray-400"><i class="bi bi-facebook"></i> Facebook Pixel ID</span><input name="FACEBOOK_PIXEL_ID" id="conf-pixel-id" class="input-dark mt-1"></label>
+                    <label class="block mb-4"><span class="text-gray-400">Facebook Conversions API Token</span><input name="FACEBOOK_CONVERSION_API_TOKEN" id="conf-api-token" class="input-dark mt-1"></label>
+                    <label class="block mb-4"><span class="text-gray-400"><i class="bi bi-google"></i> Google Ads ID (AW-XXXXXXX)</span><input name="GOOGLE_ADS_ID" id="conf-google-id" class="input-dark mt-1"></label>
+                    <label class="block mb-4"><span class="text-gray-400"><i class="bi bi-tiktok"></i> TikTok Pixel ID</span><input name="TIKTOK_PIXEL_ID" id="conf-tiktok-id" class="input-dark mt-1"></label>
+                    <label class="block mb-4"><span class="text-gray-400">Google Tag Manager ID (GTM-XXXXXXX)</span><input name="GTM_ID" id="conf-gtm-id" class="input-dark mt-1"></label>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===================== CONTA & LOGO ===================== -->
+        <div id="page-minha-conta" class="page-section">
+            <h2 class="text-2xl font-bold text-white mb-6">Conta & Identidade</h2>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md mb-6">
+                <h3 class="font-semibold text-white mb-3">Nome do sistema</h3>
+                <p class="text-xs text-gray-500 mb-3">Aparece no topo do menu lateral e na aba do navegador.</p>
+                <form id="form-identidade">
+                    <input id="conf-system-name" class="input-dark mb-2" placeholder="Ex: Máquina Milionária">
+                    <input id="conf-system-sub" class="input-dark mb-4" placeholder="Ex: painel administrativo">
+                    <button type="submit" class="btn-primary w-full">Salvar nome</button>
+                </form>
+            </div>
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md text-center">
+                <div id="logo-preview" class="w-32 h-32 rounded-full border-2 border-dashed border-gray-600 mx-auto flex items-center justify-center cursor-pointer mb-4 bg-cover bg-center" onclick="document.getElementById('input-logo').click()"><span class="text-xs text-gray-500">Alterar logo</span></div>
+                <input type="file" id="input-logo" class="hidden" accept="image/*" onchange="uploadLogo(this)">
+
+                <form id="form-conta" class="mt-4 text-left">
+                    <label class="text-sm text-gray-400">Email</label>
+                    <input id="conta-email" class="input-dark mt-1 mb-2">
+                    <label class="text-sm text-gray-400">Nova senha</label>
+                    <input id="conta-pass" type="password" class="input-dark mt-1 mb-2" placeholder="Deixe em branco para não alterar">
+                    <label class="text-sm text-gray-400">Confirme a nova senha</label>
+                    <input id="conta-pass-confirm" type="password" class="input-dark mt-1 mb-4" placeholder="Confirme a nova senha">
+                    <button type="submit" class="btn-primary w-full">Salvar</button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+let SORTEIOS_CACHE = [];
+let SORTEIO_ATUAL_ID = null;
+let VENDAS_CHART = null;
+let VENDAS_CHART_REL = null;
+
+function showOverlay() { $('#overlay').css('display','flex'); }
+function hideOverlay() { $('#overlay').hide(); }
+
+function api(method, url, data, isForm) {
+    const opts = { method, credentials: 'include' };
+    if (data) {
+        if (isForm) { opts.body = data; }
+        else { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(data); }
+    }
+    return fetch(url, opts).then(async r => {
+        const json = await r.json().catch(() => ({}));
+        if (!r.ok) throw json;
+        return json;
+    });
+}
+
+function confirmar(titulo, msg) {
+    return new Promise(resolve => {
+        $('#confirm-title').text(titulo);
+        $('#confirm-msg').text(msg);
+        $('#modal-confirm').removeClass('hidden').css('display','flex');
+        $('#btn-confirm-yes').off('click').on('click', () => { $('#modal-confirm').addClass('hidden'); resolve(true); });
+        $('#btn-confirm-no').off('click').on('click', () => { $('#modal-confirm').addClass('hidden'); resolve(false); });
+    });
+}
+
+function formatBR(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+// ---------------- MÁSCARA DE MOEDA ----------------
+function mascaraMoeda(input) {
+    let v = input.value.replace(/\D/g, '');
+    v = (Number(v) / 100).toFixed(2) + '';
+    v = v.replace('.', ',');
+    v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    input.value = 'R$ ' + v;
+    const numerico = Number(input.value.replace(/[^\d,]/g, '').replace(',', '.'));
+    $('#inp-preco').val(numerico);
+}
+function setMascaraMoedaValor(valor) {
+    const num = Number(valor || 0);
+    $('#inp-preco').val(num);
+    $('#inp-preco-display').val('R$ ' + num.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'));
+}
+
+// ---------------- MÁSCARA DE TELEFONE (WhatsApp) ----------------
+function mascaraTelefone(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 6) v = v.replace(/^(\d{2})(\d{4,5})(\d{0,4}).*/, '($1) $2-$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5}).*/, '($1) $2');
+    else if (v.length > 0) v = v.replace(/^(\d{0,2})/, '($1');
+    input.value = v;
+    $('#inp-whatsapp').val('55' + input.value.replace(/\D/g, ''));
+}
+function setMascaraTelefoneValor(valorComDDI) {
+    let numeros = String(valorComDDI || '').replace(/\D/g, '');
+    if (numeros.startsWith('55') && numeros.length > 11) numeros = numeros.slice(2);
+    $('#inp-whatsapp').val(valorComDDI || '');
+    if (!numeros) { $('#inp-whatsapp-display').val(''); return; }
+    let v = numeros;
+    if (v.length > 6) v = v.replace(/^(\d{2})(\d{4,5})(\d{0,4}).*/, '($1) $2-$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5}).*/, '($1) $2');
+    $('#inp-whatsapp-display').val(v);
+}
+
+// ---------------- GANHADOR (quando status = concluído) ----------------
+function onStatusChange() {
+    $('#box-ganhador').toggleClass('hidden', $('#inp-status').val() !== 'concluido');
+}
+function buscarGanhadorPorCota() {
+    const numero = $('#ganhador-busca-cota').val();
+    if (!numero || !SORTEIO_ATUAL_ID) return alert('Selecione a cota e certifique-se de que o sorteio já foi salvo.');
+    api('POST', '/api/admin/dashboard/buscar-ganhador', { raffle: SORTEIO_ATUAL_ID, number: numero }).then(d => {
+        $('#inp-ganhador-cota').val(numero);
+        $('#inp-ganhador-nome').val(d.cliente?.nome_completo || '');
+        if (!d.cliente?.nome_completo) alert('Cota encontrada, mas sem comprador vinculado ainda. Digite o nome manualmente se quiser.');
+    }).catch(() => alert('Cota não encontrada — se quiser, digite o nome do ganhador manualmente.'));
+}
+
+// ---------------- SELETOR TOTAL DE COTAS ----------------
+function onTotalCotasChange() {
+    const val = $('#inp-total-cotas-select').val();
+    if (val === 'outro') { $('#inp-total-cotas').removeClass('hidden').val(''); }
+    else { $('#inp-total-cotas').addClass('hidden').val(val); }
+}
+function setTotalCotasValor(valor) {
+    const v = String(valor);
+    if (v === '1000000' || v === '10000000') { $('#inp-total-cotas-select').val(v); $('#inp-total-cotas').addClass('hidden').val(v); }
+    else { $('#inp-total-cotas-select').val('outro'); $('#inp-total-cotas').removeClass('hidden').val(v); }
+}
+
+// ---------------- CHIPS: BOTÕES RÁPIDOS DE COTA ----------------
+let BOTOES_RAPIDOS = [];
+function renderChipsBotoes() {
+    $('#chips-botoes').html(BOTOES_RAPIDOS.map((b, i) => `<span class="chip">${b} <button type="button" onclick="removerChipBotao(${i})">&times;</button></span>`).join(''));
+    $('#inp-botoes').val(BOTOES_RAPIDOS.join(','));
+}
+function adicionarChipBotao() {
+    const val = parseInt($('#novo-botao-input').val());
+    if (!val || val <= 0) return;
+    if (!BOTOES_RAPIDOS.includes(val)) { BOTOES_RAPIDOS.push(val); BOTOES_RAPIDOS.sort((a, b) => a - b); }
+    $('#novo-botao-input').val('');
+    renderChipsBotoes();
+}
+function removerChipBotao(i) { BOTOES_RAPIDOS.splice(i, 1); renderChipsBotoes(); }
+function setBotoesRapidos(str) {
+    BOTOES_RAPIDOS = (str || '').split(',').map(x => parseInt(x)).filter(Boolean);
+    renderChipsBotoes();
+}
+
+// ---------------- SESSÃO / LOGOUT ----------------
+function logout() {
+    api('POST', '/admin/logout').then(d => window.location.href = d.redirect || '/admin/login');
+}
+
+function checkSession() {
+    return fetch('/api/admin/session', { credentials: 'include' }).then(r => {
+        if (!r.ok) { window.location.href = '/admin/login'; throw new Error('not authenticated'); }
+        return r.json();
+    });
+}
+
+// ---------------- NAVEGAÇÃO ----------------
+function navTo(page, el) {
+    $('.page-section').removeClass('active');
+    $('#page-' + page).addClass('active');
+    $('.sidebar-item').removeClass('active');
+    if (el) $(el).addClass('active');
+    else $('#nav-' + page).addClass('active');
+
+    if (page === 'dashboard') { carregarDashboard(); }
+    if (page === 'sorteios') { carregarSorteios(); }
+    if (page === 'pedidos') { carregarPedidos('todos'); }
+    if (page === 'clientes') { carregarClientes(); }
+    if (page === 'relatorios') { carregarRelatorios(); }
+    if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'gateway') { carregarGateway(); }
+    if (page === 'marketing') { carregarMarketing(); }
+    if (page === 'minha-conta') { carregarConta(); }
+}
+
+function mudarTab(tab, el) {
+    $('.tab-content').removeClass('block').hide();
+    $('#tab-' + tab).addClass('block').show();
+    $('.tab-btn').removeClass('active');
+    $(el).addClass('active');
+}
+
+// ---------------- DASHBOARD ----------------
+function popularSelectsSorteios() {
+    const opts = '<option value="">Todos</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+    $('.select-sorteio-dash').html(opts);
+    const optsEscolha = '<option value="">Selecione um sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+    $('#select-bilhete-sorteio, #select-roleta-sorteio').html(optsEscolha);
+}
+
+// ---------------- PERÍODO (presets + datas customizadas) ----------------
+function calcularPeriodo(preset) {
+    const hoje = new Date();
+    const fmt = d => d.toISOString().slice(0, 10);
+    if (preset === 'hoje') return { de: fmt(hoje), ate: fmt(hoje) };
+    if (preset === 'ontem') { const o = new Date(hoje); o.setDate(o.getDate() - 1); return { de: fmt(o), ate: fmt(o) }; }
+    if (preset === '7dias') { const o = new Date(hoje); o.setDate(o.getDate() - 6); return { de: fmt(o), ate: fmt(hoje) }; }
+    if (preset === 'mes') { const o = new Date(hoje.getFullYear(), hoje.getMonth(), 1); return { de: fmt(o), ate: fmt(hoje) }; }
+    return { de: '', ate: '' }; // tudo
+}
+
+$('.periodo-btn').on('click', function() {
+    $('.periodo-btn').removeClass('active');
+    $(this).addClass('active');
+    const p = calcularPeriodo($(this).data('p'));
+    $('#dash-data-de').val(p.de);
+    $('#dash-data-ate').val(p.ate);
+    carregarDashboard();
+});
+$('#dash-data-de, #dash-data-ate').on('change', function() { $('.periodo-btn').removeClass('active'); carregarDashboard(); });
+
+function carregarDashboard() {
+    const de = $('#dash-data-de').val();
+    const ate = $('#dash-data-ate').val();
+    const qs = (de ? `&start_date=${de}T00:00:00` : '') + (ate ? `&end_date=${ate}T23:59:59` : '');
+
+    fetch(`/api/admin/dashboard/cards?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+        $('#card-faturamento').text(formatBR(d.faturamento));
+        $('#card-pendente').text(formatBR(d.pendente));
+        $('#card-pedidos').text(d.total_pedidos);
+        $('#card-ticket').text(formatBR(d.ticket_medio));
+        $('#card-acessos').text(d.acessos || 0);
+    });
+    fetch(`/api/admin/dashboard/vendas-diarias?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+        const ctx = document.getElementById('grafico-vendas-dash');
+        if (VENDAS_CHART) VENDAS_CHART.destroy();
+        VENDAS_CHART = new Chart(ctx, {
+            type: 'line',
+            data: { labels: d.labels, datasets: [{ label: 'Vendas (R$)', data: d.data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.2)', fill: true, tension: 0.3 }] },
+            options: { plugins: { legend: { labels: { color: '#e6edf3' } } }, scales: { x: { ticks: { color: '#9ca3af' } }, y: { ticks: { color: '#9ca3af' } } } }
+        });
+    });
+    fetch(`/api/admin/dashboard/por-sorteio?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+        const linhas = d.sorteios || [];
+        if (linhas.length === 0) { $('#tabela-por-sorteio').html('<tr><td colspan="7" class="p-4 text-center text-gray-400">Nenhum sorteio ainda.</td></tr>'); return; }
+        $('#tabela-por-sorteio').html(linhas.map(l => `
+            <tr class="link-row border-b border-gray-800/60">
+                <td class="p-3 text-white">${l.nome}</td>
+                <td class="p-3">${l.acessos}</td>
+                <td class="p-3">${l.total_pedidos}</td>
+                <td class="p-3 text-green-400 font-semibold">${formatBR(l.faturamento)}</td>
+                <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
+                <td class="p-3">${formatBR(l.ticket_medio)}</td>
+                <td class="p-3">${l.conversao.toFixed(1)}%</td>
+            </tr>
+        `).join(''));
+    });
+}
+
+// ---------------- BUSCAR GANHADOR (com tela de revelação pra live) ----------------
+function dispararConfete() {
+    const canvas = document.getElementById('confete-canvas');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const cores = ['#8b5cf6', '#f59e0b', '#22c55e', '#ef4444', '#3b82f6', '#ec4899'];
+    let particulas = Array.from({ length: 220 }, () => ({
+        x: Math.random() * canvas.width, y: -20 - Math.random() * canvas.height,
+        r: 4 + Math.random() * 6, cor: cores[Math.floor(Math.random() * cores.length)],
+        vy: 2 + Math.random() * 4, vx: -2 + Math.random() * 4, rot: Math.random() * 360, vrot: -6 + Math.random() * 12
+    }));
+    let frames = 0;
+    function tick() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particulas.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+            ctx.fillStyle = p.cor; ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 1.6);
+            ctx.restore();
+        });
+        frames++;
+        if (frames < 260) requestAnimationFrame(tick);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    tick();
+}
+
+function abrirTelaGanhador(nome, telefone, cota) {
+    $('#ganhador-nome-grande').text(nome || 'Ganhador não identificado');
+    $('#ganhador-tel-grande').text(telefone || '—');
+    $('#ganhador-cota-grande').text(cota || '—');
+    $('#tela-ganhador').removeClass('hidden').css('display', 'flex');
+    dispararConfete();
+}
+function fecharTelaGanhador() { $('#tela-ganhador').addClass('hidden'); }
+
+$('#form-buscar-ganhador').on('submit', function(e) {
+    e.preventDefault();
+    const raffle = $('#select-buscar-ganhador').val();
+    const number = $('#input-buscar-ganhador').val();
+    const $btn = $('#btn-buscar-ganhador');
+    $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Buscando...');
+    $('#resultado-ganhador').addClass('hidden');
+    api('POST', '/api/admin/dashboard/buscar-ganhador', { raffle, number }).then(d => {
+        $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Ganhador');
+        const nome = d.cliente?.nome_completo || 'Cliente não identificado';
+        const tel = d.cliente?.telefone || '';
+        abrirTelaGanhador(nome, tel, number);
+    }).catch(err => {
+        $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Ganhador');
+        $('#resultado-ganhador').removeClass('hidden').html(`<p class="text-red-400">${err.error || 'Não encontrado'}</p>`);
+    });
+});
+
+// Presets de período mostram/escondem os campos de data+hora customizados, e já pré-preenchem com o preset escolhido
+function aplicarPresetDatetime(prefixo, valor) {
+    const $box = $(`#${prefixo}-datetime-custom`);
+    if (valor !== 'custom') { $box.addClass('hidden'); return; }
+    $box.removeClass('hidden');
+    const p = calcularPeriodo('hoje');
+    if (!$(`#${prefixo}-datetime-de`).val()) $(`#${prefixo}-datetime-de`).val(p.de + 'T00:00');
+    if (!$(`#${prefixo}-datetime-ate`).val()) $(`#${prefixo}-datetime-ate`).val(p.ate + 'T23:59');
+}
+// Monta a querystring de data considerando: campos de data+hora customizados (se preenchidos) OU o preset selecionado
+function montarQsPeriodo(prefixo, presetSelectId) {
+    const preset = $(presetSelectId).val();
+    if (preset === 'custom') {
+        const de = $(`#${prefixo}-datetime-de`).val();
+        const ate = $(`#${prefixo}-datetime-ate`).val();
+        return (de ? `&start_date=${de}:00` : '') + (ate ? `&end_date=${ate}:59` : '');
+    }
+    const p = calcularPeriodo(preset === 'tudo' ? 'tudo' : preset);
+    return (p.de ? `&start_date=${p.de}T00:00:00` : '') + (p.ate ? `&end_date=${p.ate}T23:59:59` : '');
+}
+
+$('#form-buscar-top-comprador').on('submit', function(e) {
+    e.preventDefault();
+    const raffle = $('#select-top-raffle').val();
+    const tipo = $('#filtro-top-tipo').val();
+    const qs = montarQsPeriodo('top', '#filtro-top-periodo');
+    fetch(`/api/admin/dashboard/top-comprador?raffle=${raffle}&tipo=${tipo}&limit=10${qs}`, { credentials: 'include' })
+        .then(r => r.json()).then(d => {
+            const html = (d.results || []).map(r => `
+                <div class="pedido-card"><div><div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div><div class="text-gray-400 text-sm">${r.usuarios?.telefone || ''}</div></div><div class="font-bold text-green-400">${formatBR(r.valor_total)}</div></div>
+            `).join('');
+            $('#resultado-top-comprador').html(html || '<p class="text-gray-400 text-sm">Nenhum resultado.</p>');
+        });
+});
+
+// ---------------- BILHETE PREMIADO (aba própria) ----------------
+let BILHETES_PREMIADOS_CACHE = [];
+function renderGridBilhetes() {
+    const filtro = ($('#input-buscar-bilhete').val() || '').trim();
+    const lista = filtro ? BILHETES_PREMIADOS_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_PREMIADOS_CACHE;
+    if (lista.length === 0) { $('#grid-bilhetes-premiados').html('<p class="opacity-60 text-sm">Nenhum bilhete encontrado.</p>'); return; }
+    $('#grid-bilhetes-premiados').html(lista.map(b => {
+        const saiu = b.status === 'reivindicada';
+        const cor = saiu ? 'bg-green-600' : 'bg-red-600';
+        if (saiu && b.usuario?.telefone) {
+            const msg = encodeURIComponent(`Olá ${b.usuario.nome_completo || ''}! Você tirou o bilhete premiado nº ${b.numero_cota} (${b.premio_titulo || 'prêmio'})! 🎉 Vamos combinar a entrega?`);
+            return `<a href="https://wa.me/${b.usuario.telefone}?text=${msg}" target="_blank" class="chip ${cor} text-white" title="${b.premio_titulo || ''} — clique para chamar no WhatsApp">🎫 ${b.numero_cota} <i class="bi bi-whatsapp"></i></a>`;
+        }
+        return `<span class="chip ${cor} text-white" title="${b.premio_titulo || ''}">🎫 ${b.numero_cota}</span>`;
+    }).join(''));
+}
+$('#select-bilhete-sorteio').on('change', function() {
+    const id = $(this).val();
+    if (!id) { BILHETES_PREMIADOS_CACHE = []; $('#grid-bilhetes-premiados').html('<p class="opacity-60 text-sm">Selecione um sorteio acima.</p>'); return; }
+    api('GET', `/api/admin/sorteios/${id}/premios`).then(d => {
+        BILHETES_PREMIADOS_CACHE = d.bilhetes_premiados || [];
+        renderGridBilhetes();
+    });
+});
+$('#input-buscar-bilhete').on('input', renderGridBilhetes);
+
+// ---------------- ROLETA (aba própria — sem expor a cota) ----------------
+$('#select-roleta-sorteio').on('change', function() {
+    const id = $(this).val();
+    if (!id) {
+        $('#roleta-disponiveis').text('0'); $('#roleta-sorteadas').text('0');
+        $('#lista-roleta-resultados').html('<p class="opacity-60 text-sm">Selecione um sorteio acima.</p>');
+        return;
+    }
+    api('GET', `/api/admin/sorteios/${id}/roleta/resultados`).then(d => {
+        $('#roleta-disponiveis').text(d.disponiveis || 0);
+        $('#roleta-sorteadas').text((d.ganhadores || []).length);
+        const ganhadores = d.ganhadores || [];
+        if (ganhadores.length === 0) { $('#lista-roleta-resultados').html('<p class="opacity-60 text-sm">Nenhuma roleta sorteada ainda.</p>'); return; }
+        $('#lista-roleta-resultados').html(ganhadores.map(g => {
+            const tel = g.usuario?.telefone;
+            const nome = g.usuario?.nome_completo || 'Ganhador não identificado';
+            const whats = tel ? `<a href="https://wa.me/${tel}?text=${encodeURIComponent(`Olá ${nome}! Você ganhou na roleta: ${g.premio_titulo || ''}! 🎉`)}" target="_blank" class="btn-primary text-xs"><i class="bi bi-whatsapp"></i> Chamar</a>` : '';
+            return `
+                <div class="pedido-card">
+                    <div>
+                        <div class="font-semibold">${g.premio_titulo || 'Prêmio'}</div>
+                        <div class="text-sm opacity-70">${nome} ${tel ? '· ' + tel : ''}</div>
+                        ${g.valor_premio ? `<div class="text-yellow-400 text-sm font-semibold mt-1">${g.valor_premio}</div>` : ''}
+                    </div>
+                    ${whats}
+                </div>
+            `;
+        }).join(''));
+    });
+});
+
+// ---------------- MAIOR/MENOR COTA (quantidade, aba própria) ----------------
+$('#form-maior-menor-cota').on('submit', function(e) {
+    e.preventDefault();
+    const raffle = $('#select-cota-raffle').val();
+    const tipo = $('#filtro-cota-tipo').val();
+    const qs = montarQsPeriodo('cota', '#filtro-cota-periodo');
+    fetch(`/api/admin/dashboard/maior-menor-cota?raffle=${raffle}&tipo=${tipo}&limit=10${qs}`, { credentials: 'include' })
+        .then(r => r.json()).then(d => {
+            const html = (d.results || []).map(r => `
+                <div class="pedido-card"><div><div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div><div class="text-sm opacity-70">${r.usuarios?.telefone || ''}</div></div><div class="font-bold text-blue-400">${r.total_cotas} cotas</div></div>
+            `).join('');
+            $('#resultado-maior-menor-cota').html(html || '<p class="opacity-60 text-sm">Nenhum resultado.</p>');
+        });
+});
+
+
+
+// ---------------- SORTEIOS ----------------
+function carregarSorteios() {
+    api('GET', '/api/admin/sorteios').then(data => {
+        SORTEIOS_CACHE = data || [];
+        popularSelectsSorteios();
+        const rows = SORTEIOS_CACHE.map(s => `
+            <tr>
+                <td class="p-4 text-white">${s.nome}</td>
+                <td class="p-4"><span class="badge ${s.status === 'ativo' ? 'badge-organico' : 'badge-outro'}">${s.status}</span></td>
+                <td class="p-4 text-gray-300">${s.cotas_vendidas || 0} / ${s.total_cotas || 0}</td>
+                <td class="p-4">
+                    <button class="text-purple-400 hover:text-purple-300 mr-3" onclick="abrirFormSorteio('${s.id}')"><i class="bi bi-pencil"></i> Editar</button>
+                    <button class="text-red-400 hover:text-red-300" onclick="excluirSorteio('${s.id}')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+        $('#tabela-sorteios').html(rows || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum sorteio cadastrado.</td></tr>');
+    });
+}
+
+function excluirSorteio(id) {
+    confirmar('Excluir sorteio', 'Isso vai apagar o sorteio e todos os dados relacionados (cotas, funis, prêmios). Não pode ser desfeito.').then(yes => {
+        if (!yes) return;
+        api('DELETE', `/api/admin/sorteios/${id}`).then(() => carregarSorteios());
+    });
+}
+
+function limparFormSorteio() {
+    $('#form-criar-sorteio')[0].reset();
+    $('#input-sorteio-id').val('');
+    $('#img-placeholder').show();
+    $('#img-preview-box').css('background-image', '');
+    $('#preview-extra-imgs').empty();
+    $('#lista-premios').empty();
+    $('#lista-roleta').empty();
+    $('#lista-bloqueios').empty();
+    $('#lista-agendamentos').empty();
+    $('#lista-funis').empty();
+    $('#lista-links-sorteio').empty();
+    $('#box-add-premio, #box-add-roleta, #box-bloqueio, #box-add-funil, #box-add-link').addClass('opacity-50 pointer-events-none');
+    $('#aviso-premios, #aviso-links, #aviso-funis').show();
+    setMascaraMoedaValor(0);
+    setTotalCotasValor('1000000');
+    setBotoesRapidos('500,1000,2000,5000');
+    setMascaraTelefoneValor('');
+    $('#inp-tempo').val('15');
+    $('#inp-ganhador-nome, #inp-ganhador-cota, #ganhador-busca-cota').val('');
+    $('#box-ganhador').addClass('hidden');
+}
+
+function abrirFormSorteio(id) {
+    limparFormSorteio();
+    SORTEIO_ATUAL_ID = id;
+    navTo('criar-sorteio');
+    mudarTab('geral', $('.tab-btn')[0]);
+
+    if (!id) {
+        $('#form-sorteio-titulo').text('Novo Sorteio');
+        return;
+    }
+
+    $('#form-sorteio-titulo').text('Editar Sorteio');
+    $('#box-add-premio, #box-add-roleta, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
+    $('#aviso-premios, #aviso-links, #aviso-funis').hide();
+
+    api('GET', `/api/admin/sorteios/${id}`).then(s => {
+        $('#input-sorteio-id').val(s.id);
+        $('#inp-nome').val(s.nome);
+        $('#inp-descricao').val(s.descricao);
+        setMascaraMoedaValor(s.preco_cota);
+        setTotalCotasValor(s.total_cotas);
+        $('#inp-min').val(s.minimo_cotas_compra);
+        $('#inp-max').val(s.maximo_cotas_compra);
+        $('#inp-min-visivel').val(s.minimo_visivel_seletor);
+        $('#inp-tempo').val(String(s.tempo_pagamento));
+        $('#inp-link-vip').val(s.link_grupo_vip);
+        $('#inp-status').val(s.status);
+        onStatusChange();
+        $('#inp-featured').prop('checked', !!s.is_featured);
+        $('#inp-coletar-cpf').prop('checked', !!s.coletar_cpf);
+        $('#inp-coletar-email').prop('checked', !!s.coletar_email);
+        $('#inp-coletar-endereco').prop('checked', !!s.coletar_endereco);
+        setBotoesRapidos(s.botoes_rapidos);
+        setMascaraTelefoneValor(s.suporte_whatsapp);
+        $('#inp-ganhador-nome').val(s.ganhador_nome || '');
+        $('#inp-ganhador-cota').val(s.ganhador_cota || '');
+        $('#inp-pixel-fb').val(s.pixel_fb_override);
+        $('#inp-pixel-google').val(s.pixel_google_override);
+        $('#inp-pixel-tiktok').val(s.pixel_tiktok_override);
+        $('#inp-pixel-gtm').val(s.pixel_gtm_override);
+        if (s.foto_url) { $('#img-preview-box').css('background-image', `url(${s.foto_url})`); $('#img-placeholder').hide(); }
+
+        carregarPremios(id);
+        carregarRoleta(id);
+        carregarBloqueios(id);
+        carregarFunis(id);
+        carregarLinksSorteio(id);
+    });
+}
+
+function previewImage(input) {
+    if (!input.files || input.files.length === 0) return;
+    const files = Array.from(input.files);
+    const reader0 = new FileReader();
+    reader0.onload = e => { $('#img-preview-box').css('background-image', `url(${e.target.result})`); $('#img-placeholder').hide(); };
+    reader0.readAsDataURL(files[0]);
+
+    $('#preview-extra-imgs').empty();
+    if (files.length > 1) {
+        files.slice(1).forEach(f => {
+            const reader = new FileReader();
+            reader.onload = e => { $('#preview-extra-imgs').append(`<img src="${e.target.result}" class="w-16 h-16 object-cover rounded border border-gray-700">`); };
+            reader.readAsDataURL(f);
+        });
+        $('#preview-extra-imgs').prepend(`<p class="text-xs text-gray-400 w-full">+${files.length - 1} foto(s) extra — vai virar carrossel:</p>`);
+    }
+}
+
+$('#form-criar-sorteio').on('submit', function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    showOverlay();
+    fetch('/api/admin/sorteios', { method: 'POST', body: fd, credentials: 'include' })
+        .then(async r => { const d = await r.json(); if (!r.ok) throw d; return d; })
+        .then(d => {
+            hideOverlay();
+            SORTEIO_ATUAL_ID = d.sorteio.id;
+            $('#input-sorteio-id').val(d.sorteio.id);
+            $('#box-add-premio, #box-add-roleta, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
+            $('#aviso-premios, #aviso-links, #aviso-funis').hide();
+            carregarFunis(d.sorteio.id);
+            carregarLinksSorteio(d.sorteio.id);
+            alert('Sorteio salvo com sucesso!');
+            carregarSorteios();
+        })
+        .catch(err => { hideOverlay(); alert('Erro ao salvar: ' + (err.error || 'erro desconhecido')); });
+});
+
+// ---- Prêmios ----
+function carregarPremios(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/premios`).then(d => {
+        const data = d.bilhetes_premiados || [];
+        $('#lista-premios').html(data.map(p => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span></div><button data-id="${p.id}" class="delete-premio px-2 py-1 bg-red-600 text-white rounded" onclick="removerPremio('${p.id}')">Remover</button></div>`).join(''));
+    });
+}
+function addPremio() {
+    const numero_cota = $('#inp-premio-cota').val();
+    const premio_titulo = $('#inp-premio-titulo').val();
+    if (!numero_cota || !premio_titulo) return alert('Preencha cota e título.');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/premios`, { numero_cota, premio_titulo }).then(() => {
+        $('#inp-premio-cota').val(''); $('#inp-premio-titulo').val('');
+        carregarPremios(SORTEIO_ATUAL_ID);
+    });
+}
+function removerPremio(id) { api('DELETE', `/api/admin/premios/${id}`).then(() => carregarPremios(SORTEIO_ATUAL_ID)); }
+
+// ---- Roleta ----
+function carregarRoleta(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/roleta`).then(d => {
+        const data = d.roleta || [];
+        $('#lista-roleta').html(data.map(p => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span> ${p.valor_premio ? `<span class="text-yellow-400 text-xs ml-2">${p.valor_premio}</span>` : ''}</div><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerPremio('${p.id}')">Remover</button></div>`).join('') || '<p class="text-gray-400 text-sm">Nenhum item de roleta configurado.</p>');
+    });
+}
+function addRoleta() {
+    const numero_cota = $('#inp-roleta-cota').val();
+    const premio_titulo = $('#inp-roleta-titulo').val();
+    const valor_premio = $('#inp-roleta-valor').val();
+    if (!numero_cota || !premio_titulo) return alert('Preencha cota e título.');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/roleta`, { numero_cota, premio_titulo, valor_premio }).then(() => {
+        $('#inp-roleta-cota').val(''); $('#inp-roleta-titulo').val(''); $('#inp-roleta-valor').val('');
+        carregarRoleta(SORTEIO_ATUAL_ID);
+    });
+}
+
+// ---- Bloqueios ----
+function carregarBloqueios(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/bloqueios`).then(d => {
+        const data = d.data || d || [];
+        $('#lista-bloqueios').html((Array.isArray(data) ? data : []).map(b => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${b.numero_cota}</b><span class="text-xs opacity-60">bloqueio permanente</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerBloqueio('${b.id}')">Remover</button></div>`).join(''));
+    });
+    api('GET', `/api/admin/sorteios/${sorteioId}/agendamentos`).then(d => {
+        const data = d.data || d || [];
+        $('#lista-agendamentos').html((Array.isArray(data) ? data : []).map(a => {
+            const dataFmt = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            return `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${a.numero_cota}</b><span class="text-xs opacity-60">libera em ${dataFmt}</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerAgendamento('${a.id}')">Remover</button></div>`;
+        }).join('') || '<p class="text-xs opacity-50">Nenhuma cota agendada.</p>');
+    });
+}
+function addBloqueio() {
+    const numero_cota = $('#inp-bloqueio').val();
+    const dataLiberacao = $('#inp-bloqueio-data').val();
+    if (!numero_cota) return;
+
+    if (dataLiberacao) {
+        // Se tem data preenchida, é bloqueio TEMPORÁRIO (agenda liberação automática)
+        api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/agendamentos`, { numero_cota, liberar_em: dataLiberacao }).then(() => {
+            $('#inp-bloqueio').val(''); $('#inp-bloqueio-data').val('');
+            carregarBloqueios(SORTEIO_ATUAL_ID);
+        });
+    } else {
+        // Sem data = bloqueio PERMANENTE (só libera se você remover manualmente)
+        api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/bloqueios`, { numero_cota }).then(() => {
+            $('#inp-bloqueio').val('');
+            carregarBloqueios(SORTEIO_ATUAL_ID);
+        });
+    }
+}
+function removerBloqueio(id) { api('DELETE', `/api/admin/bloqueios/${id}`).then(() => carregarBloqueios(SORTEIO_ATUAL_ID)); }
+function removerAgendamento(id) { api('DELETE', `/api/admin/agendamentos/${id}`).then(() => carregarBloqueios(SORTEIO_ATUAL_ID)); }
+
+// ---- FUNIS (nova funcionalidade) ----
+function toggleBonusFields() {
+    const tipo = $('#funil-pos-tipo').val();
+    $('#funil-bonus-fields').toggleClass('hidden', tipo !== 'bonus');
+}
+
+function badgeOrigem(origem) {
+    const map = { ads: 'badge-ads', organico: 'badge-organico', outro: 'badge-outro' };
+    return `<span class="badge ${map[origem] || 'badge-outro'}">${origem || 'outro'}</span>`;
+}
+
+function carregarFunis(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/funis`).then(d => {
+        const funis = d.funis || [];
+        const sorteio = SORTEIOS_CACHE.find(s => s.id === sorteioId) || {};
+        if (funis.length === 0) {
+            $('#lista-funis').html('<p class="text-gray-400 text-sm">Nenhum funil criado ainda. Use o formulário acima para criar o primeiro (ex: um para Ads, outro Orgânico).</p>');
+            return;
+        }
+        $('#lista-funis').html(funis.map(f => {
+            const link = `${window.location.origin}/sorteio/${sorteio.slug || ''}/${f.slug}`;
+            const abLink = f.grupo_teste ? `${window.location.origin}/sorteio/${sorteio.slug || ''}/teste/${f.grupo_teste}` : null;
+            const tipoBadge = f.pos_pagamento_tipo === 'bonus' ? `<span class="badge badge-bonus">Bônus (+${f.bonus_cotas_extra || 0} cotas)</span>` : `<span class="badge badge-padrao">Padrão</span>`;
+            const abBadge = f.grupo_teste ? `<span class="badge badge-ads">A/B: ${f.grupo_teste} (${f.peso_trafego || 100}%)</span>` : '';
+            return `
+                <div class="funil-card">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <h4 class="font-semibold text-white">${f.nome}</h4>
+                                ${badgeOrigem(f.origem)}
+                                ${tipoBadge}
+                                ${abBadge}
+                                ${f.ativo === false ? '<span class="badge badge-outro">Inativo</span>' : ''}
+                            </div>
+                            <p class="text-xs text-gray-500 break-all">Link direto: ${link}</p>
+                            ${f.arquivo_checkout_html && f.arquivo_checkout_html !== 'checkout.html' ? `<p class="text-xs text-purple-300">Checkout customizado: ${f.arquivo_checkout_html}</p>` : ''}
+                            ${abLink ? `<p class="text-xs text-purple-300 break-all">Link do teste A/B: ${abLink}</p>` : ''}
+                        </div>
+                        <div class="flex gap-2 flex-shrink-0">
+                            <button class="text-gray-300 hover:text-white text-sm" onclick="navigator.clipboard.writeText('${abLink || link}'); this.textContent='Copiado!'; setTimeout(()=>this.textContent='Copiar link',1500)">Copiar link</button>
+                            <button class="text-red-400 hover:text-red-300 text-sm" onclick="excluirFunil('${f.id}')"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join(''));
+    });
+}
+
+function criarFunil() {
+    if (!SORTEIO_ATUAL_ID) return alert('Salve o sorteio primeiro.');
+    const nome = $('#funil-nome').val();
+    if (!nome) return alert('Dê um nome para o funil.');
+    const payload = {
+        nome,
+        origem: $('#funil-origem').val(),
+        arquivo_html: $('#funil-arquivo-html').val(),
+        arquivo_checkout_html: $('#funil-arquivo-checkout').val(),
+        grupo_teste: $('#funil-grupo-teste').val() || null,
+        peso_trafego: $('#funil-peso').val() || 100,
+        pos_pagamento_tipo: $('#funil-pos-tipo').val(),
+        pos_pagamento_titulo: $('#funil-bonus-titulo').val(),
+        pos_pagamento_mensagem: $('#funil-bonus-mensagem').val(),
+        bonus_cotas_extra: $('#funil-bonus-cotas').val() || 0
+    };
+    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/funis`, payload).then(() => {
+        $('#funil-nome').val(''); $('#funil-bonus-titulo').val(''); $('#funil-bonus-mensagem').val(''); $('#funil-bonus-cotas').val('');
+        $('#funil-grupo-teste').val(''); $('#funil-peso-box').hide();
+        $('#funil-pos-tipo').val('padrao'); toggleBonusFields();
+        carregarFunis(SORTEIO_ATUAL_ID);
+    }).catch(err => alert('Erro ao criar funil: ' + (err.error || '')));
+}
+
+function excluirFunil(id) {
+    confirmar('Excluir funil', 'Pedidos que já usaram esse funil continuam registrados, mas o link deixará de funcionar.').then(yes => {
+        if (!yes) return;
+        api('DELETE', `/api/admin/funis/${id}`).then(() => carregarFunis(SORTEIO_ATUAL_ID));
+    });
+}
+
+$(document).on('input', '#funil-grupo-teste', function() {
+    $('#funil-peso-box').css('display', $(this).val().trim() ? 'block' : 'none');
+});
+
+// ---- LINKS DE RASTREAMENTO (dentro do sorteio) ----
+function canalLabel(canal) {
+    const map = { whatsapp: 'WhatsApp', instagram_organico: 'Instagram Orgânico', facebook_organico: 'Facebook Orgânico', facebook_ads: 'Facebook Ads', google_ads: 'Google Ads', tiktok_ads: 'TikTok Ads', direto: 'Direto/Orgânico', outro: 'Outro' };
+    return map[canal] || canal;
+}
+
+function carregarLinksSorteio(sorteioId) {
+    // Popula o seletor de funil do formulário "Criar Link" com os funis já criados nesse sorteio
+    api('GET', `/api/admin/sorteios/${sorteioId}/funis`).then(fd => {
+        const funis = fd.funis || [];
+        $('#link-funil').html('<option value="">Sem funil (padrão)</option>' + funis.map(f => `<option value="${f.id}">${f.nome}</option>`).join(''));
+    });
+
+    api('GET', `/api/admin/sorteios/${sorteioId}/links`).then(d => {
+        const links = d.links || [];
+        if (links.length === 0) {
+            $('#lista-links-sorteio').html('<p class="text-gray-400 text-sm">Nenhum link criado ainda. Links automáticos (Ads/Orgânico) aparecem aqui assim que alguém acessar.</p>');
+            return;
+        }
+        $('#lista-links-sorteio').html(links.map(l => `
+            <div class="funil-card">
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <h4 class="font-semibold text-white">${l.nome}</h4>
+                            <span class="badge badge-outro">${canalLabel(l.canal)}</span>
+                            ${l.funis ? `<span class="badge badge-ads">🧩 ${l.funis.nome}</span>` : '<span class="badge badge-padrao">Sem funil específico</span>'}
+                        </div>
+                        ${l.url ? `<p class="text-xs text-gray-500 break-all">${l.url}</p>` : '<p class="text-xs text-gray-600 italic">Detectado automaticamente — sem link fixo</p>'}
+                        <p class="text-xs text-gray-400 mt-1">${l.cliques} acessos · ${l.pedidos_pagos} pedidos pagos · ${formatBR(l.faturamento)} faturado</p>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        ${l.url ? `<button class="text-gray-300 hover:text-white text-sm" onclick="navigator.clipboard.writeText('${l.url}'); this.textContent='Copiado!'; setTimeout(()=>this.textContent='Copiar',1500)">Copiar</button>` : ''}
+                        <button class="text-red-400 hover:text-red-300 text-sm" onclick="excluirLink('${l.id}')"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        `).join(''));
+    });
+}
+function criarLink() {
+    if (!SORTEIO_ATUAL_ID) return alert('Salve o sorteio primeiro.');
+    const nome = $('#link-nome').val();
+    if (!nome) return alert('Dê um nome para o link.');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/links`, { nome, canal: $('#link-canal').val(), funil_id: $('#link-funil').val() || null }).then(() => {
+        $('#link-nome').val('');
+        carregarLinksSorteio(SORTEIO_ATUAL_ID);
+    }).catch(err => alert(err.error || 'Erro ao criar link'));
+}
+function excluirLink(id) {
+    confirmar('Excluir link', 'As métricas desse link deixarão de ser rastreadas.').then(yes => { if (yes) api('DELETE', `/api/admin/links/${id}`).then(() => carregarLinksSorteio(SORTEIO_ATUAL_ID)); });
+}
+
+// ---- COMPARATIVO GERAL DE LINKS (página própria) ----
+function carregarComparativoLinks() {
+    const sorteioId = $('#filtro-links-sorteio').val() || 'todos';
+    fetch(`/api/admin/links/comparativo?sorteio_id=${sorteioId}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+        const links = d.links || [];
+        if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="9" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
+        $('#tabela-links-comparativo').html(links.map(l => `
+            <tr class="link-row border-b border-gray-800/60">
+                <td class="p-3 text-white">${l.nome}</td>
+                <td class="p-3 text-gray-400">${l.sorteios?.nome || ''}</td>
+                <td class="p-3"><span class="badge badge-outro">${canalLabel(l.canal)}</span></td>
+                <td class="p-3">${l.cliques || 0}</td>
+                <td class="p-3">${l.pedidos_pagos || 0}</td>
+                <td class="p-3 text-green-400 font-semibold">${formatBR(l.faturamento)}</td>
+                <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
+                <td class="p-3">${formatBR(l.ticket_medio)}</td>
+                <td class="p-3">${(l.conversao || 0).toFixed(1)}%</td>
+            </tr>
+        `).join(''));
+    });
+}
+function popularFiltroLinksSorteio() {
+    $('#filtro-links-sorteio').html('<option value="todos">Todos os sorteios</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
+}
+
+// ---------------- PEDIDOS ----------------
+let PEDIDOS_FILTRO_ATUAL = 'todos';
+function carregarPedidos(filter) {
+    PEDIDOS_FILTRO_ATUAL = filter;
+    $('#pedidos-status-tabs .periodo-btn').removeClass('active');
+    $(`#pedidos-status-tabs .periodo-btn[data-f="${filter}"]`).addClass('active');
+
+    const params = [];
+    if (filter !== 'todos') params.push(`filter=${filter}`);
+    const de = $('#pedidos-data-de').val(); const ate = $('#pedidos-data-ate').val();
+    if (de) params.push(`start_date=${de}T00:00:00`);
+    if (ate) params.push(`end_date=${ate}T23:59:59`);
+    const qs = params.length ? '?' + params.join('&') : '';
+
+    fetch(`/api/admin/pedidos${qs}`, { credentials: 'include' }).then(r => r.json()).then(data => {
+        const statusCor = { pago: 'text-green-400', aguardando: 'text-yellow-400', cancelado: 'text-red-400' };
+        const html = (data || []).map(p => {
+            const aprovarBtn = p.status === 'aguardando' ? `<button class="btn-primary text-xs" onclick="aprovarPedido('${p.id}')">Aprovar</button>` : '';
+            const funilTag = p.funis ? `<span class="badge badge-outro ml-2">🧩 ${p.funis.nome}</span>` : '';
+            const data_fmt = p.created_at ? new Date(p.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            return `
+                <div class="pedido-card">
+                    <div>
+                        <div class="font-semibold text-white">${p.usuarios?.nome_completo || '—'} ${funilTag}</div>
+                        <div class="text-gray-400 text-sm">${p.sorteios?.nome || ''} · ${p.quantidade_cotas} cotas · ${formatBR(p.valor_total)}</div>
+                        <div class="text-xs ${statusCor[p.status] || 'text-gray-500'} font-semibold">${p.status} <span class="text-gray-600 font-normal">· ${data_fmt}</span></div>
+                    </div>
+                    <div class="flex gap-2">
+                        ${aprovarBtn}
+                        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs" onclick="excluirPedido('${p.id}')">🗑️</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        $('#tabela-pedidos').html(html || '<p class="text-gray-400 text-center p-4">Nenhum pedido encontrado.</p>');
+    });
+}
+function aprovarPedido(id) { api('POST', `/api/admin/pedidos/${id}/aprovar`).then(() => carregarPedidos(PEDIDOS_FILTRO_ATUAL)).catch(err => alert(err.error || 'Erro')); }
+function excluirPedido(id) {
+    confirmar('Excluir pedido', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/pedidos/${id}`).then(() => carregarPedidos(PEDIDOS_FILTRO_ATUAL)); });
+}
+
+// ---------------- CLIENTES ----------------
+let CLIENTES_CACHE = [];
+function renderClientes() {
+    const busca = ($('#clientes-busca').val() || '').toLowerCase().trim();
+    const lista = busca ? CLIENTES_CACHE.filter(c => (c.nome_completo || '').toLowerCase().includes(busca) || (c.telefone || '').includes(busca)) : CLIENTES_CACHE;
+    const html = lista.map(c => `
+        <div class="pedido-card" style="cursor:pointer" onclick="abrirModalCliente('${c.id}')">
+            <div><div class="font-semibold">${c.nome_completo}</div><div class="text-gray-400 text-sm">${c.telefone || ''}</div></div>
+            <div class="flex items-center gap-3"><div class="font-bold text-green-400">${formatBR(c.total_gasto || 0)}</div><i class="bi bi-chevron-right text-gray-500"></i></div>
+        </div>
+    `).join('');
+    $('#lista-clientes').html(html || '<p class="text-gray-400 text-center p-4">Nenhum cliente encontrado.</p>');
+}
+function carregarClientes() {
+    fetch('/api/admin/clientes', { credentials: 'include' }).then(r => r.json()).then(data => {
+        CLIENTES_CACHE = data || [];
+        renderClientes();
+    });
+}
+$(document).on('input', '#clientes-busca', renderClientes);
+
+function abrirModalCliente(id) {
+    const cliente = CLIENTES_CACHE.find(c => c.id === id);
+    if (!cliente) return;
+    $('#modal-cliente-nome').text(cliente.nome_completo || 'Cliente');
+    $('#modal-cliente-total').text(formatBR(cliente.total_gasto || 0));
+    $('#modal-cliente').removeClass('hidden').css('display', 'flex');
+    fetch(`/api/admin/clientes/${id}/pedidos`, { credentials: 'include' }).then(r => r.json()).then(pedidos => {
+        $('#modal-cliente-pedidos-count').text((pedidos || []).length);
+        $('#modal-cliente-pedidos').html((pedidos || []).map(p => `
+            <div class="pedido-card"><div><div class="font-semibold text-sm">${p.sorteios?.nome || ''}</div><div class="text-xs text-gray-400">${p.quantidade_cotas} cotas · ${p.status}</div></div><div class="font-bold text-sm ${p.status === 'pago' ? 'text-green-400' : 'text-yellow-400'}">${formatBR(p.valor_total)}</div></div>
+        `).join('') || '<p class="text-gray-400 text-sm">Nenhum pedido.</p>');
+    });
+}
+
+// ---------------- RELATÓRIOS ----------------
+function carregarRelatorios() {
+    const from = $('#filtro-data-de').val();
+    const to = $('#filtro-data-ate').val();
+    let url = '/api/admin/relatorios';
+    const params = [];
+    if (from) params.push(`from=${from}`);
+    if (to) params.push(`to=${to}`);
+    if (params.length) url += '?' + params.join('&');
+
+    fetch(url, { credentials: 'include' }).then(r => r.json()).then(d => {
+        $('#rel-faturamento').text(formatBR(d.total_faturado));
+        $('#rel-pedidos').text(d.total_pedidos || 0);
+        const ctx = document.getElementById('grafico-vendas');
+        if (VENDAS_CHART_REL) VENDAS_CHART_REL.destroy();
+        VENDAS_CHART_REL = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: (d.series || []).map(s => s.dia), datasets: [{ label: 'Faturamento', data: (d.series || []).map(s => s.faturamento), backgroundColor: '#8b5cf6' }] },
+            options: { plugins: { legend: { labels: { color: '#e6edf3' } } }, scales: { x: { ticks: { color: '#9ca3af' } }, y: { ticks: { color: '#9ca3af' } } } }
+        });
+    });
+}
+$('#form-filtro-relatorio').on('submit', function(e) { e.preventDefault(); carregarRelatorios(); });
+
+// ---------------- GATEWAY (Mercado Pago / Pay2M / Paggue) ----------------
+function mudarGatewayTab(gw, el) {
+    $('.gw-tab').addClass('hidden');
+    $('#gw-tab-' + gw).removeClass('hidden');
+    $('[data-gw]').removeClass('active');
+    $(el).addClass('active');
+}
+
+function carregarGateway() {
+    $('#webhook-url').text(`${window.location.origin}/api/webhook/pagamento`);
+    api('GET', '/api/admin/configuracoes').then(cfg => {
+        $('#conf-mercadopago-token').val(cfg.MERCADOPAGO_ACCESS_TOKEN || '');
+        $('#conf-pay2m-id').val(cfg.PAY2M_CLIENT_ID || '');
+        $('#conf-pay2m-secret').val(cfg.PAY2M_CLIENT_SECRET || '');
+        $('#conf-paggue-token').val(cfg.PAGGUE_ACCESS_TOKEN || '');
+        $('#conf-modo-teste').prop('checked', cfg.MODO_TESTE_PAGAMENTO === 'true' || cfg.MODO_TESTE_PAGAMENTO === 'on');
+        const ativo = (cfg.GATEWAY_PROVIDER || 'mercadopago');
+        const idx = { mercadopago: 0, pay2m: 1, paggue: 2 }[ativo] ?? 0;
+        mudarGatewayTab(ativo, $('[data-gw]').get(idx));
+    });
+}
+$('#conf-modo-teste').on('change', function() {
+    const ligado = $(this).is(':checked');
+    api('POST', '/api/admin/configuracoes', { MODO_TESTE_PAGAMENTO: ligado ? 'true' : 'false' })
+        .then(() => { if (ligado) alert('⚠️ Modo Teste LIGADO — o botão "Já paguei" vai aparecer no checkout. Lembre de desligar antes de divulgar pra clientes reais.'); });
+});
+$('#form-gateway-mp').on('submit', function(e) {
+    e.preventDefault();
+    api('POST', '/api/admin/configuracoes', { MERCADOPAGO_ACCESS_TOKEN: $('#conf-mercadopago-token').val(), GATEWAY_PROVIDER: 'mercadopago' })
+        .then(() => alert('Mercado Pago salvo e ativado como gateway principal!'));
+});
+$('#form-gateway-pay2m').on('submit', function(e) {
+    e.preventDefault();
+    api('POST', '/api/admin/configuracoes', { PAY2M_CLIENT_ID: $('#conf-pay2m-id').val(), PAY2M_CLIENT_SECRET: $('#conf-pay2m-secret').val(), GATEWAY_PROVIDER: 'pay2m' })
+        .then(() => alert('Pay2M salvo e ativado como gateway principal!'));
+});
+$('#form-gateway-paggue').on('submit', function(e) {
+    e.preventDefault();
+    api('POST', '/api/admin/configuracoes', { PAGGUE_ACCESS_TOKEN: $('#conf-paggue-token').val(), GATEWAY_PROVIDER: 'paggue' })
+        .then(() => alert('Paggue salvo e ativado como gateway principal!'));
+});
+
+// ---------------- PIXELS & MARKETING (globais) ----------------
+function carregarMarketing() {
+    api('GET', '/api/admin/configuracoes').then(cfg => {
+        $('#conf-pixel-id').val(cfg.FACEBOOK_PIXEL_ID || '');
+        $('#conf-api-token').val(cfg.FACEBOOK_CONVERSION_API_TOKEN || '');
+        $('#conf-google-id').val(cfg.GOOGLE_ADS_ID || '');
+        $('#conf-tiktok-id').val(cfg.TIKTOK_PIXEL_ID || '');
+        $('#conf-gtm-id').val(cfg.GTM_ID || '');
+    });
+}
+$('#form-marketing').on('submit', function(e) {
+    e.preventDefault();
+    const payload = {
+        FACEBOOK_PIXEL_ID: $('#conf-pixel-id').val(),
+        FACEBOOK_CONVERSION_API_TOKEN: $('#conf-api-token').val(),
+        GOOGLE_ADS_ID: $('#conf-google-id').val(),
+        TIKTOK_PIXEL_ID: $('#conf-tiktok-id').val(),
+        GTM_ID: $('#conf-gtm-id').val()
+    };
+    api('POST', '/api/admin/configuracoes', payload).then(() => alert('Configurações salvas!'));
+});
+
+function carregarConta() {
+    checkSession().then(d => { $('#conta-email').val(d.admin?.email || ''); });
+    api('GET', '/api/admin/configuracoes').then(cfg => {
+        if (cfg.LOGO_URL) $('#logo-preview').css('background-image', `url(${cfg.LOGO_URL})`);
+        $('#conf-system-name').val(cfg.SYSTEM_NAME || '');
+        $('#conf-system-sub').val(cfg.SYSTEM_SUB || '');
+    });
+}
+$('#form-conta').on('submit', function(e) {
+    e.preventDefault();
+    const email = $('#conta-email').val();
+    const new_password = $('#conta-pass').val();
+    const confirm_password = $('#conta-pass-confirm').val();
+    api('POST', '/api/admin/conta', { email, new_password, confirm_password }).then(() => alert('Conta atualizada!')).catch(err => alert(err.error || 'Erro'));
+});
+$('#form-identidade').on('submit', function(e) {
+    e.preventDefault();
+    const SYSTEM_NAME = $('#conf-system-name').val() || 'Painel';
+    const SYSTEM_SUB = $('#conf-system-sub').val() || 'painel administrativo';
+    api('POST', '/api/admin/configuracoes', { SYSTEM_NAME, SYSTEM_SUB }).then(() => {
+        aplicarIdentidade(SYSTEM_NAME, SYSTEM_SUB);
+        alert('Nome do sistema atualizado!');
+    });
+});
+function aplicarIdentidade(nome, sub) {
+    const texto = nome || 'Meu Painel';
+    const palavras = texto.trim().split(/\s+/);
+    if (palavras.length > 1) {
+        const meio = Math.ceil(palavras.length / 2);
+        const parte1 = palavras.slice(0, meio).join(' ');
+        const parte2 = palavras.slice(meio).join(' ');
+        $('#sidebar-brand-name').html(`<span class="brand-word-1">${parte1}</span> <span class="brand-word-2">${parte2}</span>`);
+    } else {
+        $('#sidebar-brand-name').html(`<span class="brand-word-2">${texto}</span>`);
+    }
+    $('#sidebar-brand-sub').text(sub || 'painel administrativo');
+    document.title = `${texto} - Admin`;
+}
+
+// Efeito de "dinheiro caindo" no cabeçalho da marca — reforça a identidade "milionária"
+function iniciarEfeitoDinheiro() {
+    const box = document.getElementById('brand-box');
+    if (!box) return;
+    const simbolos = ['💵', '💰', '💸'];
+    setInterval(() => {
+        const p = document.createElement('span');
+        p.className = 'money-particle';
+        p.textContent = simbolos[Math.floor(Math.random() * simbolos.length)];
+        p.style.left = Math.random() * 90 + '%';
+        p.style.animationDuration = (3 + Math.random() * 2) + 's';
+        box.appendChild(p);
+        setTimeout(() => p.remove(), 5500);
+    }, 1400);
+}
+
+// ---------------- TEMA DIA/NOITE ----------------
+function aplicarTema(tema) {
+    document.documentElement.classList.toggle('light', tema === 'light');
+    $('#btn-tema').text(tema === 'light' ? '☀️' : '🌙');
+    localStorage.setItem('tema_painel', tema);
+}
+$('#btn-tema').on('click', function() {
+    const atual = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+    aplicarTema(atual === 'light' ? 'dark' : 'light');
+});
+
+function uploadLogo(input) {
+    if (!input.files || !input.files[0]) return;
+    const fd = new FormData(); fd.append('logo', input.files[0]);
+    fetch('/api/admin/upload-logo', { method: 'POST', body: fd, credentials: 'include' })
+        .then(r => r.json()).then(d => { if (d.url) $('#logo-preview').css('background-image', `url(${d.url})`); });
+}
+
+// ---------------- INIT ----------------
+// ---------------- NOTIFICAÇÕES (bilhete/roleta premiados) ----------------
+let NOTIF_VISTAS = JSON.parse(localStorage.getItem('notif_vistas') || '[]');
+function carregarNotificacoes(mostrarToast) {
+    api('GET', '/api/admin/notificacoes/recentes').then(d => {
+        const lista = d.notificacoes || [];
+        const novas = lista.filter(n => !NOTIF_VISTAS.includes(n.id));
+        $('#badge-notificacoes').toggleClass('hidden', novas.length === 0).text(novas.length);
+
+        $('#dropdown-notificacoes').html(lista.length === 0
+            ? '<p class="text-xs opacity-60 p-3">Nenhum bilhete premiado saiu ainda.</p>'
+            : lista.map(n => {
+                const icone = n.tipo === 'roleta' ? '🎡' : '🎫';
+                const quando = n.reivindicada_em ? new Date(n.reivindicada_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+                return `<div class="p-3 border-b border-[var(--border)] text-xs">
+                    <div class="font-semibold">${icone} ${n.premio_titulo || 'Prêmio'} ${n.numero_cota ? `— cota ${n.numero_cota}` : ''}</div>
+                    <div class="opacity-70">${n.ganhador?.nome_completo || 'Ganhador não identificado'} · ${n.sorteio_nome || ''}</div>
+                    <div class="opacity-50">${quando}</div>
+                </div>`;
+            }).join(''));
+
+        if (mostrarToast && novas.length > 0) {
+            novas.forEach(n => {
+                const icone = n.tipo === 'roleta' ? '🎡' : '🎫';
+                mostrarToastNotificacao(`${icone} Prêmio saiu! ${n.premio_titulo || ''} — ${n.ganhador?.nome_completo || 'ver detalhes'}`);
+            });
+        }
+    });
+}
+function marcarNotificacoesVistas() {
+    api('GET', '/api/admin/notificacoes/recentes').then(d => {
+        NOTIF_VISTAS = (d.notificacoes || []).map(n => n.id);
+        localStorage.setItem('notif_vistas', JSON.stringify(NOTIF_VISTAS));
+        $('#badge-notificacoes').addClass('hidden');
+    });
+}
+function mostrarToastNotificacao(texto) {
+    const $toast = $(`<div style="position:fixed;bottom:20px;right:20px;z-index:200;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.4);max-width:320px;font-size:0.85rem;">${texto}</div>`);
+    $('body').append($toast);
+    setTimeout(() => $toast.fadeOut(400, () => $toast.remove()), 6000);
+}
+$('#btn-notificacoes').on('click', function(e) {
+    e.stopPropagation();
+    const $dd = $('#dropdown-notificacoes');
+    $dd.toggleClass('hidden');
+    if (!$dd.hasClass('hidden')) { carregarNotificacoes(false); marcarNotificacoesVistas(); }
+});
+$(document).on('click', function() { $('#dropdown-notificacoes').addClass('hidden'); });
+$('#dropdown-notificacoes').on('click', function(e) { e.stopPropagation(); });
+
+$(document).ready(function() {
+    aplicarTema(localStorage.getItem('tema_painel') || 'dark');
+    iniciarEfeitoDinheiro();
+
+    checkSession().then(() => {
+        api('GET', '/api/admin/configuracoes').then(cfg => {
+            aplicarIdentidade(cfg.SYSTEM_NAME || 'Máquina Milionária', cfg.SYSTEM_SUB || 'painel administrativo');
+        });
+        const p0 = calcularPeriodo('mes');
+        $('#dash-data-de').val(p0.de); $('#dash-data-ate').val(p0.ate);
+        carregarSorteios();
+        carregarDashboard();
+        carregarNotificacoes(true);
+        setInterval(() => carregarNotificacoes(true), 30000);
+    });
+});
+</script>
+</body>
+</html>

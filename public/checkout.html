@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Sorteios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; }
+        .header-bar { background-color: #1a1a1a; padding: 1rem; }
+        .card { background-color: #2b2b2b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
+        .aguardando-icon { font-size: 2.5rem; color: #f7b731; }
+        .aguardando-title { font-size: 1.5rem; font-weight: 700; }
+        .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; }
+        .cronometro strong { color: #f7b731; font-weight: 700; }
+        .instrucao-passo { display: flex; align-items: flex-start; margin-bottom: 1rem; }
+        .instrucao-numero { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background-color: #EA580C; color: white; font-weight: 700; font-size: 0.875rem; text-align: center; line-height: 24px; margin-right: 12px; }
+        .instrucao-texto { color: #a0aec0; }
+        .copia-cola-wrapper { display: flex; width: 100%; border: 1px solid #4a5568; border-radius: 8px; overflow: hidden; }
+        .copia-cola-input { flex-grow: 1; background-color: #20242e; color: #a0aec0; padding: 0.75rem; border: none; outline: none; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .copia-cola-btn { background-color: #EA580C; color: white; font-weight: 700; padding: 0.75rem 1.25rem; cursor: pointer; transition: background-color 0.2s; }
+        .copia-cola-btn:hover { background-color: #c2410c; }
+        .btn-mostrar-qr { background: none; border: none; color: #a0aec0; font-weight: 600; margin-top: 1rem; cursor: pointer; }
+        .btn-mostrar-qr:hover { color: #fff; }
+        #qr-code-container { background-color: #fff; padding: 1rem; border-radius: 8px; margin: 1rem auto 0 auto; max-width: 250px; }
+        #qr-code-container img { width: 100%; height: auto; display: block; }
+        .aviso-card { display: flex; align-items: center; background-color: #4a3a1f; border-radius: 8px; padding: 1rem; color: #f7b731; }
+        .aviso-card i { font-size: 1.5rem; margin-right: 1rem; }
+        .aviso-card p { font-size: 0.875rem; color: #f7b731; }
+        .detalhe-item { display: flex; justify-content: space-between; border-bottom: 1px solid #374151; padding: 0.5rem 0; font-size: 0.875rem; }
+        .detalhe-item:last-child { border-bottom: none; }
+        .detalhe-label { color: #a0aec0; font-weight: 500; }
+        .detalhe-valor { color: #fff; font-weight: 600; }
+        .detalhe-id { font-size: 0.75rem; color: #6b7280; word-break: break-all; }
+        .card-small { display: flex; align-items: center; overflow: hidden; }
+        .card-small img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+        .card-small-info { margin-left: 16px; overflow: hidden; }
+        .card-small-title { color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-small-desc { color: #a0aec0; font-size: 0.875rem; }
+        .card-small-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; display: inline-block; margin-top: 4px; background-color: #EA580C; color: #fff; }
+        .pagamento-aprovado { display: none; text-align: center; }
+        .pagamento-aprovado-icon { font-size: 5rem; color: #38a169; }
+        .pagamento-aprovado-title { font-size: 1.75rem; font-weight: 700; color: #38a169; margin-top: 1rem; }
+        .pagamento-aprovado-desc { font-size: 1.125rem; color: #a0aec0; margin-top: 0.5rem; }
+        /* Variante "bônus" do pós-pagamento (funil bonificado) */
+        .pagamento-aprovado.bonus .pagamento-aprovado-icon { color: #f59e0b; }
+        .pagamento-aprovado.bonus .pagamento-aprovado-title { color: #f59e0b; }
+        .bonus-tag { display: inline-block; background: #f59e0b; color: #1a1a1a; font-weight: 700; padding: 0.35rem 1rem; border-radius: 9999px; margin-top: 0.75rem; font-size: 0.9rem; }
+        .btn-grupo-vip { background-color: #25d366; color: white; font-weight: 700; font-size: 1.125rem; padding: 0.75rem 1.5rem; border-radius: 8px; margin-top: 1.5rem; display: inline-block; text-decoration: none; transition: background-color 0.2s; }
+        .btn-grupo-vip:hover { background-color: #1ebe5a; }
+        .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
+        @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <header class="header-bar shadow-lg sticky top-0 z-50">
+        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
+            <div id="logo-box" class="text-2xl font-bold text-white">LOGO</div>
+            <a id="voltar-link" href="/inicio" class="text-gray-300 hover:text-white">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </nav>
+    </header>
+
+    <main id="checkout-container" class="container mx-auto max-w-2xl p-4">
+
+        <div id="card-aguardando" class="card flex items-center space-x-4">
+            <i class="bi bi-hourglass-split aguardando-icon"></i>
+            <div>
+                <h2 class="aguardando-title">Aguardando pagamento!</h2>
+                <p class="text-gray-400">Realize o pagamento</p>
+            </div>
+        </div>
+
+        <div id="card-expirado" class="card flex items-center space-x-4 hidden">
+            <i class="bi bi-x-circle-fill text-red-500 aguardando-icon"></i>
+            <div>
+                <h2 class="aguardando-title text-red-500">Pagamento expirado!</h2>
+                <p class="text-gray-400">Seu pagamento foi expirado</p>
+            </div>
+        </div>
+
+        <p class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
+
+        <div id="card-instrucoes" class="card">
+            <div class="instrucao-passo">
+                <div class="instrucao-numero">1</div>
+                <div class="instrucao-texto">Copie o código PIX abaixo.</div>
+            </div>
+
+            <div class="copia-cola-wrapper mb-4">
+                <input id="pixCopiaCola" type="text" class="copia-cola-input" value="" readonly>
+                <button id="btn-copiar-pix" class="copia-cola-btn">COPIAR</button>
+            </div>
+
+            <div class="instrucao-passo">
+                <div class="instrucao-numero">2</div>
+                <div class="instrucao-texto">Abra o app do seu banco e escolha a opção PIX, como se fosse fazer uma transferência.</div>
+            </div>
+            <div class="instrucao-passo">
+                <div class="instrucao-numero">3</div>
+                <div class="instrucao-texto">Selecione a opção PIX copia e cola, cole a chave copiada e confirme o pagamento.</div>
+            </div>
+
+            <div class="text-center">
+                <button id="btn-mostrar-qr" class="btn-mostrar-qr">Mostrar QR Code</button>
+            </div>
+
+            <div id="qr-code-container" class="hidden text-center">
+                <img id="qr-code-img" src="" alt="QR Code PIX">
+                <p class="text-sm text-gray-400 mt-2">Escaneie o QR Code acima</p>
+            </div>
+        </div>
+
+        <div id="card-aviso" class="aviso-card mb-6">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <p>Este pagamento só pode ser realizado dentro do tempo. Após este período, caso o pagamento não seja confirmado, os títulos voltam a ficar disponíveis.</p>
+        </div>
+
+        <div id="card-modo-teste" class="card hidden" style="border: 2px dashed #f59e0b; background: rgba(245,158,11,0.08);">
+            <p class="text-yellow-400 font-bold text-sm mb-1"><i class="bi bi-cone-striped"></i> MODO TESTE ATIVADO</p>
+            <p class="text-xs text-yellow-200 mb-3">Este botão simula a aprovação do pagamento — não envolve dinheiro real. Desligue "Modo Teste" no painel antes de divulgar o link pra clientes de verdade.</p>
+            <button id="btn-ja-paguei" class="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-4 rounded-lg">
+                ✅ Já realizei o pagamento (teste)
+            </button>
+        </div>
+
+        <div id="card-sorteio" class="card card-small">
+            <img id="sorteio-img" src="" alt="">
+            <div class="card-small-info">
+                <h4 id="sorteio-nome" class="card-small-title"></h4>
+                <p id="sorteio-qtd" class="card-small-desc">Cotas adquiridas: 0</p>
+                <span id="sorteio-total" class="card-small-badge">Total: R$ 0,00</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center mb-4">
+                <i class="bi bi-info-circle text-gray-400 mr-2"></i>
+                <h3 class="font-semibold text-white">Detalhes da sua compra</h3>
+            </div>
+            <p id="detalhe-token" class="detalhe-id mb-4"></p>
+
+            <div class="space-y-2">
+                <div class="detalhe-item"><span class="detalhe-label">Comprador:</span><span id="detalhe-comprador" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Telefone:</span><span id="detalhe-telefone" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Situação:</span><span id="detalhe-situacao" class="detalhe-valor text-yellow-400">Aguardando pagamento</span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Data/horário:</span><span id="detalhe-data" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Expira em:</span><span id="detalhe-expira" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Quantidade:</span><span id="detalhe-quantidade" class="detalhe-valor">0</span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Total:</span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Títulos:</span><span id="detalhe-titulos-status" class="detalhe-valor text-gray-400">Após o pagamento</span></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Tela pós-pagamento PADRÃO -->
+    <div id="pagamento-aprovado" class="pagamento-aprovado container mx-auto max-w-2xl p-4">
+        <i class="bi bi-check-circle-fill pagamento-aprovado-icon"></i>
+        <h2 id="pos-pagamento-titulo" class="pagamento-aprovado-title">Pagamento Aprovado!</h2>
+        <p id="pos-pagamento-mensagem" class="pagamento-aprovado-desc">Seus números já foram gerados. Boa sorte!</p>
+        <div id="bonus-tag-box"></div>
+
+        <a id="btn-grupo-vip" href="#" target="_blank" class="btn-grupo-vip hidden">
+            <i class="bi bi-whatsapp"></i> Entrar no Grupo VIP
+        </a>
+
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold text-white mb-2">Seus Números da Sorte</h3>
+            <div id="cotas-geradas" class="flex flex-wrap justify-center gap-2 max-h-48 overflow-y-auto bg-gray-900 p-4 rounded-lg">
+                <p class="text-sm text-gray-400">Carregando seus números...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = window.location.pathname.split('/').filter(Boolean)[1] || '';
+
+        let PEDIDO_DATA = {};
+        let COTAS_GERADAS_INICIAIS = [];
+        let FUNIL_DATA = null;
+        let MINUTOS_RESTANTES = 0;
+        let isPago = false;
+        let timerInterval, statusCheckIntervalId;
+
+        function formatarMoeda(valor) { return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        function injetarPixels(pixels) {
+            if (!pixels) return;
+            if (pixels.facebook_pixel_id) {
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                fbq('init', pixels.facebook_pixel_id);
+                fbq('track', 'PageView');
+            }
+            if (pixels.google_ads_id) {
+                const s1 = document.createElement('script'); s1.async = true; s1.src = `https://www.googletagmanager.com/gtag/js?id=${pixels.google_ads_id}`;
+                document.head.appendChild(s1);
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = function(){ dataLayer.push(arguments); };
+                gtag('js', new Date()); gtag('config', pixels.google_ads_id);
+            }
+            if (pixels.tiktok_pixel_id) {
+                (function (w, d, t) { w.TiktokAnalyticsObject = t; var ttq = w[t] = w[t] || []; ttq.methods = ["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"]; ttq.setAndDefer = function (t, e) { t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))) } }; for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]); ttq.load = function (e, n) { var i = "https://analytics.tiktok.com/i18n/pixel/events.js"; ttq._i = ttq._i || {}; ttq._i[e] = []; ttq._i[e]._u = i; ttq._t = ttq._t || {}; ttq._t[e] = +new Date; ttq._o = ttq._o || {}; ttq._o[e] = n || {}; var o = document.createElement("script"); o.type = "text/javascript"; o.async = true; o.src = i + "?sdkid=" + e + "&lib=" + t; var a = document.getElementsByTagName("script")[0]; a.parentNode.insertBefore(o, a) }; ttq.load(pixels.tiktok_pixel_id); ttq.page(); })(window, document, 'ttq');
+            }
+            if (pixels.gtm_id) {
+                (function (w, d, s, l, i) { w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' }); var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f); })(window, document, 'script', 'dataLayer', pixels.gtm_id);
+            }
+        }
+
+        function iniciarCronometro(minutos) {
+            let segundos = Math.max(0, Math.floor(minutos * 60));
+            const $cronometro = $('#cronometro');
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (isPago) { clearInterval(timerInterval); return; }
+                if (segundos <= 0) {
+                    clearInterval(timerInterval);
+                    $cronometro.text("Expirado");
+                    $('#card-aguardando').hide();
+                    $('#card-instrucoes').hide();
+                    $('#card-aviso').hide();
+                    $('#card-expirado').removeClass('hidden');
+                    $('#detalhe-situacao').text('Expirado').removeClass('text-yellow-400').addClass('text-red-500');
+                    try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/expirado`); } catch (e) {}
+                    return;
+                }
+                segundos--;
+                const min = Math.floor(segundos / 60);
+                const seg = segundos % 60;
+                $cronometro.text(`${min.toString().padStart(2, '0')}:${seg.toString().padStart(2, '0')}`);
+            }, 1000);
+        }
+
+        // Preenche a tela de pós-pagamento de acordo com o FUNIL (padrão ou bônus)
+        function aplicarTemaPosPagamento(funil) {
+            const $box = $('#pagamento-aprovado');
+            const isBonus = funil && funil.pos_pagamento_tipo === 'bonus';
+            $box.toggleClass('bonus', !!isBonus);
+
+            if (isBonus) {
+                $('#pos-pagamento-titulo').text(funil.pos_pagamento_titulo || 'Sua compra foi premiada! 🎉');
+                $('#pos-pagamento-mensagem').text(funil.pos_pagamento_mensagem || 'Você ganhou cotas extras de bônus. Boa sorte!');
+                const bonus = Number(funil.bonus_cotas_extra || 0);
+                if (bonus > 0) {
+                    $('#bonus-tag-box').html(`<div class="bonus-tag">+${bonus} cotas grátis de bônus</div>`);
+                } else {
+                    $('#bonus-tag-box').empty();
+                }
+            } else {
+                $('#pos-pagamento-titulo').text('Pagamento Aprovado!');
+                $('#pos-pagamento-mensagem').text('Seus números já foram gerados. Boa sorte!');
+                $('#bonus-tag-box').empty();
+            }
+        }
+
+        function renderCotas(cotas) {
+            const $cotasContainer = $('#cotas-geradas');
+            if (cotas && cotas.length > 0) {
+                $cotasContainer.html(cotas.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
+            } else {
+                $cotasContainer.html('<p class="text-sm text-gray-400">Seus números estão sendo gerados...</p>');
+                setTimeout(() => {
+                    $.get(`/api/public/pedidos/${TOKEN}/status`).done(function(d2) {
+                        if (d2.cotas && d2.cotas.length > 0) {
+                            $cotasContainer.html(d2.cotas.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
+                        }
+                    });
+                }, 1200);
+            }
+        }
+
+        function aprovarPagamentoFront(data) {
+            isPago = true;
+            $('#checkout-container').hide();
+            $('#pagamento-aprovado').show();
+
+            aplicarTemaPosPagamento(data.funil || FUNIL_DATA);
+            renderCotas((data.cotas && data.cotas.length) ? data.cotas : COTAS_GERADAS_INICIAIS);
+
+            if (data.link_grupo_vip) {
+                $('#btn-grupo-vip').attr('href', data.link_grupo_vip).removeClass('hidden');
+            }
+
+            if (typeof fbq === 'function' && data.pixel_data) {
+                fbq('track', 'Purchase', {
+                    value: data.pixel_data.value,
+                    currency: data.pixel_data.currency,
+                    num_items: data.pixel_data.num_items,
+                    content_name: data.pixel_data.sorteio_nome,
+                    content_category: 'Raffle'
+                });
+            }
+
+            $('#detalhe-situacao').text('Pago').removeClass('text-yellow-400 text-red-500').addClass('text-green-400');
+            try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/aprovado`); } catch (e) {}
+        }
+
+        function checarStatusPagamento() {
+            if (isPago || !TOKEN) return;
+            $.get(`/api/public/pedidos/${TOKEN}/status`)
+                .done(function(data) {
+                    if (data && data.payment) {
+                        $('#pixCopiaCola').val(data.payment.pix_copia_cola || '');
+                        $('#qr-code-img').attr('src', data.payment.pix_qr_code_base64 || '');
+                    }
+                    const ds = data.derived_status || (data.status === '2' ? 'aprovado' : 'pendente');
+                    try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/${ds}`); } catch (e) {}
+
+                    if (ds === 'aprovado' || data.status === '2') {
+                        clearInterval(timerInterval);
+                        clearInterval(statusCheckIntervalId);
+                        aprovarPagamentoFront(data);
+                    } else if (ds === 'expirado' || data.status === '0') {
+                        clearInterval(timerInterval);
+                        $('#card-aguardando').hide();
+                        $('#card-instrucoes').hide();
+                        $('#card-aviso').hide();
+                        $('#card-expirado').removeClass('hidden');
+                        $('#detalhe-situacao').text('Expirado').removeClass('text-yellow-400').addClass('text-red-500');
+                        try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/expirado`); } catch (e) {}
+                    }
+                })
+                .fail(function(xhr) { console.error('Erro ao checar status:', xhr.responseJSON?.error || xhr.responseText); });
+        }
+
+        function renderPagina(data) {
+            const { pedido, minutos_restantes, cotas_geradas, isPago: pagoInicial, derived_status, funil, logo_url, pixels, modo_teste_pagamento } = data;
+            PEDIDO_DATA = pedido || {};
+            COTAS_GERADAS_INICIAIS = cotas_geradas || [];
+            FUNIL_DATA = funil || null;
+            MINUTOS_RESTANTES = Number(minutos_restantes || 0);
+
+            if (modo_teste_pagamento && !pagoInicial) $('#card-modo-teste').removeClass('hidden');
+
+            if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
+            injetarPixels(pixels);
+            $('#voltar-link').attr('href', `/sorteio/${pedido.sorteios?.slug || ''}`);
+
+            $('#pixCopiaCola').val(pedido.pix_copia_cola || '');
+            $('#qr-code-img').attr('src', pedido.pix_qr_code_base64 || '');
+            $('#sorteio-img').attr('src', pedido.sorteios?.foto_url || '');
+            $('#sorteio-nome').text(pedido.sorteios?.nome || '');
+            $('#sorteio-qtd').text(`Cotas adquiridas: ${pedido.quantidade_cotas || 0}`);
+            $('#sorteio-total').text(`Total: ${formatarMoeda(pedido.valor_total)}`);
+            $('#detalhe-token').text(pedido.token || '');
+            $('#detalhe-comprador').text(pedido.usuarios?.nome_completo || '');
+            $('#detalhe-telefone').text(pedido.usuarios?.telefone || '');
+            $('#detalhe-situacao').text(pedido.status === 'aguardando' ? 'Aguardando pagamento' : (pedido.status === 'pago' ? 'Pago' : pedido.status));
+            $('#detalhe-data').text(pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '');
+            $('#detalhe-expira').text(pedido.expira_em ? new Date(pedido.expira_em).toLocaleString('pt-BR') : '');
+            $('#detalhe-quantidade').text(pedido.quantidade_cotas || 0);
+            $('#detalhe-total').text(formatarMoeda(pedido.valor_total));
+
+            if (pagoInicial) {
+                aprovarPagamentoFront({
+                    cotas: COTAS_GERADAS_INICIAIS,
+                    link_grupo_vip: pedido.sorteios?.link_grupo_vip || null,
+                    pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome || '' },
+                    funil: FUNIL_DATA
+                });
+            } else {
+                try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/${derived_status || 'pendente'}`); } catch (e) {}
+                iniciarCronometro(MINUTOS_RESTANTES);
+                statusCheckIntervalId = setInterval(checarStatusPagamento, 5000);
+            }
+        }
+
+        $(document).ready(function() {
+            if (!TOKEN) {
+                $('#checkout-container').html('<p class="text-center text-red-400 p-8">Pedido não encontrado.</p>');
+                return;
+            }
+
+            $.get(`/api/public/checkout/${TOKEN}`)
+                .done(function(resp) { renderPagina(resp); })
+                .fail(function() {
+                    $('#checkout-container').html('<p class="text-center text-red-400 p-8">Pedido não encontrado ou expirado.</p>');
+                });
+
+            $('#btn-copiar-pix').on('click', function() {
+                navigator.clipboard.writeText($('#pixCopiaCola').val() || '');
+                $(this).text('COPIADO!');
+                setTimeout(() => $(this).text('COPIAR'), 2000);
+            });
+
+            $('#btn-mostrar-qr').on('click', function() {
+                const $qrContainer = $('#qr-code-container');
+                $qrContainer.toggleClass('hidden');
+                $(this).text($qrContainer.hasClass('hidden') ? 'Mostrar QR Code' : 'Ocultar QR Code');
+            });
+
+            $('#btn-ja-paguei').on('click', function() {
+                const $btn = $(this);
+                $btn.prop('disabled', true).text('Confirmando...');
+                $.post(`/api/public/pedidos/${TOKEN}/confirmar-teste`)
+                    .done(function() { checarStatusPagamento(); })
+                    .fail(function(xhr) {
+                        alert(xhr.responseJSON?.error || 'Erro ao confirmar (modo teste está desligado?)');
+                        $btn.prop('disabled', false).text('✅ Já realizei o pagamento (teste)');
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
