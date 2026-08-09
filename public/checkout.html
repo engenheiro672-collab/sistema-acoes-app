@@ -219,6 +219,18 @@
 
         function formatarMoeda(valor) { return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
+        function notificar(mensagem, tipo) {
+            const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
+            const cor = cores[tipo] || cores.aviso;
+            const $toast = $(`<div style="position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px); opacity:0; transition: opacity .25s, transform .25s; z-index:9999; background:${cor}; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.4); font-size:0.9rem; font-weight:600; max-width:90vw; text-align:center;">${mensagem}</div>`);
+            $('body').append($toast);
+            requestAnimationFrame(() => { $toast.css({ opacity: 1, transform: 'translateX(-50%) translateY(0)' }); });
+            setTimeout(() => {
+                $toast.css({ opacity: 0, transform: 'translateX(-50%) translateY(-20px)' });
+                setTimeout(() => $toast.remove(), 300);
+            }, 3500);
+        }
+
         function injetarPixels(pixels) {
             if (!pixels) return;
             if (pixels.facebook_pixel_id) {
@@ -511,7 +523,7 @@
                 $.post(`/api/public/pedidos/${TOKEN}/confirmar-teste`)
                     .done(function() { checarStatusPagamento(); })
                     .fail(function(xhr) {
-                        alert(xhr.responseJSON?.error || 'Erro ao confirmar (modo teste está desligado?)');
+                        notificar(xhr.responseJSON?.error || 'Erro ao confirmar (modo teste está desligado?)', 'erro');
                         $btn.prop('disabled', false).text('✅ Já realizei o pagamento (teste)');
                     });
             });

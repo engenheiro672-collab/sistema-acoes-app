@@ -427,6 +427,8 @@
                         <div id="img-placeholder"><i class="bi bi-camera text-3xl"></i><br><span class="text-xs">Clique aqui — pode selecionar várias fotos</span></div>
                     </div>
                     <input id="foto-input" name="foto_principal" type="file" class="hidden" accept="image/*" multiple onchange="previewImage(this)">
+                    <input type="hidden" name="foto_url" id="inp-foto-url-atual">
+                    <input type="hidden" name="fotos_galeria" id="inp-fotos-galeria-atual">
                     <div id="preview-extra-imgs" class="flex gap-2 flex-wrap"></div>
                 </div>
 
@@ -1249,6 +1251,8 @@ function limparFormSorteio() {
     $('#input-sorteio-id').val('');
     $('#img-placeholder').show();
     $('#img-preview-box').css('background-image', '');
+    $('#inp-foto-url-atual').val('');
+    $('#inp-fotos-galeria-atual').val('');
     $('#preview-extra-imgs').empty();
     $('#lista-premios').empty();
     $('#lista-roleta').empty();
@@ -1315,6 +1319,8 @@ function abrirFormSorteio(id) {
         $('#inp-pixel-tiktok').val(s.pixel_tiktok_override);
         $('#inp-pixel-gtm').val(s.pixel_gtm_override);
         if (s.foto_url) { $('#img-preview-box').css('background-image', `url(${s.foto_url})`); $('#img-placeholder').hide(); }
+        $('#inp-foto-url-atual').val(s.foto_url || '');
+        $('#inp-fotos-galeria-atual').val(JSON.stringify(s.fotos_galeria || []));
 
         carregarPremios(id);
         carregarRoleta(id);
@@ -1478,7 +1484,7 @@ function carregarFunis(sorteioId) {
             return;
         }
         $('#lista-funis').html(funis.map(f => {
-            const link = `${window.location.origin}/sorteio/${sorteio.slug || ''}/${f.slug}`;
+            const link = `${window.location.origin}/sorteio/${sorteio.slug || ''}/${f.slug}?lk=funil-${f.slug}`;
             const abLink = f.grupo_teste ? `${window.location.origin}/sorteio/${sorteio.slug || ''}/teste/${f.grupo_teste}` : null;
             const tipoBadge = f.pos_pagamento_tipo === 'bonus' ? `<span class="badge badge-bonus">Bônus (+${f.bonus_cotas_extra || 0} cotas)</span>` : `<span class="badge badge-padrao">Padrão</span>`;
             const abBadge = f.grupo_teste ? `<span class="badge badge-ads">A/B: ${f.grupo_teste} (${f.peso_trafego || 100}%)</span>` : '';

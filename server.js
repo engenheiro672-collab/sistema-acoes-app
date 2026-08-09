@@ -968,6 +968,17 @@ app.post('/api/admin/sorteios/:id/funis', ensureAdminAuth, async (req, res) => {
 
     const { data: inserted, error } = await supabase.from('funis').insert(payload).select().single();
     if (error) return fail(res, error.message);
+
+    // Cria automaticamente um link de rastreamento pra esse funil, já com 0 acessos,
+    // pra ele aparecer em Comparativo de Links mesmo antes de qualquer visita.
+    try {
+      await supabase.from('links_rastreamento').insert({
+        sorteio_id, funil_id: inserted.id, nome: `Funil: ${inserted.nome}`,
+        codigo: `funil-${slug}`, canal: inserted.origem === 'ads' ? 'facebook_ads' : (inserted.origem === 'organico' ? 'instagram_organico' : 'outro'),
+        cliques: 0, created_at: new Date().toISOString()
+      });
+    } catch (err) { console.error('Erro ao criar link automático do funil', err); }
+
     return ok(res, { funil: inserted });
   } catch (e) { console.error('POST funis', e); return fail(res); }
 });
@@ -1462,7 +1473,7 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
     const payload = {
       nome: body.nome,
       descricao: body.descricao,
-      preco_cota: parseFloat(normalizeNumber(body.preco_cota)),
+      preco_cota: parseFloat(body.preco_cota) || 0,
       total_cotas: parseInt(normalizeNumber(body.total_cotas)),
       tempo_pagamento: parseInt(normalizeNumber(body.tempo_pagamento)),
       minimo_cotas_compra: parseInt(normalizeNumber(body.minimo_cotas_compra)),
