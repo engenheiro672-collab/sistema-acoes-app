@@ -455,12 +455,7 @@
                             </label>
                         </div>
                         <div id="box-roleta-config" class="hidden space-y-4">
-                            <p class="text-xs text-gray-500">O cliente ganha giros de roleta conforme a quantidade de títulos que comprar. Cada giro pode bater com um prêmio pré-configurado ou dar "Tente Denovo" — sem nunca revelar a posição sorteada.</p>
-
-                            <div>
-                                <label class="text-xs text-gray-400">Tamanho do pool de giros (total de posições possíveis, ex: 40)</label>
-                                <input type="number" name="roleta_pool_total" id="inp-roleta-pool" class="input-dark mt-1" placeholder="Ex: 40" min="1">
-                            </div>
+                            <p class="text-xs text-gray-500">Funciona igual ao bilhete premiado: você escolhe um número de cota (escondido do cliente) e associa um prêmio a ele. Quando essa cota específica for vendida, quem comprou ganha aquele prêmio na roleta — mas só se tiver comprado o suficiente pra ganhar pelo menos 1 giro (veja as faixas abaixo). Se a cota premiada cair pra alguém sem giro disponível, o sistema realoca o prêmio pra outra cota ainda não vendida, sem perder o prêmio.</p>
 
                             <div class="border-t border-gray-800 pt-3">
                                 <h5 class="text-sm font-semibold text-gray-300 mb-2">Faixas: título → giros ganhos</h5>
@@ -473,10 +468,10 @@
                             </div>
 
                             <div class="border-t border-gray-800 pt-3">
-                                <h5 class="text-sm font-semibold text-gray-300 mb-2">Prêmios do pool (posições vencedoras)</h5>
-                                <p class="text-xs text-gray-500 mb-2">O "número do giro" é só a posição dentro do pool (1 até o tamanho do pool definido acima), não é uma cota real.</p>
+                                <h5 class="text-sm font-semibold text-gray-300 mb-2">Prêmios da roleta (cotas escondidas)</h5>
+                                <p class="text-xs text-gray-500 mb-2">Escolha um número de cota válido pra esse sorteio (mesma faixa de dígitos das cotas normais). Fica escondido do cliente até a cota sair.</p>
                                 <div id="box-add-roleta" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
-                                    <input id="inp-roleta-cota" placeholder="Nº do giro (1-pool)" class="input-dark w-1/4">
+                                    <input id="inp-roleta-cota" placeholder="Número da cota" class="input-dark w-1/4">
                                     <input id="inp-roleta-titulo" placeholder="Título do prêmio" class="input-dark w-1/2">
                                     <input id="inp-roleta-valor" placeholder="Valor (ex: R$120 ou o DOBRO)" class="input-dark w-1/4">
                                     <button type="button" class="btn-primary" onclick="addRoleta()">Add</button>
@@ -1264,7 +1259,6 @@ function limparFormSorteio() {
     $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').addClass('opacity-50 pointer-events-none');
     $('#aviso-premios, #aviso-links, #aviso-funis').show();
     $('#inp-roleta-ativada').prop('checked', false);
-    $('#inp-roleta-pool').val('');
     toggleRoletaBox();
     setMascaraMoedaValor(0);
     setTotalCotasValor('1000000');
@@ -1309,7 +1303,6 @@ function abrirFormSorteio(id) {
         $('#inp-coletar-endereco').prop('checked', !!s.coletar_endereco);
         $('#inp-roleta-ativada').prop('checked', !!s.roleta_ativada);
         toggleRoletaBox();
-        $('#inp-roleta-pool').val(s.roleta_pool_total || '');
         setBotoesRapidos(s.botoes_rapidos);
         setMascaraTelefoneValor(s.suporte_whatsapp);
         $('#inp-ganhador-nome').val(s.ganhador_nome || '');

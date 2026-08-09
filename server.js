@@ -430,7 +430,7 @@ app.get('/api/public/sorteio/:slug/funil/:funilSlug', async (req, res) => {
 });
 
 async function getCheckoutPublicData(token) {
-  const { data: pedido } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(nome_completo, telefone)').eq('token', token).maybeSingle();
+  const { data: pedido } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(nome_completo, telefone, cpf)').eq('token', token).maybeSingle();
   if (!pedido) return null;
   const minutos_restantes = pedido.expira_em ? Math.max(0, (new Date(pedido.expira_em).getTime() - Date.now()) / 60000) : 0;
   let cotas_geradas = [];
@@ -739,9 +739,9 @@ async function gerarCotasUnicas(pedido) {
     await safeUpdatePedidos(pedido.id, { cotas_geradas: 1, cotas_array: inserted.map(r => r.numero_cota), status: 'pago', updated_at: new Date().toISOString() });
 
     // Verifica se alguma das cotas geradas bate com um BILHETE premiado ainda disponível
-    // (a roleta usa um pool separado — veja atribuirGirosRoleta logo abaixo).
+    // (a roleta usa números de cota reais também, mas é tratada à parte — veja atribuirGirosRoleta).
+    const numeros = inserted.map(r => r.numero_cota);
     try {
-      const numeros = inserted.map(r => r.numero_cota);
       const { data: possiveisPremios } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'bilhete').eq('status', 'disponivel').in('numero_cota', numeros);
       for (const premio of (possiveisPremios || [])) {
         await supabase.from('bilhetes_premiados').update({
@@ -750,10 +750,9 @@ async function gerarCotasUnicas(pedido) {
       }
     } catch (err) { console.error('Erro ao vincular bilhete premiado', err); }
 
-    // Roleta: se o sorteio tiver a roleta ativada, calcula quantos giros esse pedido ganhou
-    // (com base na faixa de cotas compradas) e sorteia os "números de giro" desse pedido dentro
-    // do pool de roleta — cada giro pode ou não bater com um prêmio pré-configurado.
-    try { await atribuirGirosRoleta(sorteio_id, pedido, user_id); } catch (err) { console.error('Erro ao atribuir giros de roleta', err); }
+    // Roleta: se estiver ativada, calcula quantos giros esse pedido ganhou (pela faixa de cotas
+    // compradas) e verifica se alguma das cotas reais geradas bate com um prêmio de roleta escondido.
+    try { await atribuirGirosRoleta(sorteio_id, pedido, user_id, numeros); } catch (err) { console.error('Erro ao atribuir giros de roleta', err); }
 
     return inserted;
 
@@ -762,41 +761,67 @@ async function gerarCotasUnicas(pedido) {
 
 // Calcula quantos giros de roleta um pedido ganhou (pela faixa de cotas compradas) e sorteia
 // números de giro únicos dentro do pool da roleta desse sorteio, verificando prêmios na hora.
-async function atribuirGirosRoleta(sorteio_id, pedido, user_id) {
-  const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, roleta_pool_total').eq('id', sorteio_id).maybeSingle();
-  if (!sorteio || !sorteio.roleta_ativada || !sorteio.roleta_pool_total) return;
+// Calcula quantos giros de roleta um pedido ganhou (pela faixa de cotas compradas), verifica se
+// alguma das cotas REAIS geradas pra esse pedido bate com um prêmio de roleta escondido, e monta
+// os giros desse pedido (um deles "premiado" se houve acerto, os demais "Tente Denovo").
+//
+// Importante: a roleta é, por trás dos panos, igual ao bilhete premiado — um número de cota real
+// e escondido. A diferença é só que, se a cota premiada sair pra alguém que não tem giro de roleta
+// disponível (comprou pouco, ou nunca gira), a premiação não se perde: o sistema troca esse prêmio
+// pra outro número de cota que ainda não foi vendido, pra continuar valendo pra um comprador futuro.
+async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) {
+  const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, total_cotas').eq('id', sorteio_id).maybeSingle();
+  if (!sorteio || !sorteio.roleta_ativada) return;
 
   const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio_id).order('minimo_cotas', { ascending: false });
   const qtdComprada = Number(pedido.quantidade_cotas || 0);
   const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
   const qtdGiros = tierAlcançado ? Number(tierAlcançado.quantidade_giros) : 0;
+
+  // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível
+  const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel').in('numero_cota', numerosGerados);
+  const premioAcertado = (premiosRoleta || [])[0] || null;
+
+  if (premioAcertado) {
+    if (qtdGiros > 0) {
+      // Tem giro disponível: confirma o prêmio pra esse comprador
+      await supabase.from('bilhetes_premiados').update({
+        status: 'reivindicada', usuario_id: user_id, pedido_id: pedido.id, reivindicada_em: new Date().toISOString()
+      }).eq('id', premioAcertado.id).eq('status', 'disponivel');
+    } else {
+      // Comprou uma cota premiada da roleta mas não tem giro pra usar — reatribui esse prêmio
+      // pra um número de cota que ainda não foi vendido, pra não se perder.
+      try {
+        const totalCotas = Number(sorteio.total_cotas) || 1000000;
+        const { data: vendidas } = await supabase.from('cotas').select('numero_cota').eq('sorteio_id', sorteio_id);
+        const { data: outrosPremios } = await supabase.from('bilhetes_premiados').select('numero_cota').eq('sorteio_id', sorteio_id);
+        const ocupados = new Set([...(vendidas || []).map(r => r.numero_cota), ...(outrosPremios || []).map(r => r.numero_cota)]);
+        let novoNumero = null, tentativas = 0;
+        while (!novoNumero && tentativas < 500) {
+          tentativas++;
+          const candidato = padCota(Math.floor(Math.random() * totalCotas), totalCotas);
+          if (!ocupados.has(candidato)) novoNumero = candidato;
+        }
+        if (novoNumero) await supabase.from('bilhetes_premiados').update({ numero_cota: novoNumero }).eq('id', premioAcertado.id);
+      } catch (err) { console.error('Erro ao reatribuir prêmio de roleta', err); }
+    }
+  }
+
   if (qtdGiros <= 0) return;
 
-  const poolTotal = Number(sorteio.roleta_pool_total);
-  const { data: giroExistentes } = await supabase.from('roleta_giros').select('numero_giro').eq('sorteio_id', sorteio_id);
-  const usados = new Set((giroExistentes || []).map(g => g.numero_giro));
-
-  const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel');
-  const premiosMap = new Map((premiosRoleta || []).map(p => [Number(p.numero_cota), p]));
-
+  const houveVitoria = premioAcertado && qtdGiros > 0;
   const novasLinhas = [];
-  let tentativas = 0;
-  while (novasLinhas.length < qtdGiros && usados.size < poolTotal && tentativas < poolTotal * 20) {
-    tentativas++;
-    const candidato = 1 + Math.floor(Math.random() * poolTotal);
-    if (usados.has(candidato)) continue;
-    usados.add(candidato);
-    const premio = premiosMap.get(candidato);
+  for (let i = 0; i < qtdGiros; i++) {
+    const éOGiroVencedor = houveVitoria && i === 0;
     novasLinhas.push({
-      sorteio_id, pedido_id: pedido.id, usuario_id: user_id, numero_giro: candidato,
-      premio_titulo: premio ? premio.premio_titulo : null,
-      valor_premio: premio ? premio.valor_premio : null,
-      bilhete_premiado_id: premio ? premio.id : null,
+      sorteio_id, pedido_id: pedido.id, usuario_id: user_id,
+      numero_giro: i + 1,
+      premio_titulo: éOGiroVencedor ? premioAcertado.premio_titulo : null,
+      valor_premio: éOGiroVencedor ? premioAcertado.valor_premio : null,
+      bilhete_premiado_id: éOGiroVencedor ? premioAcertado.id : null,
       girado: false, created_at: new Date().toISOString()
     });
   }
-  if (novasLinhas.length === 0) return;
-
   await supabase.from('roleta_giros').insert(novasLinhas);
 }
 

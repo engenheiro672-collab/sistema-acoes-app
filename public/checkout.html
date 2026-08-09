@@ -17,12 +17,12 @@
         .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; }
         .cronometro strong { color: #f7b731; font-weight: 700; }
         .instrucao-passo { display: flex; align-items: flex-start; margin-bottom: 1rem; }
-        .instrucao-numero { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background-color: #EA580C; color: white; font-weight: 700; font-size: 0.875rem; text-align: center; line-height: 24px; margin-right: 12px; }
+        .instrucao-numero { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background-color: #16A34A; color: white; font-weight: 700; font-size: 0.875rem; text-align: center; line-height: 24px; margin-right: 12px; }
         .instrucao-texto { color: #a0aec0; }
         .copia-cola-wrapper { display: flex; width: 100%; border: 1px solid #4a5568; border-radius: 8px; overflow: hidden; }
         .copia-cola-input { flex-grow: 1; background-color: #20242e; color: #a0aec0; padding: 0.75rem; border: none; outline: none; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .copia-cola-btn { background-color: #EA580C; color: white; font-weight: 700; padding: 0.75rem 1.25rem; cursor: pointer; transition: background-color 0.2s; }
-        .copia-cola-btn:hover { background-color: #c2410c; }
+        .copia-cola-btn { background-color: #16A34A; color: white; font-weight: 700; padding: 0.75rem 1.25rem; cursor: pointer; transition: background-color 0.2s; }
+        .copia-cola-btn:hover { background-color: #15803D; }
         .btn-mostrar-qr { background: none; border: none; color: #a0aec0; font-weight: 600; margin-top: 1rem; cursor: pointer; }
         .btn-mostrar-qr:hover { color: #fff; }
         #qr-code-container { background-color: #fff; padding: 1rem; border-radius: 8px; margin: 1rem auto 0 auto; max-width: 250px; }
@@ -40,7 +40,7 @@
         .card-small-info { margin-left: 16px; overflow: hidden; }
         .card-small-title { color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card-small-desc { color: #a0aec0; font-size: 0.875rem; }
-        .card-small-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; display: inline-block; margin-top: 4px; background-color: #EA580C; color: #fff; }
+        .card-small-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; display: inline-block; margin-top: 4px; background-color: #16A34A; color: #fff; }
         .pagamento-aprovado { display: none; text-align: center; }
         .pagamento-aprovado-icon { font-size: 5rem; color: #38a169; }
         .pagamento-aprovado-title { font-size: 1.75rem; font-weight: 700; color: #38a169; margin-top: 1rem; }
@@ -147,6 +147,7 @@
 
             <div class="space-y-2">
                 <div class="detalhe-item"><span class="detalhe-label">Comprador:</span><span id="detalhe-comprador" class="detalhe-valor"></span></div>
+                <div id="linha-cpf" class="detalhe-item hidden"><span class="detalhe-label">CPF:</span><span id="detalhe-cpf" class="detalhe-valor"></span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Telefone:</span><span id="detalhe-telefone" class="detalhe-valor"></span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Situação:</span><span id="detalhe-situacao" class="detalhe-valor text-yellow-400">Aguardando pagamento</span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Data/horário:</span><span id="detalhe-data" class="detalhe-valor"></span></div>
@@ -165,15 +166,19 @@
         <p id="pos-pagamento-mensagem" class="pagamento-aprovado-desc">Seus números já foram gerados. Boa sorte!</p>
         <div id="bonus-tag-box"></div>
 
-        <a id="btn-grupo-vip" href="#" target="_blank" class="btn-grupo-vip hidden">
+        <a id="btn-grupo-vip" href="#" target="_blank" class="btn-grupo-vip hidden" style="font-size:1.25rem; padding: 1rem 2rem; box-shadow: 0 0 0 4px rgba(37,211,102,0.25); animation: pulse-vip 2s infinite;">
             <i class="bi bi-whatsapp"></i> Entrar no Grupo VIP
         </a>
+        <style>@keyframes pulse-vip { 0%,100% { box-shadow: 0 0 0 4px rgba(37,211,102,0.25); } 50% { box-shadow: 0 0 0 10px rgba(37,211,102,0.1); } }</style>
 
         <div class="mt-8">
-            <h3 class="text-xl font-semibold text-white mb-2">Seus Números da Sorte</h3>
-            <div id="cotas-geradas" class="flex flex-wrap justify-center gap-2 max-h-48 overflow-y-auto bg-gray-900 p-4 rounded-lg">
+            <h3 class="text-xl font-semibold text-white mb-2">Seus Números da Sorte <span id="contador-titulos" class="text-sm text-gray-400 font-normal"></span></h3>
+            <div id="cotas-geradas" class="flex flex-wrap justify-center gap-2 bg-gray-900 p-4 rounded-lg">
                 <p class="text-sm text-gray-400">Carregando seus números...</p>
             </div>
+            <button id="btn-ver-mais-titulos" class="w-full text-center text-gray-400 mt-3 font-semibold hover:text-white hidden">
+                <i class="bi bi-chevron-down"></i> Ver mais títulos
+            </button>
         </div>
 
         <div id="secao-roletas-checkout" class="mt-8 hidden text-left">
@@ -194,9 +199,10 @@
                 <button id="close-modal-roleta" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
             <div class="relative mx-auto" style="width:260px;height:260px;">
-                <div style="position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:10; font-size:1.5rem;">📍</div>
-                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;background:conic-gradient(#16a34a 0deg 45deg,#166534 45deg 90deg,#16a34a 90deg 135deg,#166534 135deg 180deg,#16a34a 180deg 225deg,#166534 225deg 270deg,#16a34a 270deg 315deg,#166534 315deg 360deg); transition: transform 3.5s cubic-bezier(0.15,0.85,0.25,1); display:flex; align-items:center; justify-content:center;">
-                    <div style="width:80px;height:80px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;">GIRAR</div>
+                <div id="ponteiro-roleta" style="position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 4px; z-index:10; font-size:1.6rem; transition: transform .08s;">📍</div>
+                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:relative;background:conic-gradient(#16a34a 0deg 45deg,#166534 45deg 90deg,#16a34a 90deg 135deg,#166534 135deg 180deg,#16a34a 180deg 225deg,#166534 225deg 270deg,#16a34a 270deg 315deg,#166534 315deg 360deg); transition: transform 4.2s cubic-bezier(0.12,0.75,0.15,1); box-shadow: 0 0 0 6px #15803d;">
+                    <div id="labels-roleta"></div>
+                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;z-index:5;">GIRAR</div>
                 </div>
             </div>
             <p id="resultado-roleta" class="text-white font-semibold mt-4 min-h-[1.5rem]">Gire e tente a sorte</p>
@@ -218,6 +224,13 @@
         let timerInterval, statusCheckIntervalId;
 
         function formatarMoeda(valor) { return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        // Mostra só o começo e o fim de um número (CPF/telefone), escondendo o meio com asteriscos
+        function mascarar(valor) {
+            const v = String(valor || '').replace(/\D/g, '');
+            if (v.length <= 6) return v;
+            return v.slice(0, 4) + '*'.repeat(v.length - 6) + v.slice(-2);
+        }
 
         function notificar(mensagem, tipo) {
             const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
@@ -306,17 +319,26 @@
             }
         }
 
-        function renderCotas(cotas) {
+        let TODAS_COTAS = [];
+        let COTAS_VISIVEIS = 30;
+        function renderCotasPagina() {
             const $cotasContainer = $('#cotas-geradas');
+            const visiveis = TODAS_COTAS.slice(0, COTAS_VISIVEIS);
+            $cotasContainer.html(visiveis.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
+            $('#contador-titulos').text(`(${TODAS_COTAS.length})`);
+            $('#btn-ver-mais-titulos').toggleClass('hidden', COTAS_VISIVEIS >= TODAS_COTAS.length);
+        }
+        $('#btn-ver-mais-titulos').on('click', function() { COTAS_VISIVEIS += 30; renderCotasPagina(); });
+
+        function renderCotas(cotas) {
             if (cotas && cotas.length > 0) {
-                $cotasContainer.html(cotas.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
+                TODAS_COTAS = cotas;
+                renderCotasPagina();
             } else {
-                $cotasContainer.html('<p class="text-sm text-gray-400">Seus números estão sendo gerados...</p>');
+                $('#cotas-geradas').html('<p class="text-sm text-gray-400">Seus números estão sendo gerados...</p>');
                 setTimeout(() => {
                     $.get(`/api/public/pedidos/${TOKEN}/status`).done(function(d2) {
-                        if (d2.cotas && d2.cotas.length > 0) {
-                            $cotasContainer.html(d2.cotas.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
-                        }
+                        if (d2.cotas && d2.cotas.length > 0) { TODAS_COTAS = d2.cotas; renderCotasPagina(); }
                     });
                 }, 1200);
             }
@@ -381,15 +403,48 @@
             }).join(''));
         }
 
+        // 8 fatias: pares = "Tente Denovo", ímpares = fatias de prêmio (mostram um valor de exemplo até girar)
+        const SEGMENTOS = 8;
+        const ANGULO_FATIA = 360 / SEGMENTOS;
+
+        function montarLabelsRoleta() {
+            const exemplos = ['R$50', 'R$120', 'R$80', 'R$200'];
+            let html = '';
+            for (let i = 0; i < SEGMENTOS; i++) {
+                const meio = i * ANGULO_FATIA + ANGULO_FATIA / 2;
+                const texto = (i % 2 === 0) ? 'Tente Denovo' : exemplos[(i - 1) / 2 % exemplos.length];
+                html += `<div class="label-fatia" data-i="${i}" style="position:absolute; top:50%; left:50%; width:100px; text-align:center; transform: translate(-50%,-50%) rotate(${meio}deg) translateY(-90px); font-size:0.7rem; font-weight:700; color:#dcfce7;">${texto}</div>`;
+            }
+            $('#labels-roleta').html(html);
+        }
+
+        // Som de "tique" sintetizado (sem precisar de arquivo de áudio)
+        let AUDIO_CTX = null;
+        function tocarTique() {
+            try {
+                AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
+                const osc = AUDIO_CTX.createOscillator();
+                const gain = AUDIO_CTX.createGain();
+                osc.type = 'square';
+                osc.frequency.value = 900;
+                gain.gain.setValueAtTime(0.06, AUDIO_CTX.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, AUDIO_CTX.currentTime + 0.05);
+                osc.connect(gain).connect(AUDIO_CTX.destination);
+                osc.start(); osc.stop(AUDIO_CTX.currentTime + 0.05);
+            } catch (e) {}
+        }
+
         function abrirModalRoleta(idx) {
             GIRO_ATUAL_IDX = idx;
+            montarLabelsRoleta();
             $('#modal-roleta').removeClass('hidden').css('display', 'flex');
             atualizarModalRoleta();
         }
         function atualizarModalRoleta() {
             const total = GIROS.length;
             $('#roleta-indice').text(`${GIRO_ATUAL_IDX + 1} de ${total}`);
-            $('#roda-roleta').css('transform', 'rotate(0deg)');
+            $('#roda-roleta').css('transition', 'none').css('transform', 'rotate(0deg)');
+            requestAnimationFrame(() => $('#roda-roleta').css('transition', ''));
             const giro = GIROS[GIRO_ATUAL_IDX];
             $('#resultado-roleta').text(giro.girado ? (giro.ganhou ? (giro.valor_premio || giro.premio_titulo) : 'Tente Denovo') : 'Gire e tente a sorte');
             $('#btn-roleta-anterior').prop('disabled', GIRO_ATUAL_IDX === 0);
@@ -400,10 +455,40 @@
             const giro = GIROS[idx];
             if (!giro || giro.girado) return;
             $('#resultado-roleta').text('Girando...');
+
             $.post(`/api/public/roletas/${giro.id}/girar`).done(function(resultado) {
-                const voltas = 4 + Math.floor(Math.random() * 3);
-                const anguloFinal = voltas * 360 + Math.floor(Math.random() * 360);
+                // Escolhe uma fatia compatível com o resultado real (par = perde, ímpar = ganha)
+                const fatiasCandidatas = [];
+                for (let i = 0; i < SEGMENTOS; i++) { if ((i % 2 === 0) === !resultado.ganhou) fatiasCandidatas.push(i); }
+                const fatiaAlvo = fatiasCandidatas[Math.floor(Math.random() * fatiasCandidatas.length)];
+
+                // Se ganhou, escreve o prêmio de verdade na fatia onde vai parar
+                if (resultado.ganhou) {
+                    $(`.label-fatia[data-i="${fatiaAlvo}"]`).text(resultado.valor_premio || resultado.premio_titulo || 'Prêmio!');
+                }
+
+                const voltas = 5 + Math.floor(Math.random() * 3);
+                // Ângulo pra essa fatia terminar exatamente embaixo do ponteiro (topo, 0deg)
+                const centroFatia = fatiaAlvo * ANGULO_FATIA + ANGULO_FATIA / 2;
+                const anguloFinal = voltas * 360 + (360 - centroFatia);
                 $('#roda-roleta').css('transform', `rotate(${anguloFinal}deg)`);
+
+                // Ponteiro reage + tique a cada fatia que passa, desacelerando até parar
+                const duracaoMs = 4200;
+                const totalFatiasPassadas = Math.round(anguloFinal / ANGULO_FATIA);
+                let passadas = 0;
+                function proximoTique() {
+                    if (passadas >= totalFatiasPassadas) { $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(0deg)'); return; }
+                    passadas++;
+                    const progresso = passadas / totalFatiasPassadas;
+                    const atraso = 20 + progresso * progresso * 140; // desacelera com o tempo
+                    tocarTique();
+                    $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(14deg)');
+                    setTimeout(() => $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(-6deg)'), atraso * 0.4);
+                    setTimeout(proximoTique, atraso);
+                }
+                proximoTique();
+
                 setTimeout(() => {
                     giro.girado = true;
                     giro.ganhou = resultado.ganhou;
@@ -411,15 +496,15 @@
                     giro.valor_premio = resultado.valor_premio;
                     $('#resultado-roleta').text(giro.ganhou ? (giro.valor_premio || giro.premio_titulo || 'Prêmio!') : 'Tente Denovo');
                     renderListaGiros();
-                }, 3600);
+                }, duracaoMs);
             });
         }
 
         $('#lista-giros-checkout').on('click', '.btn-girar-uma', function() { abrirModalRoleta(Number($(this).data('idx'))); });
         $('#close-modal-roleta').on('click', function() { $('#modal-roleta').addClass('hidden'); });
         $('#roda-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
-        $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; atualizarModalRoleta(); } });
-        $('#btn-roleta-proxima').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; atualizarModalRoleta(); } });
+        $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; montarLabelsRoleta(); atualizarModalRoleta(); } });
+        $('#btn-roleta-proxima').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; montarLabelsRoleta(); atualizarModalRoleta(); } });
         $('#btn-girar-todas').on('click', function() {
             const idx = GIROS.findIndex(g => !g.girado);
             if (idx >= 0) abrirModalRoleta(idx);
@@ -472,7 +557,9 @@
             $('#sorteio-total').text(`Total: ${formatarMoeda(pedido.valor_total)}`);
             $('#detalhe-token').text(pedido.token || '');
             $('#detalhe-comprador').text(pedido.usuarios?.nome_completo || '');
-            $('#detalhe-telefone').text(pedido.usuarios?.telefone || '');
+            const cpf = pedido.usuarios?.cpf;
+            if (cpf) { $('#linha-cpf').removeClass('hidden'); $('#detalhe-cpf').text(mascarar(cpf)); }
+            $('#detalhe-telefone').text(mascarar(pedido.usuarios?.telefone || ''));
             $('#detalhe-situacao').text(pedido.status === 'aguardando' ? 'Aguardando pagamento' : (pedido.status === 'pago' ? 'Pago' : pedido.status));
             $('#detalhe-data').text(pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '');
             $('#detalhe-expira').text(pedido.expira_em ? new Date(pedido.expira_em).toLocaleString('pt-BR') : '');
