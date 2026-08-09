@@ -37,13 +37,13 @@
         .btn-participar i { font-size: 1.5rem; margin-right: 0.75rem; }
         .btn-participar-price { font-size: 1.5rem; font-weight: 700; }
         .titulos-premiados { padding: 1.5rem 1rem; }
-        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; margin-bottom: 0.6rem; border-radius: 10px; background-color: #12141c; border: 1px solid #1f2937; }
+        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; margin-bottom: 0.35rem; border-radius: 12px; background-color: #12141c; border: 1px solid #1f2937; }
         .premio-item.reivindicado { background: #1f9d55; border-color: #1f9d55; }
-        .premio-cota { font-weight: 700; font-size: 0.95rem; color: #e5e7eb; background-color: #4b5563; padding: 0.5rem 1rem; border-radius: 999px; min-width: 90px; text-align: center; }
+        .premio-cota { font-weight: 700; font-size: 0.8rem; color: #e5e7eb; background-color: #4b5563; padding: 0.3rem 0.7rem; border-radius: 999px; min-width: 68px; text-align: center; }
         .premio-item.reivindicado .premio-cota { color: #14532d; background-color: #ffffff; }
-        .premio-nome { font-weight: 600; color: #e5e7eb; flex-grow: 1; text-align: center; font-size: 0.95rem; }
+        .premio-nome { font-weight: 600; color: #e5e7eb; flex-grow: 1; text-align: center; font-size: 0.8rem; }
         .premio-item.reivindicado .premio-nome { color: #ffffff; }
-        .premio-status { font-weight: 600; color: #9ca3af; font-size: 0.95rem; white-space: nowrap; }
+        .premio-status { font-weight: 600; color: #9ca3af; font-size: 0.8rem; white-space: nowrap; }
         .premio-item.reivindicado .premio-status { color: #fff; font-weight: 700; }
         .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
         .modal { transition: opacity 0.3s ease; }
@@ -167,7 +167,7 @@
                 <h3 class="text-2xl font-semibold"><i class="bi bi-trophy-fill text-yellow-400"></i> Títulos Premiados <span class="text-sm text-gray-400 font-normal">instantâneos</span></h3>
                 <span id="contador-premiados" class="text-gray-400 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">0/0</span>
             </div>
-            <div id="lista-premios" class="space-y-2"></div>
+            <div id="lista-premios"></div>
             <button id="btn-mostrar-mais-premios" class="w-full text-center text-gray-400 mt-4 font-semibold hover:text-white hidden">
                 <i class="bi bi-chevron-down"></i> Mostrar Mais
             </button>
@@ -178,7 +178,7 @@
                 <h3 class="text-2xl font-semibold">⚡ Roletas Instantâneas</h3>
                 <span id="contador-roleta" class="text-gray-400 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">0/0</span>
             </div>
-            <div id="lista-roleta-vencedores" class="space-y-2"></div>
+            <div id="lista-roleta-vencedores"></div>
             <button id="btn-mostrar-mais-roleta" class="w-full text-center text-gray-400 mt-4 font-semibold hover:text-white hidden">
                 <i class="bi bi-chevron-down"></i> Mostrar Mais
             </button>
