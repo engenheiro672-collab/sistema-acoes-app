@@ -115,6 +115,18 @@
             </div>
         </div>
 
+        <div id="banner-chance-dobro" class="mx-4 mt-4 hidden" style="background:linear-gradient(135deg,#facc15,#f59e0b); border-radius:14px; padding:1rem; color:#1a1a1a;">
+            <div class="flex items-center gap-2 mb-1">
+                <span style="font-size:1.5rem;">⚡</span>
+                <h3 id="chance-dobro-titulo" class="font-black text-lg leading-tight">Chance em Dobro!</h3>
+            </div>
+            <p class="text-sm font-semibold mb-2">Compre agora e leve o DOBRO de títulos pelo mesmo preço!</p>
+            <div style="background:rgba(0,0,0,0.15); border-radius:999px; height:10px; overflow:hidden; margin-bottom:6px;">
+                <div id="chance-dobro-barra" style="height:100%; background:#1a1a1a; width:0%; transition:width 1s linear;"></div>
+            </div>
+            <p class="text-xs font-bold text-center">Acaba em <span id="chance-dobro-contagem">--:--:--</span></p>
+        </div>
+
         <section class="mt-4">
             <p class="text-center text-gray-300 mb-4">Quanto mais títulos, mais chances de ganhar!</p>
 
@@ -365,6 +377,31 @@
         }
 
         // Lê a config de botões (JSON novo com "popular", ou CSV antigo) e desenha até 6 botões dinâmicos
+        let chanceDobroInterval = null;
+        function iniciarChanceDobro(chance) {
+            clearInterval(chanceDobroInterval);
+            if (!chance) { $('#banner-chance-dobro').addClass('hidden'); return; }
+
+            const inicio = new Date(chance.data_inicio).getTime();
+            const fim = new Date(chance.data_fim).getTime();
+            $('#chance-dobro-titulo').text(chance.titulo || 'Chance em Dobro!');
+            $('#banner-chance-dobro').removeClass('hidden');
+
+            function atualizar() {
+                const agora = Date.now();
+                if (agora >= fim) { $('#banner-chance-dobro').addClass('hidden'); clearInterval(chanceDobroInterval); return; }
+                const progresso = Math.min(100, Math.max(0, ((agora - inicio) / (fim - inicio)) * 100));
+                $('#chance-dobro-barra').css('width', progresso + '%');
+                const restanteMs = fim - agora;
+                const h = Math.floor(restanteMs / 3600000);
+                const m = Math.floor((restanteMs % 3600000) / 60000);
+                const s = Math.floor((restanteMs % 60000) / 1000);
+                $('#chance-dobro-contagem').text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+            }
+            atualizar();
+            chanceDobroInterval = setInterval(atualizar, 1000);
+        }
+
         function renderBotoesCota(config) {
             let botoes = [];
             if (config) {
@@ -401,6 +438,7 @@
             quantidadeCotas = MIN_VISIBLE;
 
             renderBotoesCota(sorteio.botoes_rapidos);
+            iniciarChanceDobro(data.chance_dobro_ativa);
 
             if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);

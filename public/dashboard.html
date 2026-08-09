@@ -154,6 +154,7 @@
             <li><a id="nav-buscar-ganhador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('buscar-ganhador', this)"><i class="bi bi-trophy w-6 text-lg"></i> Buscar Ganhador</a></li>
             <li><a id="nav-bilhete-premiado" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('bilhete-premiado', this)"><i class="bi bi-ticket-detailed w-6 text-lg"></i> Bilhete Premiado</a></li>
             <li><a id="nav-roleta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('roleta', this)"><i class="bi bi-circle w-6 text-lg"></i> Roleta</a></li>
+            <li><a id="nav-chance-dobro" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('chance-dobro', this)"><i class="bi bi-lightning-charge w-6 text-lg"></i> Chance em Dobro</a></li>
             <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
             <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
             <li class="border-t border-gray-800 my-2"></li>
@@ -334,6 +335,29 @@
                 </div>
             </div>
         </div>
+
+        <!-- ===================== CHANCE EM DOBRO (aba própria) ===================== -->
+        <div id="page-chance-dobro" class="page-section">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 class="text-2xl font-bold">⚡ Chance em Dobro</h2>
+                <select id="select-chance-sorteio" class="input-dark text-sm" style="width:260px" onchange="selecionarSorteioChanceDobro(this.value)"><option value="">Selecione um sorteio...</option></select>
+            </div>
+            <p class="text-sm opacity-60 mb-4">Durante o período ativo, quem comprar títulos recebe o DOBRO da quantidade — mostra um banner com contagem regressiva na página do sorteio.</p>
+
+            <div id="chance-dobro-conteudo" class="hidden space-y-6">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-3">Criar novo período de Chance em Dobro</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <input id="cd-titulo" placeholder="Título (ex: Chance em Dobro de Domingo!)" class="input-dark md:col-span-2">
+                        <div><label class="text-xs text-gray-400">Início</label><input id="cd-inicio" type="datetime-local" class="input-dark mt-1"></div>
+                        <div><label class="text-xs text-gray-400">Fim</label><input id="cd-fim" type="datetime-local" class="input-dark mt-1"></div>
+                    </div>
+                    <button type="button" class="btn-primary" onclick="criarChanceDobro()">Criar</button>
+                </div>
+                <div id="lista-chance-dobro" class="space-y-3"></div>
+            </div>
+        </div>
+
 
         <!-- ===================== TOP COMPRADOR (aba própria) ===================== -->
         <div id="page-top-comprador" class="page-section">
@@ -1053,7 +1077,7 @@ function navTo(page, el) {
     if (page === 'clientes') { carregarClientes(); }
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
-    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
     if (page === 'gateway') { carregarGateway(); }
     if (page === 'marketing') { carregarMarketing(); }
     if (page === 'minha-conta') { carregarConta(); }
@@ -1071,7 +1095,7 @@ function popularSelectsSorteios() {
     const opts = '<option value="">Todos</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
     $('.select-sorteio-dash').html(opts);
     const optsEscolha = '<option value="">Selecione um sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
-    $('#select-bilhete-sorteio, #select-roleta-sorteio').html(optsEscolha);
+    $('#select-bilhete-sorteio, #select-roleta-sorteio, #select-chance-sorteio').html(optsEscolha);
 }
 
 // ---------------- PERÍODO (presets + datas customizadas) ----------------
@@ -1540,6 +1564,57 @@ function addRoletaTier() {
     });
 }
 function removerRoletaTier(id) { api('DELETE', `/api/admin/roleta-tiers/${id}`).then(() => carregarRoletaTiers(SORTEIO_ROLETA_ID)); }
+
+// ==================== CHANCE EM DOBRO (página própria) ====================
+let SORTEIO_CHANCE_ID = null;
+function selecionarSorteioChanceDobro(id) {
+    SORTEIO_CHANCE_ID = id || null;
+    $('#chance-dobro-conteudo').toggleClass('hidden', !id);
+    if (id) carregarChanceDobro(id);
+}
+function carregarChanceDobro(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/chance-dobro`).then(d => {
+        const lista = d.lista || [];
+        const agora = new Date();
+        $('#lista-chance-dobro').html(lista.map(c => {
+            const inicio = new Date(c.data_inicio), fim = new Date(c.data_fim);
+            const status = !c.ativo ? '<span class="badge badge-outro">Desativado</span>' : (agora < inicio ? '<span class="badge badge-ads">Agendado</span>' : (agora > fim ? '<span class="badge badge-outro">Encerrado</span>' : '<span class="badge badge-organico">Ativo agora</span>'));
+            return `
+                <div class="funil-card">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1"><h4 class="font-semibold text-white">${c.titulo}</h4> ${status}</div>
+                            <p class="text-xs text-gray-500">De ${inicio.toLocaleString('pt-BR')} até ${fim.toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div class="flex gap-2 flex-shrink-0">
+                            <label class="toggle-switch"><input type="checkbox" ${c.ativo ? 'checked' : ''} onchange="toggleChanceDobro('${c.id}', this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <button class="text-red-400 hover:text-red-300" onclick="removerChanceDobro('${c.id}')"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('') || '<p class="opacity-60 text-sm">Nenhum período criado ainda.</p>');
+    });
+}
+function criarChanceDobro() {
+    const titulo = $('#cd-titulo').val();
+    const data_inicio = $('#cd-inicio').val();
+    const data_fim = $('#cd-fim').val();
+    if (!SORTEIO_CHANCE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
+    if (!data_inicio || !data_fim) return notificar('Preencha o início e o fim.', 'erro');
+    if (new Date(data_fim) <= new Date(data_inicio)) return notificar('O fim precisa ser depois do início.', 'erro');
+    api('POST', `/api/admin/sorteios/${SORTEIO_CHANCE_ID}/chance-dobro`, { titulo, data_inicio, data_fim }).then(() => {
+        $('#cd-titulo, #cd-inicio, #cd-fim').val('');
+        carregarChanceDobro(SORTEIO_CHANCE_ID);
+        notificar('Chance em Dobro criada!', 'sucesso');
+    }).catch(err => notificar(err.error || 'Erro ao criar', 'erro'));
+}
+function toggleChanceDobro(id, ativo) {
+    api('PUT', `/api/admin/chance-dobro/${id}`, { ativo }).then(() => carregarChanceDobro(SORTEIO_CHANCE_ID));
+}
+function removerChanceDobro(id) {
+    confirmar('Excluir período', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/chance-dobro/${id}`).then(() => carregarChanceDobro(SORTEIO_CHANCE_ID)); });
+}
 
 // ---- FUNIS (nova funcionalidade) ----
 function toggleBonusFields() {

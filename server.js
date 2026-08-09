@@ -415,7 +415,11 @@ async function getSorteioPublicData(slug, funilSlug) {
     tiktok_pixel_id: sorteio.pixel_tiktok_override || meta.pixel_tiktok || '',
     gtm_id: sorteio.pixel_gtm_override || meta.pixel_gtm || ''
   };
-  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels };
+  const nowISO2 = new Date().toISOString();
+  const { data: chancesDobroTodas } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true);
+  const chance_dobro_ativa = (chancesDobroTodas || []).find(c => c.data_inicio <= nowISO2 && c.data_fim >= nowISO2) || null;
+
+  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa };
 }
 
 app.get('/api/public/sorteio/:slug', async (req, res) => {
@@ -681,6 +685,14 @@ async function gerarCotasUnicas(pedido) {
       const { data: funil } = await supabase.from('funis').select('bonus_cotas_extra').eq('id', pedido.funil_id).maybeSingle();
       bonusCotas = Number(funil?.bonus_cotas_extra || 0);
     }
+
+    // Chance em Dobro: se o pedido foi feito dentro de uma janela ativa, dobra a quantidade de cotas
+    try {
+      const { data: chancesDobro } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true);
+      const criadoEm = pedido.created_at || new Date().toISOString();
+      const teveChanceDobro = (chancesDobro || []).some(c => criadoEm >= c.data_inicio && criadoEm <= c.data_fim);
+      if (teveChanceDobro) bonusCotas += Number(pedido.quantidade_cotas || 0);
+    } catch (err) { console.error('Erro ao checar chance em dobro', err); }
 
     const totalCotas = Number(sorteio.total_cotas) || 1000000;
     const nowISO = new Date().toISOString();
@@ -1179,6 +1191,41 @@ app.get('/api/admin/sorteios/:id/roleta-tiers', ensureAdminAuth, async (req, res
     return ok(res, { tiers: data || [] });
   } catch (e) { return fail(res); }
 });
+
+// ==================================================================
+// ⚡ CHANCE EM DOBRO — dobra as cotas de quem comprar numa janela de tempo
+// ==================================================================
+app.get('/api/admin/sorteios/:id/chance-dobro', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', req.params.id).order('data_inicio', { ascending: false });
+    return ok(res, { lista: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/sorteios/:id/chance-dobro', ensureAdminAuth, async (req, res) => {
+  try {
+    const { titulo, data_inicio, data_fim, ativo } = req.body || {};
+    if (!data_inicio || !data_fim) return fail(res, 'Preencha o início e o fim do período', 400);
+    const { data, error } = await supabase.from('chance_dobro').insert({
+      sorteio_id: req.params.id, titulo: titulo || 'Chance em Dobro',
+      data_inicio: new Date(data_inicio).toISOString(), data_fim: new Date(data_fim).toISOString(),
+      ativo: ativo !== false
+    }).select().single();
+    if (error) return fail(res, error.message);
+    return ok(res, { chance: data });
+  } catch (e) { return fail(res); }
+});
+app.put('/api/admin/chance-dobro/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { ativo } = req.body || {};
+    const { error } = await supabase.from('chance_dobro').update({ ativo: !!ativo }).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/chance-dobro/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('chance_dobro').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
+});
+
 // Liga/desliga a roleta pra um sorteio sem precisar reenviar o formulário inteiro
 app.post('/api/admin/sorteios/:id/roleta-ativada', ensureAdminAuth, async (req, res) => {
   try {
