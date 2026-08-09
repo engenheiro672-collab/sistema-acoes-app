@@ -687,13 +687,24 @@ async function gerarCotasUnicas(pedido) {
 
     const [bloqRes, agRes, vendRes] = await Promise.all([
       supabase.from('cotas_bloqueadas').select('numero_cota').eq('sorteio_id', sorteio_id),
-      supabase.from('cotas_agendadas').select('numero_cota, release_at, liberar_em').eq('sorteio_id', sorteio_id),
+      supabase.from('cotas_agendadas').select('numero_cota, release_at, liberar_em, condicao_tipo, condicao_quantidade').eq('sorteio_id', sorteio_id),
       supabase.from('cotas').select('numero_cota').eq('sorteio_id', sorteio_id)
     ]);
 
+    const qtdPedidoAtual = Number(pedido.quantidade_cotas || 0);
+    const agendadasAindaBloqueadas = (agRes.data || []).filter(r => {
+      const dataLiberacao = r.release_at || r.liberar_em;
+      const aindaNaoChegouADat = dataLiberacao && dataLiberacao > nowISO;
+      if (aindaNaoChegouADat) return true; // data ainda não chegou — continua bloqueada pra todo mundo
+      // Data já passou: se tiver condição de quantidade, só libera pra quem se encaixa nela
+      if (r.condicao_tipo === 'acima' && !(qtdPedidoAtual > Number(r.condicao_quantidade))) return true;
+      if (r.condicao_tipo === 'abaixo' && !(qtdPedidoAtual < Number(r.condicao_quantidade))) return true;
+      return false; // liberada de vez pra esse pedido
+    });
+
     const invalidos = new Set([
       ...(bloqRes.data || []).map(r => r.numero_cota),
-      ...((agRes.data || []).filter(r => (r.release_at || r.liberar_em) && (r.release_at || r.liberar_em) > nowISO).map(r => r.numero_cota)),
+      ...agendadasAindaBloqueadas.map(r => r.numero_cota),
       ...(vendRes.data || []).map(r => r.numero_cota)
     ]);
 
@@ -1168,6 +1179,16 @@ app.get('/api/admin/sorteios/:id/roleta-tiers', ensureAdminAuth, async (req, res
     return ok(res, { tiers: data || [] });
   } catch (e) { return fail(res); }
 });
+// Liga/desliga a roleta pra um sorteio sem precisar reenviar o formulário inteiro
+app.post('/api/admin/sorteios/:id/roleta-ativada', ensureAdminAuth, async (req, res) => {
+  try {
+    const { roleta_ativada } = req.body || {};
+    const { error } = await supabase.from('sorteios').update({ roleta_ativada: !!roleta_ativada }).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+
 app.post('/api/admin/sorteios/:id/roleta-tiers', ensureAdminAuth, async (req, res) => {
   try {
     const { minimo_cotas, quantidade_giros } = req.body || {};
@@ -1735,9 +1756,14 @@ app.get('/api/admin/sorteios/:id/agendamentos', ensureAdminAuth, async (req, res
 });
 app.post('/api/admin/sorteios/:id/agendamentos', ensureAdminAuth, async (req, res) => {
   try {
-    const { numero_cota, liberar_em } = req.body || {};
+    const { numero_cota, liberar_em, condicao_tipo, condicao_quantidade } = req.body || {};
     if (!numero_cota || !liberar_em) return fail(res, 'Cota e data são obrigatórios', 400);
-    const { data, error } = await supabase.from('cotas_agendadas').insert({ sorteio_id: req.params.id, numero_cota, liberar_em: new Date(liberar_em).toISOString() }).select();
+    const payload = { sorteio_id: req.params.id, numero_cota, liberar_em: new Date(liberar_em).toISOString() };
+    if (condicao_tipo === 'acima' || condicao_tipo === 'abaixo') {
+      payload.condicao_tipo = condicao_tipo;
+      payload.condicao_quantidade = parseInt(condicao_quantidade) || null;
+    }
+    const { data, error } = await supabase.from('cotas_agendadas').insert(payload).select();
     if (error) return fail(res, error.message);
     return ok(res, data);
   } catch (e) { return fail(res); }

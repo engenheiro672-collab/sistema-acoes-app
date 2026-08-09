@@ -17,7 +17,8 @@
         .btn-meus-titulos { color: #fff; font-weight: 600; }
         .price-bar { color: #a0aec0; }
         .price-bar strong { color: #f7b731; font-size: 1.125rem; margin-left: 8px; }
-        .cota-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; }
+        .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; }
+        @media (max-width: 420px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; } .cota-num { font-size: 1.5rem !important; } }
         .cota-btn { background-color: #000; border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: 2px solid transparent; position: relative; }
         .cota-btn:hover { background-color: #111; }
         .cota-btn.popular { background-color: #D9F7E6; border: 2px solid #16A34A; }
@@ -117,25 +118,7 @@
         <section class="mt-4">
             <p class="text-center text-gray-300 mb-4">Quanto mais títulos, mais chances de ganhar!</p>
 
-            <div class="cota-grid">
-                <div class="cota-btn btn-add-cota" data-qtd="500">
-                    <div class="cota-num">+500</div>
-                    <div class="cota-label">SELECIONAR</div>
-                </div>
-                <div class="cota-btn popular btn-add-cota" data-qtd="1000">
-                    <span class="cota-badge">Mais popular</span>
-                    <div class="cota-num text-[#15803D]">+1000</div>
-                    <div class="cota-label text-[#15803D]">SELECIONAR</div>
-                </div>
-                <div class="cota-btn btn-add-cota" data-qtd="2000">
-                    <div class="cota-num">+2000</div>
-                    <div class="cota-label">SELECIONAR</div>
-                </div>
-                <div class="cota-btn btn-add-cota" data-qtd="5000">
-                    <div class="cota-num">+5000</div>
-                    <div class="cota-label">SELECIONAR</div>
-                </div>
-            </div>
+            <div class="cota-grid" id="cota-grid"></div>
 
             <div class="purchase-grid">
                 <div class="manual-selector">
@@ -381,6 +364,29 @@
             desenhar();
         }
 
+        // Lê a config de botões (JSON novo com "popular", ou CSV antigo) e desenha até 6 botões dinâmicos
+        function renderBotoesCota(config) {
+            let botoes = [];
+            if (config) {
+                try {
+                    const parsed = JSON.parse(config);
+                    if (Array.isArray(parsed) && parsed.length) botoes = parsed;
+                } catch (e) {
+                    const valores = String(config).split(',').map(x => parseInt(x)).filter(Boolean);
+                    botoes = valores.map((v, i) => ({ valor: v, popular: i === 1 || (valores.length === 1 && i === 0) }));
+                }
+            }
+            if (botoes.length === 0) botoes = [{ valor: 500 }, { valor: 1000, popular: true }, { valor: 2000 }, { valor: 5000 }];
+
+            $('#cota-grid').html(botoes.slice(0, 6).map(b => `
+                <div class="cota-btn btn-add-cota ${b.popular ? 'popular' : ''}" data-qtd="${b.valor}">
+                    ${b.popular ? '<span class="cota-badge">Mais popular</span>' : ''}
+                    <div class="cota-num ${b.popular ? 'text-[#15803D]' : ''}">+${b.valor}</div>
+                    <div class="cota-label ${b.popular ? 'text-[#15803D]' : ''}">SELECIONAR</div>
+                </div>
+            `).join(''));
+        }
+
         function renderPagina(data) {
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
@@ -393,6 +399,8 @@
             MIN_VISIBLE = Number(sorteio.minimo_visivel_seletor || 30);
             TOTAL = Number(sorteio.total_cotas || 100);
             quantidadeCotas = MIN_VISIBLE;
+
+            renderBotoesCota(sorteio.botoes_rapidos);
 
             if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);
@@ -491,10 +499,10 @@
             $('#phone-input-modal').mask(SPMaskBehavior, spOptions);
             $('#checkout-cpf').mask('000.000.000-00');
 
-            $('.btn-add-cota').on('click', function() {
+            $('#cota-grid').on('click', '.btn-add-cota', function() {
                 const qtd = $(this).data('qtd');
                 if (qtd !== undefined) {
-                    quantidadeCotas = qtd;
+                    quantidadeCotas = Math.min(MAX_QTY, quantidadeCotas + Number(qtd));
                     atualizarPreco();
                     $('.btn-add-cota').removeClass('selecionado');
                     $(this).addClass('selecionado');

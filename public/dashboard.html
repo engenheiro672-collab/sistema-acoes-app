@@ -227,30 +227,112 @@
         <div id="page-bilhete-premiado" class="page-section">
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h2 class="text-2xl font-bold">🎫 Bilhete Premiado</h2>
-                <div class="flex gap-2">
-                    <select id="select-bilhete-sorteio" class="input-dark text-sm" style="width:220px"><option value="">Selecione um sorteio...</option></select>
-                    <input id="input-buscar-bilhete" class="input-dark text-sm" placeholder="Buscar número...">
+                <select id="select-bilhete-sorteio" class="input-dark text-sm" style="width:260px" onchange="selecionarSorteioBilhete(this.value)"><option value="">Selecione um sorteio...</option></select>
+            </div>
+
+            <div id="bilhete-conteudo" class="hidden space-y-6">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-2">Adicionar bilhete premiado</h4>
+                    <p class="text-xs text-gray-500 mb-2">Escolha um número de cota e o título do prêmio. Quando essa cota for gerada pra algum cliente, ela aparece como premiada.</p>
+                    <div class="flex gap-2 mb-2 flex-wrap items-center">
+                        <input id="inp-premio-cota" placeholder="Cota" class="input-dark" style="max-width:140px">
+                        <input id="inp-premio-titulo" placeholder="Título do prêmio" class="input-dark flex-1" style="min-width:200px">
+                        <label class="flex items-center gap-2 text-xs text-gray-300 whitespace-nowrap"><input type="checkbox" id="inp-premio-ativo" checked> Ativo</label>
+                        <button type="button" class="btn-primary" onclick="addPremio()">Adicionar</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-semibold text-white">Bilhetes configurados</h4>
+                        <input id="input-buscar-bilhete" class="input-dark text-sm" placeholder="Buscar número..." style="max-width:180px">
+                    </div>
+                    <div class="flex gap-4 text-xs opacity-70 mb-2">
+                        <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Já saiu (clique pra chamar o ganhador no WhatsApp)</span>
+                        <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Ainda não saiu</span>
+                    </div>
+                    <div id="grid-bilhetes-premiados" class="bg-darkCard rounded-xl border border-gray-800 p-4 flex flex-wrap gap-2 min-h-[80px]"></div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">🔒 Bloquear cota</h4>
+                    <p class="text-xs text-gray-500 mb-2">Bloqueio permanente — a cota nunca sai até você remover manualmente.</p>
+                    <div class="flex gap-2 mb-2">
+                        <input id="inp-bloqueio" placeholder="Cota" class="input-dark" style="max-width:140px">
+                        <button type="button" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg" onclick="addBloqueio()">Bloquear</button>
+                    </div>
+                    <div id="lista-bloqueios" class="max-h-40 overflow-y-auto space-y-2"></div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">🔓 Liberar cota numa data</h4>
+                    <p class="text-xs text-gray-500 mb-3">A cota fica bloqueada até a data/hora escolhida. Você também pode condicionar: só libera pra quem comprar acima ou abaixo de X cotas naquele pedido.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                        <input id="inp-lib-cota" placeholder="Número da cota" class="input-dark">
+                        <input id="inp-lib-data" type="datetime-local" class="input-dark" title="Data/hora a partir da qual libera">
+                        <select id="inp-lib-condicao" class="input-dark">
+                            <option value="">Sem condição de quantidade</option>
+                            <option value="acima">Só libera pra quem comprar ACIMA de X cotas</option>
+                            <option value="abaixo">Só libera pra quem comprar ABAIXO de X cotas</option>
+                        </select>
+                        <input id="inp-lib-quantidade" type="number" placeholder="Quantidade X (se marcou condição)" class="input-dark">
+                    </div>
+                    <button type="button" class="btn-primary" onclick="addAgendamento()">Agendar Liberação</button>
+                    <div id="lista-agendamentos" class="max-h-40 overflow-y-auto space-y-2 mt-3"></div>
                 </div>
             </div>
-            <div class="flex gap-4 text-xs opacity-70 mb-4">
-                <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Já saiu (clique pra chamar o ganhador no WhatsApp)</span>
-                <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Ainda não saiu</span>
-            </div>
-            <div id="grid-bilhetes-premiados" class="bg-darkCard rounded-xl border border-gray-800 p-4 flex flex-wrap gap-2 min-h-[120px]"><p class="opacity-60 text-sm">Selecione um sorteio acima.</p></div>
         </div>
+
 
         <!-- ===================== ROLETA (aba própria) ===================== -->
         <div id="page-roleta" class="page-section">
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h2 class="text-2xl font-bold">🎡 Roleta Premiada</h2>
-                <select id="select-roleta-sorteio" class="input-dark text-sm" style="width:220px"><option value="">Selecione um sorteio...</option></select>
+                <select id="select-roleta-sorteio" class="input-dark text-sm" style="width:260px" onchange="selecionarSorteioRoleta(this.value)"><option value="">Selecione um sorteio...</option></select>
             </div>
             <p class="text-sm opacity-60 mb-4">A roleta não expõe o número da cota — só o título, o valor do prêmio e (quando já saiu) o ganhador.</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="metric-card"><i class="bi bi-circle metric-icon text-pink-400"></i><p class="text-sm opacity-60">Roletas disponíveis</p><p class="text-2xl font-bold text-pink-400" id="roleta-disponiveis">0</p></div>
-                <div class="metric-card"><i class="bi bi-trophy metric-icon text-green-400"></i><p class="text-sm opacity-60">Já sorteadas</p><p class="text-2xl font-bold text-green-400" id="roleta-sorteadas">0</p></div>
+
+            <div id="roleta-conteudo" class="hidden space-y-6">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-semibold text-white">Roleta ativada pra este sorteio?</h4>
+                        <p class="text-xs text-gray-500">Enquanto desligada, ninguém ganha giros mesmo comprando.</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="inp-roleta-ativada-page" onchange="salvarRoletaAtivada()"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-2">Faixas: título → giros ganhos</h4>
+                    <div class="flex gap-2 mb-3">
+                        <input id="tier-minimo" type="number" placeholder="A cada X títulos" class="input-dark">
+                        <input id="tier-giros" type="number" placeholder="Recebe Y giros" class="input-dark">
+                        <button type="button" class="btn-primary" onclick="addRoletaTier()">Add</button>
+                    </div>
+                    <div id="lista-roleta-tiers-admin" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-2">Prêmios da roleta (cotas escondidas)</h4>
+                    <p class="text-xs text-gray-500 mb-2">Escolha um número de cota válido pra esse sorteio. Fica escondido do cliente até a cota sair.</p>
+                    <div class="flex gap-2 mb-2 flex-wrap">
+                        <input id="inp-roleta-cota" placeholder="Número da cota" class="input-dark" style="max-width:140px">
+                        <input id="inp-roleta-titulo" placeholder="Título do prêmio" class="input-dark flex-1" style="min-width:160px">
+                        <input id="inp-roleta-valor" placeholder="Valor (ex: R$120 ou o DOBRO)" class="input-dark" style="max-width:200px">
+                        <label class="flex items-center gap-2 text-xs text-gray-300 whitespace-nowrap"><input type="checkbox" id="inp-roleta-ativo-item" checked> Ativo</label>
+                        <button type="button" class="btn-primary" onclick="addRoleta()">Add</button>
+                    </div>
+                    <div id="lista-roleta" class="space-y-2"></div>
+                </div>
+
+                <div>
+                    <h4 class="font-semibold text-white mb-2">Resultados</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="metric-card"><i class="bi bi-circle metric-icon text-pink-400"></i><p class="text-sm opacity-60">Roletas disponíveis</p><p class="text-2xl font-bold text-pink-400" id="roleta-disponiveis">0</p></div>
+                        <div class="metric-card"><i class="bi bi-trophy metric-icon text-green-400"></i><p class="text-sm opacity-60">Já sorteadas</p><p class="text-2xl font-bold text-green-400" id="roleta-sorteadas">0</p></div>
+                    </div>
+                    <div id="lista-roleta-resultados" class="space-y-3"></div>
+                </div>
             </div>
-            <div id="lista-roleta-resultados" class="space-y-3"><p class="opacity-60 text-sm">Selecione um sorteio acima.</p></div>
         </div>
 
         <!-- ===================== TOP COMPRADOR (aba própria) ===================== -->
@@ -351,9 +433,6 @@
             <div class="flex gap-1 border-b border-gray-800 mb-4 flex-wrap">
                 <div class="tab-btn active" data-tab="geral" onclick="mudarTab('geral', this)">Geral</div>
                 <div class="tab-btn" data-tab="imagens" onclick="mudarTab('imagens', this)">Imagens</div>
-                <div class="tab-btn" data-tab="premios" onclick="mudarTab('premios', this)">🏆 Bilhete Premiado</div>
-                <div class="tab-btn" data-tab="funis" onclick="mudarTab('funis', this)">🧩 Funis</div>
-                <div class="tab-btn" data-tab="links" onclick="mudarTab('links', this)">🔗 Links</div>
                 <div class="tab-btn" data-tab="config" onclick="mudarTab('config', this)">Config</div>
             </div>
 
@@ -449,155 +528,12 @@
                     <div id="preview-extra-imgs" class="flex gap-2 flex-wrap"></div>
                 </div>
 
-                <div id="tab-premios" class="tab-content space-y-6">
-                    <div id="aviso-premios" class="p-3 bg-yellow-900/30 text-yellow-500 border border-yellow-700 rounded mb-2 text-sm">Salve o sorteio na aba "Geral" antes de configurar bilhetes premiados.</div>
-
-                    <div>
-                        <h4 class="font-semibold text-white mb-2">🏆 Bilhete Premiado</h4>
-                        <p class="text-xs text-gray-500 mb-2">Adicione um número de cota e o título do prêmio. Quando essa cota for gerada pra algum cliente, ela aparece como premiada.</p>
-                        <div id="box-add-premio" class="flex gap-2 mb-4 opacity-50 pointer-events-none items-center">
-                            <input id="inp-premio-cota" placeholder="Cota" class="input-dark w-1/3">
-                            <input id="inp-premio-titulo" placeholder="Título do prêmio" class="input-dark w-2/3">
-                            <label class="flex items-center gap-2 text-xs text-gray-300 whitespace-nowrap"><input type="checkbox" id="inp-premio-ativo" checked> Ativo</label>
-                            <button type="button" id="btn-add-premio" class="btn-primary" onclick="addPremio()">Add</button>
-                        </div>
-                        <div id="lista-premios" class="space-y-2"></div>
-                    </div>
-
-                    <div class="border-t border-gray-800 pt-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <h4 class="font-semibold text-white">🎡 Roleta Instantânea</h4>
-                            <label class="flex items-center gap-3 cursor-pointer select-none">
-                                <span class="toggle-switch"><input type="checkbox" name="roleta_ativada" id="inp-roleta-ativada" onchange="toggleRoletaBox()"><span class="toggle-track"><span class="toggle-thumb"></span></span></span>
-                                <span class="text-sm text-gray-300">Ativar</span>
-                            </label>
-                        </div>
-                        <div id="box-roleta-config" class="hidden space-y-4">
-                            <p class="text-xs text-gray-500">Funciona igual ao bilhete premiado: você escolhe um número de cota (escondido do cliente) e associa um prêmio a ele. Quando essa cota específica for vendida, quem comprou ganha aquele prêmio na roleta — mas só se tiver comprado o suficiente pra ganhar pelo menos 1 giro (veja as faixas abaixo). Se a cota premiada cair pra alguém sem giro disponível, o sistema realoca o prêmio pra outra cota ainda não vendida, sem perder o prêmio.</p>
-
-                            <div class="border-t border-gray-800 pt-3">
-                                <h5 class="text-sm font-semibold text-gray-300 mb-2">Faixas: título → giros ganhos</h5>
-                                <div id="box-add-roleta-tier" class="flex gap-2 mb-3 opacity-50 pointer-events-none">
-                                    <input id="tier-minimo" type="number" placeholder="A cada X títulos" class="input-dark">
-                                    <input id="tier-giros" type="number" placeholder="Recebe Y giros" class="input-dark">
-                                    <button type="button" class="btn-primary" onclick="addRoletaTier()">Add</button>
-                                </div>
-                                <div id="lista-roleta-tiers-admin" class="space-y-2"></div>
-                            </div>
-
-                            <div class="border-t border-gray-800 pt-3">
-                                <h5 class="text-sm font-semibold text-gray-300 mb-2">Prêmios da roleta (cotas escondidas)</h5>
-                                <p class="text-xs text-gray-500 mb-2">Escolha um número de cota válido pra esse sorteio (mesma faixa de dígitos das cotas normais). Fica escondido do cliente até a cota sair.</p>
-                                <div id="box-add-roleta" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
-                                    <input id="inp-roleta-cota" placeholder="Número da cota" class="input-dark w-1/4">
-                                    <input id="inp-roleta-titulo" placeholder="Título do prêmio" class="input-dark w-1/2">
-                                    <input id="inp-roleta-valor" placeholder="Valor (ex: R$120 ou o DOBRO)" class="input-dark w-1/4">
-                                    <button type="button" class="btn-primary" onclick="addRoleta()">Add</button>
-                                </div>
-                                <div id="lista-roleta" class="space-y-2"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-gray-800 pt-4">
-                        <h4 class="font-semibold text-white mb-2">🔒 Bloquear / Liberar cota</h4>
-                        <p class="text-xs text-gray-500 mb-2">Sem data = bloqueio permanente (só sai se você remover). Com data = fica bloqueada até aquele dia/hora e libera sozinha.</p>
-                        <div id="box-bloqueio" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
-                            <input id="inp-bloqueio" placeholder="Cota" class="input-dark">
-                            <input id="inp-bloqueio-data" type="datetime-local" class="input-dark" title="Data/hora para liberar automaticamente (opcional)">
-                            <button type="button" id="btn-bloquear" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg" onclick="addBloqueio()">Bloquear</button>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-1">Bloqueios permanentes:</p>
-                        <div id="lista-bloqueios" class="max-h-40 overflow-y-auto space-y-2 mb-3"></div>
-                        <p class="text-xs text-gray-500 mb-1">Agendados (liberam sozinhos):</p>
-                        <div id="lista-agendamentos" class="max-h-40 overflow-y-auto space-y-2"></div>
-                    </div>
-                </div>
-
-                <div id="tab-links" class="tab-content space-y-4">
-                    <div id="aviso-links" class="p-3 bg-yellow-900/30 text-yellow-500 border border-yellow-700 rounded mb-2 text-sm">Salve o sorteio antes de criar links.</div>
-                    <p class="text-gray-400 text-sm">Crie um link por canal (WhatsApp, Instagram, Facebook Ads...) pra saber exatamente de onde vêm suas vendas. Escolha também qual funil esse link deve abrir.</p>
-                    <div id="box-add-link" class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4 opacity-50 pointer-events-none">
-                        <input id="link-nome" placeholder="Nome (ex: Grupo do WhatsApp)" class="input-dark md:col-span-2">
-                        <select id="link-canal" class="input-dark">
-                            <option value="whatsapp">WhatsApp</option>
-                            <option value="instagram_organico">Instagram Orgânico</option>
-                            <option value="facebook_organico">Facebook Orgânico</option>
-                            <option value="facebook_ads">Facebook Ads</option>
-                            <option value="google_ads">Google Ads</option>
-                            <option value="tiktok_ads">TikTok Ads</option>
-                            <option value="outro">Outro</option>
-                        </select>
-                        <select id="link-funil" class="input-dark"><option value="">Sem funil (padrão)</option></select>
-                        <button type="button" class="btn-primary md:col-span-4" onclick="criarLink()">Criar Link</button>
-                    </div>
-                    <div id="lista-links-sorteio" class="space-y-2"></div>
-                </div>
-
-                <!-- ===================== ABA FUNIS (NOVA) ===================== -->
-                <div id="tab-funis" class="tab-content space-y-4">
-                    <div id="aviso-funis" class="p-3 bg-yellow-900/30 text-yellow-500 border border-yellow-700 rounded mb-2 text-sm">Salve o sorteio na aba "Geral" antes de criar funis.</div>
-
-                    <p class="text-gray-400 text-sm">
-                        Crie vários funis/sites diferentes para este mesmo sorteio — por exemplo, um para tráfego pago (Ads) e outro para tráfego orgânico, cada um com sua própria tela de pós-pagamento.
-                    </p>
-
-                    <div id="box-add-funil" class="bg-darkCard border border-gray-800 rounded-xl p-4 opacity-50 pointer-events-none">
-                        <h4 class="font-semibold text-white mb-3">Criar novo funil</h4>
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-                            <div><label class="text-xs text-gray-400">Nome do funil</label><input id="funil-nome" class="input-dark mt-1" placeholder="Ex: Ads - Campanha A"></div>
-                            <div><label class="text-xs text-gray-400">Origem</label>
-                                <select id="funil-origem" class="input-dark mt-1">
-                                    <option value="ads">Ads (tráfego pago)</option>
-                                    <option value="organico">Orgânico</option>
-                                    <option value="outro">Outro</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-400">Arquivo HTML deste funil (página inicial)</label>
-                                <select id="funil-arquivo-html" class="input-dark mt-1">
-                                    <option value="sorteio.html">sorteio.html (padrão)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-400">Arquivo HTML do checkout (pós-clique em comprar)</label>
-                                <select id="funil-arquivo-checkout" class="input-dark mt-1">
-                                    <option value="checkout.html">checkout.html (padrão)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-400">Grupo de teste A/B (opcional)</label>
-                                <input id="funil-grupo-teste" class="input-dark mt-1" placeholder="Ex: teste-headline">
-                            </div>
-                        </div>
-                        <div class="mb-3" id="funil-peso-box" style="display:none;">
-                            <label class="text-xs text-gray-400">% do tráfego para este funil dentro do grupo de teste</label>
-                            <input id="funil-peso" type="number" min="1" max="100" value="50" class="input-dark mt-1">
-                        </div>
-                        <div class="mb-3">
-                            <label class="text-xs text-gray-400">Pós-pagamento</label>
-                            <select id="funil-pos-tipo" class="input-dark mt-1" onchange="toggleBonusFields()">
-                                <option value="padrao">Padrão (mostra as cotas normalmente)</option>
-                                <option value="bonus">Bônus / Compra premiada (mensagem + cotas extras)</option>
-                            </select>
-                        </div>
-                        <div id="funil-bonus-fields" class="hidden space-y-3 mb-3 border-t border-gray-800 pt-3">
-                            <div><label class="text-xs text-gray-400">Título da tela de bônus</label><input id="funil-bonus-titulo" class="input-dark mt-1" placeholder="Ex: Sua compra foi premiada! 🎉"></div>
-                            <div><label class="text-xs text-gray-400">Mensagem</label><textarea id="funil-bonus-mensagem" class="input-dark mt-1" rows="2" placeholder="Ex: Você ganhou cotas grátis por ter comprado agora!"></textarea></div>
-                            <div><label class="text-xs text-gray-400">Cotas grátis de bônus</label><input id="funil-bonus-cotas" type="number" min="0" class="input-dark mt-1" placeholder="Ex: 5"></div>
-                        </div>
-                        <button type="button" class="btn-primary" onclick="criarFunil()">Criar Funil</button>
-                    </div>
-
-                    <div id="lista-funis" class="space-y-3 mt-4"></div>
-                    <p class="text-xs text-gray-500 mt-2">💡 Pra testar A/B: crie 2 funis com o mesmo "Grupo de teste" e defina o % de tráfego de cada. Use o link <code class="text-purple-300">/sorteio/&lt;slug&gt;/teste/&lt;grupo&gt;</code> na sua campanha — o sistema distribui os visitantes automaticamente.</p>
-                </div>
-
                 <div id="tab-config" class="tab-content space-y-6">
                     <div>
-                        <label class="text-sm text-gray-400">Botões rápidos de cota</label>
+                        <label class="text-sm text-gray-400">Botões rápidos de cota (até 6 — ficam 3 em cima, 3 embaixo no site)</label>
                         <input type="hidden" name="botoes_rapidos" id="inp-botoes">
                         <div id="chips-botoes" class="flex flex-wrap gap-2 mt-2 mb-2"></div>
+                        <p class="text-xs text-gray-500 mb-2">Clique na estrela ⭐ de um botão pra marcar ele como "Mais popular" no site.</p>
                         <div class="flex gap-2">
                             <input id="novo-botao-input" type="number" class="input-dark" placeholder="Ex: 1000" style="max-width:160px">
                             <button type="button" class="btn-primary" onclick="adicionarChipBotao()">+ Adicionar botão</button>
@@ -716,19 +652,111 @@
 
         <!-- ===================== COMPARATIVO DE LINKS ===================== -->
         <div id="page-links" class="page-section">
-            <h2 class="text-2xl font-bold text-white mb-2">Comparativo de Links</h2>
-            <p class="text-gray-400 text-sm mb-6">Compare o desempenho de todos os links (manuais e detectados automaticamente por Ads/Orgânico) de todos os sorteios, lado a lado.</p>
-            <div class="flex gap-3 mb-4">
-                <select id="filtro-links-sorteio" class="input-dark max-w-xs"><option value="todos">Todos os sorteios</option></select>
-                <button class="btn-primary" onclick="carregarComparativoLinks()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+            <h2 class="text-2xl font-bold text-white mb-2">Links & Funis</h2>
+            <p class="text-gray-400 text-sm mb-4">Crie links e funis personalizados pra cada sorteio, e compare o desempenho de todos aqui.</p>
+
+            <div class="flex gap-1 border-b border-gray-800 mb-4 flex-wrap">
+                <div class="tab-btn active" data-linktab="comparativo" onclick="mudarLinkTab('comparativo', this)">📊 Comparativo</div>
+                <div class="tab-btn" data-linktab="criar-link" onclick="mudarLinkTab('criar-link', this)">🔗 Criar Link</div>
+                <div class="tab-btn" data-linktab="criar-funil" onclick="mudarLinkTab('criar-funil', this)">🧩 Criar Funil</div>
             </div>
-            <div class="bg-darkCard rounded-xl border border-gray-800 overflow-x-auto">
-                <table class="w-full text-sm table-clean">
-                    <thead><tr class="text-left border-b border-gray-800">
-                        <th class="p-3">Link</th><th class="p-3">Sorteio</th><th class="p-3">Canal</th><th class="p-3">Acessos</th><th class="p-3">Pedidos</th><th class="p-3">Faturamento</th><th class="p-3">Pendente</th><th class="p-3">Ticket Médio</th><th class="p-3">Conversão</th>
-                    </tr></thead>
-                    <tbody id="tabela-links-comparativo"><tr><td colspan="9" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
-                </table>
+
+            <div id="linktab-comparativo" class="linktab-content">
+                <div class="flex gap-3 mb-4">
+                    <select id="filtro-links-sorteio" class="input-dark max-w-xs"><option value="todos">Todos os sorteios</option></select>
+                    <button class="btn-primary" onclick="carregarComparativoLinks()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+                </div>
+                <div class="bg-darkCard rounded-xl border border-gray-800 overflow-x-auto">
+                    <table class="w-full text-sm table-clean">
+                        <thead><tr class="text-left border-b border-gray-800">
+                            <th class="p-3">Link</th><th class="p-3">Sorteio</th><th class="p-3">Canal</th>
+                            <th class="p-3 sortable-th" data-campo="cliques">Acessos <span class="sort-arrow"></span></th>
+                            <th class="p-3 sortable-th" data-campo="pedidos_pagos">Pedidos <span class="sort-arrow"></span></th>
+                            <th class="p-3 sortable-th" data-campo="faturamento">Faturamento <span class="sort-arrow"></span></th>
+                            <th class="p-3 sortable-th" data-campo="pendente">Pendente <span class="sort-arrow"></span></th>
+                            <th class="p-3 sortable-th" data-campo="ticket_medio">Ticket Médio <span class="sort-arrow"></span></th>
+                            <th class="p-3 sortable-th" data-campo="conversao">Conversão <span class="sort-arrow"></span></th>
+                        </tr></thead>
+                        <tbody id="tabela-links-comparativo"><tr><td colspan="9" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="linktab-criar-link" class="linktab-content hidden">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4 max-w-2xl">
+                    <h4 class="font-semibold text-white mb-3">Criar link personalizado</h4>
+                    <select id="link-sorteio-select" class="input-dark mb-3" onchange="onLinkSorteioChange(this.value)"><option value="">Selecione o sorteio...</option></select>
+                    <div id="box-add-link" class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2 opacity-50 pointer-events-none">
+                        <input id="link-nome" placeholder="Nome (ex: Grupo do WhatsApp)" class="input-dark md:col-span-2">
+                        <select id="link-canal" class="input-dark">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="instagram_organico">Instagram Orgânico</option>
+                            <option value="facebook_organico">Facebook Orgânico</option>
+                            <option value="facebook_ads">Facebook Ads</option>
+                            <option value="google_ads">Google Ads</option>
+                            <option value="tiktok_ads">TikTok Ads</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                        <select id="link-funil" class="input-dark"><option value="">Sem funil (padrão)</option></select>
+                    </div>
+                    <button type="button" class="btn-primary" id="btn-criar-link" style="opacity:.5; pointer-events:none;" onclick="criarLink()">Criar Link</button>
+                    <div id="lista-links-sorteio" class="space-y-2 mt-4"></div>
+                </div>
+            </div>
+
+            <div id="linktab-criar-funil" class="linktab-content hidden">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-3">Criar novo funil</h4>
+                    <select id="funil-sorteio-select" class="input-dark mb-3 max-w-md" onchange="onFunilSorteioChange(this.value)"><option value="">Selecione o sorteio...</option></select>
+                    <div id="box-add-funil" class="opacity-50 pointer-events-none">
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="text-xs text-gray-400">Nome do funil</label><input id="funil-nome" class="input-dark mt-1" placeholder="Ex: Ads - Campanha A"></div>
+                            <div><label class="text-xs text-gray-400">Origem</label>
+                                <select id="funil-origem" class="input-dark mt-1">
+                                    <option value="ads">Ads (tráfego pago)</option>
+                                    <option value="organico">Orgânico</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Arquivo HTML deste funil (página inicial)</label>
+                                <select id="funil-arquivo-html" class="input-dark mt-1">
+                                    <option value="sorteio.html">sorteio.html (padrão)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Arquivo HTML do checkout (pós-clique em comprar)</label>
+                                <select id="funil-arquivo-checkout" class="input-dark mt-1">
+                                    <option value="checkout.html">checkout.html (padrão)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Grupo de teste A/B (opcional)</label>
+                                <input id="funil-grupo-teste" class="input-dark mt-1" placeholder="Ex: teste-headline">
+                            </div>
+                        </div>
+                        <div class="mb-3" id="funil-peso-box" style="display:none;">
+                            <label class="text-xs text-gray-400">% do tráfego para este funil dentro do grupo de teste</label>
+                            <input id="funil-peso" type="number" min="1" max="100" value="50" class="input-dark mt-1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-xs text-gray-400">Pós-pagamento</label>
+                            <select id="funil-pos-tipo" class="input-dark mt-1" onchange="toggleBonusFields()">
+                                <option value="padrao">Padrão (mostra as cotas normalmente)</option>
+                                <option value="bonus">Bônus / Compra premiada (mensagem + cotas extras)</option>
+                            </select>
+                        </div>
+                        <div id="funil-bonus-fields" class="hidden space-y-3 mb-3 border-t border-gray-800 pt-3">
+                            <div><label class="text-xs text-gray-400">Título da tela de bônus</label><input id="funil-bonus-titulo" class="input-dark mt-1" placeholder="Ex: Sua compra foi premiada! 🎉"></div>
+                            <div><label class="text-xs text-gray-400">Mensagem</label><textarea id="funil-bonus-mensagem" class="input-dark mt-1" rows="2" placeholder="Ex: Você ganhou cotas grátis por ter comprado agora!"></textarea></div>
+                            <div><label class="text-xs text-gray-400">Cotas grátis de bônus</label><input id="funil-bonus-cotas" type="number" min="0" class="input-dark mt-1" placeholder="Ex: 5"></div>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="criarFunil()">Criar Funil</button>
+                    </div>
+
+                    <div id="lista-funis" class="space-y-3 mt-4"></div>
+                    <p class="text-xs text-gray-500 mt-2">💡 Pra testar A/B: crie 2 funis com o mesmo "Grupo de teste" e defina o % de tráfego de cada. Use o link <code class="text-purple-300">/sorteio/&lt;slug&gt;/teste/&lt;grupo&gt;</code> na sua campanha — o sistema distribui os visitantes automaticamente.</p>
+                </div>
             </div>
         </div>
 
@@ -938,23 +966,51 @@ function setTotalCotasValor(valor) {
     else { $('#inp-total-cotas-select').val('outro'); $('#inp-total-cotas').removeClass('hidden').val(v); }
 }
 
-// ---------------- CHIPS: BOTÕES RÁPIDOS DE COTA ----------------
-let BOTOES_RAPIDOS = [];
+// ---------------- CHIPS: BOTÕES RÁPIDOS DE COTA (até 6, com "mais popular") ----------------
+let BOTOES_RAPIDOS = []; // [{valor, popular}]
 function renderChipsBotoes() {
-    $('#chips-botoes').html(BOTOES_RAPIDOS.map((b, i) => `<span class="chip">${b} <button type="button" onclick="removerChipBotao(${i})">&times;</button></span>`).join(''));
-    $('#inp-botoes').val(BOTOES_RAPIDOS.join(','));
+    $('#chips-botoes').html(BOTOES_RAPIDOS.map((b, i) => `
+        <span class="chip ${b.popular ? 'border-yellow-400' : ''}" style="${b.popular ? 'border-color:#facc15;' : ''}">
+            <button type="button" onclick="marcarPopularBotao(${i})" title="Marcar como mais popular" style="color:${b.popular ? '#facc15' : '#6b7280'}">★</button>
+            +${b.valor}
+            <button type="button" onclick="removerChipBotao(${i})">&times;</button>
+        </span>
+    `).join('') || '<p class="text-xs text-gray-500">Nenhum botão configurado — usando padrão.</p>');
+    $('#inp-botoes').val(JSON.stringify(BOTOES_RAPIDOS));
 }
 function adicionarChipBotao() {
     const val = parseInt($('#novo-botao-input').val());
     if (!val || val <= 0) return;
-    if (!BOTOES_RAPIDOS.includes(val)) { BOTOES_RAPIDOS.push(val); BOTOES_RAPIDOS.sort((a, b) => a - b); }
+    if (BOTOES_RAPIDOS.length >= 6) return notificar('Máximo de 6 botões.', 'aviso');
+    if (BOTOES_RAPIDOS.some(b => b.valor === val)) return notificar('Esse valor já existe.', 'aviso');
+    BOTOES_RAPIDOS.push({ valor: val, popular: BOTOES_RAPIDOS.length === 0 });
+    BOTOES_RAPIDOS.sort((a, b) => a.valor - b.valor);
     $('#novo-botao-input').val('');
     renderChipsBotoes();
 }
-function removerChipBotao(i) { BOTOES_RAPIDOS.splice(i, 1); renderChipsBotoes(); }
-function setBotoesRapidos(str) {
-    BOTOES_RAPIDOS = (str || '').split(',').map(x => parseInt(x)).filter(Boolean);
+function removerChipBotao(i) {
+    const eraPopular = BOTOES_RAPIDOS[i]?.popular;
+    BOTOES_RAPIDOS.splice(i, 1);
+    if (eraPopular && BOTOES_RAPIDOS.length > 0) BOTOES_RAPIDOS[0].popular = true;
     renderChipsBotoes();
+}
+function marcarPopularBotao(i) {
+    BOTOES_RAPIDOS.forEach((b, idx) => b.popular = idx === i);
+    renderChipsBotoes();
+}
+function setBotoesRapidos(str) {
+    if (!str) { BOTOES_RAPIDOS = padraoBotoesRapidos(); renderChipsBotoes(); return; }
+    try {
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed) && parsed.length) { BOTOES_RAPIDOS = parsed; renderChipsBotoes(); return; }
+    } catch (e) { /* formato antigo (CSV) — converte */ }
+    const valores = String(str).split(',').map(x => parseInt(x)).filter(Boolean);
+    BOTOES_RAPIDOS = valores.map((v, i) => ({ valor: v, popular: i === 1 || (valores.length === 1 && i === 0) }));
+    if (BOTOES_RAPIDOS.length === 0) BOTOES_RAPIDOS = padraoBotoesRapidos();
+    renderChipsBotoes();
+}
+function padraoBotoesRapidos() {
+    return [{ valor: 500 }, { valor: 1000, popular: true }, { valor: 2000 }, { valor: 5000 }];
 }
 
 // ---------------- SESSÃO / LOGOUT ----------------
@@ -1167,63 +1223,6 @@ $('#form-buscar-top-comprador').on('submit', function(e) {
         });
 });
 
-// ---------------- BILHETE PREMIADO (aba própria) ----------------
-let BILHETES_PREMIADOS_CACHE = [];
-function renderGridBilhetes() {
-    const filtro = ($('#input-buscar-bilhete').val() || '').trim();
-    const lista = filtro ? BILHETES_PREMIADOS_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_PREMIADOS_CACHE;
-    if (lista.length === 0) { $('#grid-bilhetes-premiados').html('<p class="opacity-60 text-sm">Nenhum bilhete encontrado.</p>'); return; }
-    $('#grid-bilhetes-premiados').html(lista.map(b => {
-        const saiu = b.status === 'reivindicada';
-        const cor = saiu ? 'bg-green-600' : 'bg-red-600';
-        if (saiu && b.usuario?.telefone) {
-            const msg = encodeURIComponent(`Olá ${b.usuario.nome_completo || ''}! Você tirou o bilhete premiado nº ${b.numero_cota} (${b.premio_titulo || 'prêmio'})! 🎉 Vamos combinar a entrega?`);
-            return `<a href="https://wa.me/${b.usuario.telefone}?text=${msg}" target="_blank" class="chip ${cor} text-white" title="${b.premio_titulo || ''} — clique para chamar no WhatsApp">🎫 ${b.numero_cota} <i class="bi bi-whatsapp"></i></a>`;
-        }
-        return `<span class="chip ${cor} text-white" title="${b.premio_titulo || ''}">🎫 ${b.numero_cota}</span>`;
-    }).join(''));
-}
-$('#select-bilhete-sorteio').on('change', function() {
-    const id = $(this).val();
-    if (!id) { BILHETES_PREMIADOS_CACHE = []; $('#grid-bilhetes-premiados').html('<p class="opacity-60 text-sm">Selecione um sorteio acima.</p>'); return; }
-    api('GET', `/api/admin/sorteios/${id}/premios`).then(d => {
-        BILHETES_PREMIADOS_CACHE = d.bilhetes_premiados || [];
-        renderGridBilhetes();
-    });
-});
-$('#input-buscar-bilhete').on('input', renderGridBilhetes);
-
-// ---------------- ROLETA (aba própria — sem expor a cota) ----------------
-$('#select-roleta-sorteio').on('change', function() {
-    const id = $(this).val();
-    if (!id) {
-        $('#roleta-disponiveis').text('0'); $('#roleta-sorteadas').text('0');
-        $('#lista-roleta-resultados').html('<p class="opacity-60 text-sm">Selecione um sorteio acima.</p>');
-        return;
-    }
-    api('GET', `/api/admin/sorteios/${id}/roleta/resultados`).then(d => {
-        $('#roleta-disponiveis').text(d.disponiveis || 0);
-        $('#roleta-sorteadas').text((d.ganhadores || []).length);
-        const ganhadores = d.ganhadores || [];
-        if (ganhadores.length === 0) { $('#lista-roleta-resultados').html('<p class="opacity-60 text-sm">Nenhuma roleta sorteada ainda.</p>'); return; }
-        $('#lista-roleta-resultados').html(ganhadores.map(g => {
-            const tel = g.usuario?.telefone;
-            const nome = g.usuario?.nome_completo || 'Ganhador não identificado';
-            const whats = tel ? `<a href="https://wa.me/${tel}?text=${encodeURIComponent(`Olá ${nome}! Você ganhou na roleta: ${g.premio_titulo || ''}! 🎉`)}" target="_blank" class="btn-primary text-xs"><i class="bi bi-whatsapp"></i> Chamar</a>` : '';
-            return `
-                <div class="pedido-card">
-                    <div>
-                        <div class="font-semibold">${g.premio_titulo || 'Prêmio'}</div>
-                        <div class="text-sm opacity-70">${nome} ${tel ? '· ' + tel : ''}</div>
-                        ${g.valor_premio ? `<div class="text-yellow-400 text-sm font-semibold mt-1">${g.valor_premio}</div>` : ''}
-                    </div>
-                    ${whats}
-                </div>
-            `;
-        }).join(''));
-    });
-});
-
 // ---------------- MAIOR/MENOR COTA (quantidade, aba própria) ----------------
 $('#form-maior-menor-cota').on('submit', function(e) {
     e.preventDefault();
@@ -1294,20 +1293,9 @@ function limparFormSorteio() {
     $('#inp-foto-url-atual').val('');
     $('#inp-fotos-galeria-atual').val('');
     $('#preview-extra-imgs').empty();
-    $('#lista-premios').empty();
-    $('#lista-roleta').empty();
-    $('#lista-roleta-tiers-admin').empty();
-    $('#lista-bloqueios').empty();
-    $('#lista-agendamentos').empty();
-    $('#lista-funis').empty();
-    $('#lista-links-sorteio').empty();
-    $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').addClass('opacity-50 pointer-events-none');
-    $('#aviso-premios, #aviso-links, #aviso-funis').show();
-    $('#inp-roleta-ativada').prop('checked', false);
-    toggleRoletaBox();
     setMascaraMoedaValor(0);
     setTotalCotasValor('1000000');
-    setBotoesRapidos('500,1000,2000,5000');
+    setBotoesRapidos('');
     setMascaraTelefoneValor('');
     $('#inp-tempo').val('15');
     $('#inp-ganhador-nome, #inp-ganhador-cota, #ganhador-busca-cota').val('');
@@ -1326,8 +1314,6 @@ function abrirFormSorteio(id) {
     }
 
     $('#form-sorteio-titulo').text('Editar Sorteio');
-    $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
-    $('#aviso-premios, #aviso-links, #aviso-funis').hide();
 
     api('GET', `/api/admin/sorteios/${id}`).then(s => {
         $('#input-sorteio-id').val(s.id);
@@ -1346,8 +1332,6 @@ function abrirFormSorteio(id) {
         $('#inp-coletar-cpf').prop('checked', !!s.coletar_cpf);
         $('#inp-coletar-email').prop('checked', !!s.coletar_email);
         $('#inp-coletar-endereco').prop('checked', !!s.coletar_endereco);
-        $('#inp-roleta-ativada').prop('checked', !!s.roleta_ativada);
-        toggleRoletaBox();
         setBotoesRapidos(s.botoes_rapidos);
         setMascaraTelefoneValor(s.suporte_whatsapp);
         $('#inp-ganhador-nome').val(s.ganhador_nome || '');
@@ -1359,13 +1343,6 @@ function abrirFormSorteio(id) {
         if (s.foto_url) { $('#img-preview-box').css('background-image', `url(${s.foto_url})`); $('#img-placeholder').hide(); }
         $('#inp-foto-url-atual').val(s.foto_url || '');
         $('#inp-fotos-galeria-atual').val(JSON.stringify(s.fotos_galeria || []));
-
-        carregarPremios(id);
-        carregarRoleta(id);
-        carregarRoletaTiers(id);
-        carregarBloqueios(id);
-        carregarFunis(id);
-        carregarLinksSorteio(id);
     });
 }
 
@@ -1397,11 +1374,6 @@ $('#form-criar-sorteio').on('submit', function(e) {
             hideOverlay();
             SORTEIO_ATUAL_ID = d.sorteio.id;
             $('#input-sorteio-id').val(d.sorteio.id);
-            $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
-            $('#aviso-premios, #aviso-links, #aviso-funis').hide();
-            carregarFunis(d.sorteio.id);
-            carregarRoletaTiers(d.sorteio.id);
-            carregarLinksSorteio(d.sorteio.id);
             notificar('Sorteio salvo com sucesso!', 'sucesso');
             carregarSorteios();
         })
@@ -1409,44 +1381,145 @@ $('#form-criar-sorteio').on('submit', function(e) {
 });
 
 // ---- Prêmios ----
+// ==================== BILHETE PREMIADO (página própria) ====================
+let SORTEIO_BILHETE_ID = null;
+function selecionarSorteioBilhete(id) {
+    SORTEIO_BILHETE_ID = id || null;
+    $('#bilhete-conteudo').toggleClass('hidden', !id);
+    if (!id) return;
+    carregarPremios(id);
+    carregarBloqueios(id);
+}
 function carregarPremios(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/premios`).then(d => {
         const data = d.bilhetes_premiados || [];
-        $('#lista-premios').html(data.map(p => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span></div><button data-id="${p.id}" class="delete-premio px-2 py-1 bg-red-600 text-white rounded" onclick="removerPremio('${p.id}')">Remover</button></div>`).join(''));
+        BILHETES_ADMIN_CACHE = data;
+        renderGridBilhetesAdmin();
     });
 }
+function renderGridBilhetesAdmin() {
+    const filtro = ($('#input-buscar-bilhete').val() || '').trim();
+    const lista = filtro ? BILHETES_ADMIN_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_ADMIN_CACHE;
+    $('#grid-bilhetes-premiados').html(lista.map(p => {
+        const saiu = p.status === 'reivindicada';
+        const cor = saiu ? 'bg-green-600' : 'bg-red-600';
+        const inativo = p.ativo === false ? ' opacity-40' : '';
+        return `<span class="chip ${cor} text-white${inativo}" title="${p.premio_titulo || ''}${p.ativo === false ? ' (inativo)' : ''}">🎫 ${p.numero_cota}<button type="button" onclick="removerPremio('${p.id}')" style="margin-left:6px;">&times;</button></span>`;
+    }).join('') || '<p class="opacity-60 text-sm">Nenhum bilhete premiado cadastrado ainda.</p>');
+}
+let BILHETES_ADMIN_CACHE = [];
+$(document).on('input', '#input-buscar-bilhete', renderGridBilhetesAdmin);
+
 function addPremio() {
     const numero_cota = $('#inp-premio-cota').val();
     const premio_titulo = $('#inp-premio-titulo').val();
     const ativo = $('#inp-premio-ativo').is(':checked');
+    if (!SORTEIO_BILHETE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!numero_cota || !premio_titulo) return notificar('Preencha cota e título.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/premios`, { numero_cota, premio_titulo, ativo }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/premios`, { numero_cota, premio_titulo, ativo }).then(() => {
         $('#inp-premio-cota').val(''); $('#inp-premio-titulo').val('');
-        carregarPremios(SORTEIO_ATUAL_ID);
+        carregarPremios(SORTEIO_BILHETE_ID);
+        notificar('Bilhete premiado adicionado!', 'sucesso');
     });
 }
-function removerPremio(id) { api('DELETE', `/api/admin/premios/${id}`).then(() => carregarPremios(SORTEIO_ATUAL_ID)); }
+function removerPremio(id) { api('DELETE', `/api/admin/premios/${id}`).then(() => carregarPremios(SORTEIO_BILHETE_ID)); }
 
-// ---- Roleta ----
+// ---- Bloqueios / Liberação (com condição de quantidade) ----
+function carregarBloqueios(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/bloqueios`).then(d => {
+        const data = d.data || d || [];
+        $('#lista-bloqueios').html((Array.isArray(data) ? data : []).map(b => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${b.numero_cota}</b><span class="text-xs opacity-60">bloqueio permanente</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerBloqueio('${b.id}')">Remover</button></div>`).join('') || '<p class="text-xs opacity-50">Nenhum bloqueio permanente.</p>');
+    });
+    api('GET', `/api/admin/sorteios/${sorteioId}/agendamentos`).then(d => {
+        const data = d.data || d || [];
+        $('#lista-agendamentos').html((Array.isArray(data) ? data : []).map(a => {
+            const dataFmt = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            const condTxt = a.condicao_tipo ? ` · só p/ quem comprou ${a.condicao_tipo === 'acima' ? 'acima' : 'abaixo'} de ${a.condicao_quantidade}` : '';
+            return `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><div><b>${a.numero_cota}</b><span class="text-xs opacity-60"> · libera em ${dataFmt}${condTxt}</span></div><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerAgendamento('${a.id}')">Remover</button></div>`;
+        }).join('') || '<p class="text-xs opacity-50">Nenhuma cota agendada.</p>');
+    });
+}
+function addBloqueio() {
+    const numero_cota = $('#inp-bloqueio').val();
+    if (!numero_cota) return notificar('Informe o número da cota.', 'erro');
+    if (!SORTEIO_BILHETE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
+    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/bloqueios`, { numero_cota }).then(() => {
+        $('#inp-bloqueio').val('');
+        carregarBloqueios(SORTEIO_BILHETE_ID);
+    });
+}
+function addAgendamento() {
+    const numero_cota = $('#inp-lib-cota').val();
+    const liberar_em = $('#inp-lib-data').val();
+    const condicao_tipo = $('#inp-lib-condicao').val() || null;
+    const condicao_quantidade = $('#inp-lib-quantidade').val() || null;
+    if (!SORTEIO_BILHETE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
+    if (!numero_cota || !liberar_em) return notificar('Preencha a cota e a data/hora de liberação.', 'erro');
+    if (condicao_tipo && !condicao_quantidade) return notificar('Informe a quantidade da condição.', 'erro');
+    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/agendamentos`, { numero_cota, liberar_em, condicao_tipo, condicao_quantidade }).then(() => {
+        $('#inp-lib-cota, #inp-lib-data, #inp-lib-quantidade').val('');
+        $('#inp-lib-condicao').val('');
+        carregarBloqueios(SORTEIO_BILHETE_ID);
+        notificar('Liberação agendada!', 'sucesso');
+    });
+}
+function removerBloqueio(id) { api('DELETE', `/api/admin/bloqueios/${id}`).then(() => carregarBloqueios(SORTEIO_BILHETE_ID)); }
+function removerAgendamento(id) { api('DELETE', `/api/admin/agendamentos/${id}`).then(() => carregarBloqueios(SORTEIO_BILHETE_ID)); }
+
+// ==================== ROLETA (página própria) ====================
+let SORTEIO_ROLETA_ID = null;
+function selecionarSorteioRoleta(id) {
+    SORTEIO_ROLETA_ID = id || null;
+    $('#roleta-conteudo').toggleClass('hidden', !id);
+    if (!id) return;
+    const sorteio = SORTEIOS_CACHE.find(s => s.id === id);
+    $('#inp-roleta-ativada-page').prop('checked', !!sorteio?.roleta_ativada);
+    carregarRoleta(id);
+    carregarRoletaTiers(id);
+    carregarRoletaResultadosAdmin(id);
+}
+function salvarRoletaAtivada() {
+    const ativada = $('#inp-roleta-ativada-page').is(':checked');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/roleta-ativada`, { roleta_ativada: ativada }).then(() => {
+        notificar(ativada ? 'Roleta ativada!' : 'Roleta desativada.', 'sucesso');
+        const s = SORTEIOS_CACHE.find(x => x.id === SORTEIO_ROLETA_ID);
+        if (s) s.roleta_ativada = ativada;
+    });
+}
 function carregarRoleta(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/roleta`).then(d => {
         const data = d.roleta || [];
-        $('#lista-roleta').html(data.map(p => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span> ${p.valor_premio ? `<span class="text-yellow-400 text-xs ml-2">${p.valor_premio}</span>` : ''}</div><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerPremio('${p.id}')">Remover</button></div>`).join('') || '<p class="text-gray-400 text-sm">Nenhum item de roleta configurado.</p>');
+        $('#lista-roleta').html(data.map(p => {
+            const inativo = p.ativo === false ? ' opacity-40' : '';
+            return `<div class="p-2 bg-gray-800 rounded flex justify-between items-center${inativo}"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span> ${p.valor_premio ? `<span class="text-yellow-400 text-xs ml-2">${p.valor_premio}</span>` : ''} ${p.ativo === false ? '<span class="badge badge-outro ml-2">Inativo</span>' : ''}</div><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerPremio('${p.id}')">Remover</button></div>`;
+        }).join('') || '<p class="text-gray-400 text-sm">Nenhum item de roleta configurado.</p>');
     });
 }
 function addRoleta() {
     const numero_cota = $('#inp-roleta-cota').val();
     const premio_titulo = $('#inp-roleta-titulo').val();
     const valor_premio = $('#inp-roleta-valor').val();
+    const ativo = $('#inp-roleta-ativo-item').is(':checked');
+    if (!SORTEIO_ROLETA_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!numero_cota || !premio_titulo) return notificar('Preencha cota e título.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/roleta`, { numero_cota, premio_titulo, valor_premio }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/roleta`, { numero_cota, premio_titulo, valor_premio, ativo }).then(() => {
         $('#inp-roleta-cota').val(''); $('#inp-roleta-titulo').val(''); $('#inp-roleta-valor').val('');
-        carregarRoleta(SORTEIO_ATUAL_ID);
+        carregarRoleta(SORTEIO_ROLETA_ID);
+        notificar('Prêmio de roleta adicionado!', 'sucesso');
     });
 }
-
-function toggleRoletaBox() {
-    $('#box-roleta-config').toggleClass('hidden', !$('#inp-roleta-ativada').is(':checked'));
+function carregarRoletaResultadosAdmin(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/roleta/resultados`).then(d => {
+        $('#roleta-disponiveis').text(d.disponiveis || 0);
+        $('#roleta-sorteadas').text((d.ganhadores || []).length);
+        const ganhadores = d.ganhadores || [];
+        $('#lista-roleta-resultados').html(ganhadores.map(g => {
+            const tel = g.usuario?.telefone;
+            const nome = g.usuario?.nome_completo || 'Ganhador não identificado';
+            const whats = tel ? `<a href="https://wa.me/${tel}?text=${encodeURIComponent(`Olá ${nome}! Você ganhou na roleta: ${g.premio_titulo || ''}! 🎉`)}" target="_blank" class="btn-primary text-xs"><i class="bi bi-whatsapp"></i> Chamar</a>` : '';
+            return `<div class="pedido-card"><div><div class="font-semibold">${g.premio_titulo || 'Prêmio'}</div><div class="text-sm opacity-70">${nome} ${tel ? '· ' + tel : ''}</div>${g.valor_premio ? `<div class="text-yellow-400 text-sm font-semibold mt-1">${g.valor_premio}</div>` : ''}</div>${whats}</div>`;
+        }).join('') || '<p class="opacity-60 text-sm">Nenhuma roleta sorteada ainda.</p>');
+    });
 }
 
 // ---- Faixas de giros da roleta (tiers) ----
@@ -1459,49 +1532,14 @@ function carregarRoletaTiers(sorteioId) {
 function addRoletaTier() {
     const minimo_cotas = $('#tier-minimo').val();
     const quantidade_giros = $('#tier-giros').val();
+    if (!SORTEIO_ROLETA_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!minimo_cotas || !quantidade_giros) return notificar('Preencha os dois campos.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/roleta-tiers`, { minimo_cotas, quantidade_giros }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/roleta-tiers`, { minimo_cotas, quantidade_giros }).then(() => {
         $('#tier-minimo').val(''); $('#tier-giros').val('');
-        carregarRoletaTiers(SORTEIO_ATUAL_ID);
+        carregarRoletaTiers(SORTEIO_ROLETA_ID);
     });
 }
-function removerRoletaTier(id) { api('DELETE', `/api/admin/roleta-tiers/${id}`).then(() => carregarRoletaTiers(SORTEIO_ATUAL_ID)); }
-
-// ---- Bloqueios ----
-function carregarBloqueios(sorteioId) {
-    api('GET', `/api/admin/sorteios/${sorteioId}/bloqueios`).then(d => {
-        const data = d.data || d || [];
-        $('#lista-bloqueios').html((Array.isArray(data) ? data : []).map(b => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${b.numero_cota}</b><span class="text-xs opacity-60">bloqueio permanente</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerBloqueio('${b.id}')">Remover</button></div>`).join(''));
-    });
-    api('GET', `/api/admin/sorteios/${sorteioId}/agendamentos`).then(d => {
-        const data = d.data || d || [];
-        $('#lista-agendamentos').html((Array.isArray(data) ? data : []).map(a => {
-            const dataFmt = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-            return `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${a.numero_cota}</b><span class="text-xs opacity-60">libera em ${dataFmt}</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerAgendamento('${a.id}')">Remover</button></div>`;
-        }).join('') || '<p class="text-xs opacity-50">Nenhuma cota agendada.</p>');
-    });
-}
-function addBloqueio() {
-    const numero_cota = $('#inp-bloqueio').val();
-    const dataLiberacao = $('#inp-bloqueio-data').val();
-    if (!numero_cota) return;
-
-    if (dataLiberacao) {
-        // Se tem data preenchida, é bloqueio TEMPORÁRIO (agenda liberação automática)
-        api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/agendamentos`, { numero_cota, liberar_em: dataLiberacao }).then(() => {
-            $('#inp-bloqueio').val(''); $('#inp-bloqueio-data').val('');
-            carregarBloqueios(SORTEIO_ATUAL_ID);
-        });
-    } else {
-        // Sem data = bloqueio PERMANENTE (só libera se você remover manualmente)
-        api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/bloqueios`, { numero_cota }).then(() => {
-            $('#inp-bloqueio').val('');
-            carregarBloqueios(SORTEIO_ATUAL_ID);
-        });
-    }
-}
-function removerBloqueio(id) { api('DELETE', `/api/admin/bloqueios/${id}`).then(() => carregarBloqueios(SORTEIO_ATUAL_ID)); }
-function removerAgendamento(id) { api('DELETE', `/api/admin/agendamentos/${id}`).then(() => carregarBloqueios(SORTEIO_ATUAL_ID)); }
+function removerRoletaTier(id) { api('DELETE', `/api/admin/roleta-tiers/${id}`).then(() => carregarRoletaTiers(SORTEIO_ROLETA_ID)); }
 
 // ---- FUNIS (nova funcionalidade) ----
 function toggleBonusFields() {
@@ -1553,8 +1591,14 @@ function carregarFunis(sorteioId) {
     });
 }
 
+let SORTEIO_FUNIL_ID = null;
+function onFunilSorteioChange(id) {
+    SORTEIO_FUNIL_ID = id || null;
+    $('#box-add-funil').toggleClass('opacity-50 pointer-events-none', !id);
+    if (id) carregarFunis(id); else $('#lista-funis').empty();
+}
 function criarFunil() {
-    if (!SORTEIO_ATUAL_ID) return notificar('Salve o sorteio primeiro.', 'erro');
+    if (!SORTEIO_FUNIL_ID) return notificar('Selecione o sorteio primeiro.', 'erro');
     const nome = $('#funil-nome').val();
     if (!nome) return notificar('Dê um nome para o funil.', 'erro');
     const payload = {
@@ -1569,18 +1613,19 @@ function criarFunil() {
         pos_pagamento_mensagem: $('#funil-bonus-mensagem').val(),
         bonus_cotas_extra: $('#funil-bonus-cotas').val() || 0
     };
-    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/funis`, payload).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_FUNIL_ID}/funis`, payload).then(() => {
         $('#funil-nome').val(''); $('#funil-bonus-titulo').val(''); $('#funil-bonus-mensagem').val(''); $('#funil-bonus-cotas').val('');
         $('#funil-grupo-teste').val(''); $('#funil-peso-box').hide();
         $('#funil-pos-tipo').val('padrao'); toggleBonusFields();
-        carregarFunis(SORTEIO_ATUAL_ID);
+        carregarFunis(SORTEIO_FUNIL_ID);
+        notificar('Funil criado!', 'sucesso');
     }).catch(err => notificar('Erro ao criar funil: ' + (err.error || ''), 'erro'));
 }
 
 function excluirFunil(id) {
     confirmar('Excluir funil', 'Pedidos que já usaram esse funil continuam registrados, mas o link deixará de funcionar.').then(yes => {
         if (!yes) return;
-        api('DELETE', `/api/admin/funis/${id}`).then(() => carregarFunis(SORTEIO_ATUAL_ID));
+        api('DELETE', `/api/admin/funis/${id}`).then(() => carregarFunis(SORTEIO_FUNIL_ID));
     });
 }
 
@@ -1588,10 +1633,18 @@ $(document).on('input', '#funil-grupo-teste', function() {
     $('#funil-peso-box').css('display', $(this).val().trim() ? 'block' : 'none');
 });
 
-// ---- LINKS DE RASTREAMENTO (dentro do sorteio) ----
+// ---- LINKS DE RASTREAMENTO (página própria) ----
 function canalLabel(canal) {
     const map = { whatsapp: 'WhatsApp', instagram_organico: 'Instagram Orgânico', facebook_organico: 'Facebook Orgânico', facebook_ads: 'Facebook Ads', google_ads: 'Google Ads', tiktok_ads: 'TikTok Ads', direto: 'Direto/Orgânico', outro: 'Outro' };
     return map[canal] || canal;
+}
+
+let SORTEIO_LINK_ID = null;
+function onLinkSorteioChange(id) {
+    SORTEIO_LINK_ID = id || null;
+    $('#box-add-link').toggleClass('opacity-50 pointer-events-none', !id);
+    $('#btn-criar-link').css({ opacity: id ? 1 : .5, 'pointer-events': id ? 'auto' : 'none' });
+    if (id) carregarLinksSorteio(id); else $('#lista-links-sorteio').empty();
 }
 
 function carregarLinksSorteio(sorteioId) {
@@ -1629,41 +1682,77 @@ function carregarLinksSorteio(sorteioId) {
     });
 }
 function criarLink() {
-    if (!SORTEIO_ATUAL_ID) return notificar('Salve o sorteio primeiro.', 'erro');
+    if (!SORTEIO_LINK_ID) return notificar('Selecione o sorteio primeiro.', 'erro');
     const nome = $('#link-nome').val();
     if (!nome) return notificar('Dê um nome para o link.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/links`, { nome, canal: $('#link-canal').val(), funil_id: $('#link-funil').val() || null }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_LINK_ID}/links`, { nome, canal: $('#link-canal').val(), funil_id: $('#link-funil').val() || null }).then(() => {
         $('#link-nome').val('');
-        carregarLinksSorteio(SORTEIO_ATUAL_ID);
+        carregarLinksSorteio(SORTEIO_LINK_ID);
+        notificar('Link criado!', 'sucesso');
     }).catch(err => notificar(err.error || 'Erro ao criar link', 'erro'));
 }
 function excluirLink(id) {
-    confirmar('Excluir link', 'As métricas desse link deixarão de ser rastreadas.').then(yes => { if (yes) api('DELETE', `/api/admin/links/${id}`).then(() => carregarLinksSorteio(SORTEIO_ATUAL_ID)); });
+    confirmar('Excluir link', 'As métricas desse link deixarão de ser rastreadas.').then(yes => { if (yes) api('DELETE', `/api/admin/links/${id}`).then(() => carregarLinksSorteio(SORTEIO_LINK_ID)); });
 }
 
-// ---- COMPARATIVO GERAL DE LINKS (página própria) ----
+// ---- Abas internas de Links & Funis ----
+function mudarLinkTab(tab, el) {
+    $('.linktab-content').addClass('hidden');
+    $('#linktab-' + tab).removeClass('hidden');
+    $('[data-linktab]').removeClass('active');
+    $(el).addClass('active');
+    if (tab === 'comparativo') carregarComparativoLinks();
+}
+
+// ---- COMPARATIVO GERAL DE LINKS (com ordenação clicável) ----
+let LINKS_COMPARATIVO_CACHE = [];
+let ORDENACAO_ATUAL = { campo: null, direcao: null }; // direcao: 'asc' | 'desc' | null
+
 function carregarComparativoLinks() {
     const sorteioId = $('#filtro-links-sorteio').val() || 'todos';
     fetch(`/api/admin/links/comparativo?sorteio_id=${sorteioId}`, { credentials: 'include' }).then(r => r.json()).then(d => {
-        const links = d.links || [];
-        if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="9" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
-        $('#tabela-links-comparativo').html(links.map(l => `
-            <tr class="link-row border-b border-gray-800/60">
-                <td class="p-3 text-white">${l.nome}</td>
-                <td class="p-3 text-gray-400">${l.sorteios?.nome || ''}</td>
-                <td class="p-3"><span class="badge badge-outro">${canalLabel(l.canal)}</span></td>
-                <td class="p-3">${l.cliques || 0}</td>
-                <td class="p-3">${l.pedidos_pagos || 0}</td>
-                <td class="p-3 text-green-400 font-semibold">${formatBR(l.faturamento)}</td>
-                <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
-                <td class="p-3">${formatBR(l.ticket_medio)}</td>
-                <td class="p-3">${(l.conversao || 0).toFixed(1)}%</td>
-            </tr>
-        `).join(''));
+        LINKS_COMPARATIVO_CACHE = d.links || [];
+        renderTabelaComparativo();
     });
 }
+function renderTabelaComparativo() {
+    let links = [...LINKS_COMPARATIVO_CACHE];
+    if (ORDENACAO_ATUAL.campo) {
+        const campo = ORDENACAO_ATUAL.campo;
+        links.sort((a, b) => {
+            const va = Number(a[campo] || 0), vb = Number(b[campo] || 0);
+            return ORDENACAO_ATUAL.direcao === 'asc' ? va - vb : vb - va;
+        });
+    }
+    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="9" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
+    $('#tabela-links-comparativo').html(links.map(l => `
+        <tr class="link-row border-b border-gray-800/60">
+            <td class="p-3 text-white">${l.nome}</td>
+            <td class="p-3 text-gray-400">${l.sorteios?.nome || ''}</td>
+            <td class="p-3"><span class="badge badge-outro">${canalLabel(l.canal)}</span></td>
+            <td class="p-3">${l.cliques || 0}</td>
+            <td class="p-3">${l.pedidos_pagos || 0}</td>
+            <td class="p-3 text-green-400 font-semibold">${formatBR(l.faturamento)}</td>
+            <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
+            <td class="p-3">${formatBR(l.ticket_medio)}</td>
+            <td class="p-3">${(l.conversao || 0).toFixed(1)}%</td>
+        </tr>
+    `).join(''));
+}
+$(document).on('click', '.sortable-th', function() {
+    const campo = $(this).data('campo');
+    if (ORDENACAO_ATUAL.campo !== campo) { ORDENACAO_ATUAL = { campo, direcao: 'desc' }; }
+    else if (ORDENACAO_ATUAL.direcao === 'desc') { ORDENACAO_ATUAL.direcao = 'asc'; }
+    else { ORDENACAO_ATUAL = { campo: null, direcao: null }; }
+
+    $('.sortable-th .sort-arrow').text('');
+    if (ORDENACAO_ATUAL.campo) $(this).find('.sort-arrow').text(ORDENACAO_ATUAL.direcao === 'asc' ? '▲' : '▼');
+    renderTabelaComparativo();
+});
+
 function popularFiltroLinksSorteio() {
     $('#filtro-links-sorteio').html('<option value="todos">Todos os sorteios</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
+    $('#link-sorteio-select, #funil-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
 }
 
 // ---------------- PEDIDOS ----------------
