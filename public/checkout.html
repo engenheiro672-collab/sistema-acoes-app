@@ -175,6 +175,36 @@
                 <p class="text-sm text-gray-400">Carregando seus números...</p>
             </div>
         </div>
+
+        <div id="secao-roletas-checkout" class="mt-8 hidden text-left">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xl font-semibold text-white"><i class="bi bi-lightning-fill text-yellow-400"></i> Roletas</h3>
+                <span id="contador-roletas-checkout" class="text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm">0/0</span>
+            </div>
+            <button id="btn-girar-todas" class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2 rounded-lg mb-3">GIRAR TODAS</button>
+            <div id="lista-giros-checkout" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Modal da roleta girando -->
+    <div id="modal-roleta" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 p-4">
+        <div class="bg-[#1f2430] rounded-2xl p-6 max-w-sm w-full text-center relative">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-white font-semibold">Roleta <span id="roleta-indice">1 de 1</span></h3>
+                <button id="close-modal-roleta" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div class="relative mx-auto" style="width:260px;height:260px;">
+                <div style="position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:10; font-size:1.5rem;">📍</div>
+                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;background:conic-gradient(#16a34a 0deg 45deg,#166534 45deg 90deg,#16a34a 90deg 135deg,#166534 135deg 180deg,#16a34a 180deg 225deg,#166534 225deg 270deg,#16a34a 270deg 315deg,#166534 315deg 360deg); transition: transform 3.5s cubic-bezier(0.15,0.85,0.25,1); display:flex; align-items:center; justify-content:center;">
+                    <div style="width:80px;height:80px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;">GIRAR</div>
+                </div>
+            </div>
+            <p id="resultado-roleta" class="text-white font-semibold mt-4 min-h-[1.5rem]">Gire e tente a sorte</p>
+            <div class="flex justify-between mt-4 gap-2">
+                <button id="btn-roleta-anterior" class="flex-1 border border-gray-600 text-gray-300 rounded-lg py-2">← Anterior</button>
+                <button id="btn-roleta-proxima" class="flex-1 bg-green-600 text-white rounded-lg py-2">Próxima →</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -304,9 +334,84 @@
 
             $('#detalhe-situacao').text('Pago').removeClass('text-yellow-400 text-red-500').addClass('text-green-400');
             try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/aprovado`); } catch (e) {}
+
+            carregarRoletas();
         }
 
-        function checarStatusPagamento() {
+        // ---------------- ROLETA (pós-pagamento) ----------------
+        let GIROS = [];
+        let GIRO_ATUAL_IDX = 0;
+
+        function carregarRoletas() {
+            if (!TOKEN) return;
+            $.get(`/api/public/pedidos/${TOKEN}/roletas`).done(function(resp) {
+                GIROS = resp.giros || [];
+                if (GIROS.length === 0) return;
+                $('#secao-roletas-checkout').removeClass('hidden');
+                renderListaGiros();
+            });
+        }
+
+        function renderListaGiros() {
+            const restantes = GIROS.filter(g => !g.girado).length;
+            $('#contador-roletas-checkout').text(`${GIROS.length - restantes}/${GIROS.length}`);
+            $('#btn-girar-todas').toggle(restantes > 0);
+            $('#lista-giros-checkout').html(GIROS.map((g, i) => {
+                if (g.girado) {
+                    const texto = g.ganhou ? (g.valor_premio || g.premio_titulo || 'Prêmio!') : 'Tente Denovo';
+                    const cor = g.ganhou ? 'bg-yellow-600' : 'bg-gray-700';
+                    return `<div class="${cor} rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>${texto}</b></div>`;
+                }
+                return `<div class="bg-green-700 rounded-lg px-4 py-3 flex justify-between items-center text-white">
+                    <span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span>
+                    <button class="btn-girar-uma bg-black bg-opacity-30 px-4 py-1 rounded font-bold" data-idx="${i}">GIRAR</button>
+                </div>`;
+            }).join(''));
+        }
+
+        function abrirModalRoleta(idx) {
+            GIRO_ATUAL_IDX = idx;
+            $('#modal-roleta').removeClass('hidden').css('display', 'flex');
+            atualizarModalRoleta();
+        }
+        function atualizarModalRoleta() {
+            const total = GIROS.length;
+            $('#roleta-indice').text(`${GIRO_ATUAL_IDX + 1} de ${total}`);
+            $('#roda-roleta').css('transform', 'rotate(0deg)');
+            const giro = GIROS[GIRO_ATUAL_IDX];
+            $('#resultado-roleta').text(giro.girado ? (giro.ganhou ? (giro.valor_premio || giro.premio_titulo) : 'Tente Denovo') : 'Gire e tente a sorte');
+            $('#btn-roleta-anterior').prop('disabled', GIRO_ATUAL_IDX === 0);
+            $('#btn-roleta-proxima').prop('disabled', GIRO_ATUAL_IDX >= total - 1);
+        }
+
+        function girarRoleta(idx) {
+            const giro = GIROS[idx];
+            if (!giro || giro.girado) return;
+            $('#resultado-roleta').text('Girando...');
+            $.post(`/api/public/roletas/${giro.id}/girar`).done(function(resultado) {
+                const voltas = 4 + Math.floor(Math.random() * 3);
+                const anguloFinal = voltas * 360 + Math.floor(Math.random() * 360);
+                $('#roda-roleta').css('transform', `rotate(${anguloFinal}deg)`);
+                setTimeout(() => {
+                    giro.girado = true;
+                    giro.ganhou = resultado.ganhou;
+                    giro.premio_titulo = resultado.premio_titulo;
+                    giro.valor_premio = resultado.valor_premio;
+                    $('#resultado-roleta').text(giro.ganhou ? (giro.valor_premio || giro.premio_titulo || 'Prêmio!') : 'Tente Denovo');
+                    renderListaGiros();
+                }, 3600);
+            });
+        }
+
+        $('#lista-giros-checkout').on('click', '.btn-girar-uma', function() { abrirModalRoleta(Number($(this).data('idx'))); });
+        $('#close-modal-roleta').on('click', function() { $('#modal-roleta').addClass('hidden'); });
+        $('#roda-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
+        $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; atualizarModalRoleta(); } });
+        $('#btn-roleta-proxima').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; atualizarModalRoleta(); } });
+        $('#btn-girar-todas').on('click', function() {
+            const idx = GIROS.findIndex(g => !g.girado);
+            if (idx >= 0) abrirModalRoleta(idx);
+        });        function checarStatusPagamento() {
             if (isPago || !TOKEN) return;
             $.get(`/api/public/pedidos/${TOKEN}/status`)
                 .done(function(data) {

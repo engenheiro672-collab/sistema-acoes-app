@@ -167,10 +167,11 @@
                 </div>
             </div>
 
-            <div id="cards-metricas" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div id="cards-metricas" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <div class="metric-card"><i class="bi bi-cash-coin metric-icon text-green-400"></i><p class="text-sm opacity-60">Faturamento</p><p class="text-2xl font-bold text-green-400" id="card-faturamento">R$ 0,00</p></div>
                 <div class="metric-card"><i class="bi bi-hourglass-split metric-icon text-yellow-400"></i><p class="text-sm opacity-60">Pendente</p><p class="text-2xl font-bold text-yellow-400" id="card-pendente">R$ 0,00</p></div>
                 <div class="metric-card"><i class="bi bi-cart-check metric-icon text-blue-400"></i><p class="text-sm opacity-60">Pedidos</p><p class="text-2xl font-bold text-blue-400" id="card-pedidos">0</p></div>
+                <div class="metric-card"><i class="bi bi-people-fill metric-icon text-cyan-400"></i><p class="text-sm opacity-60">Total de Clientes</p><p class="text-2xl font-bold text-cyan-400" id="card-clientes">0</p></div>
                 <div class="metric-card"><i class="bi bi-graph-up-arrow metric-icon text-purple-400"></i><p class="text-sm opacity-60">Ticket Médio</p><p class="text-2xl font-bold text-purple-400" id="card-ticket">R$ 0,00</p></div>
                 <div class="metric-card"><i class="bi bi-cursor metric-icon text-pink-400"></i><p class="text-sm opacity-60">Acessos</p><p class="text-2xl font-bold text-pink-400" id="card-acessos">0</p></div>
             </div>
@@ -444,15 +445,43 @@
                     </div>
 
                     <div class="border-t border-gray-800 pt-4">
-                        <h4 class="font-semibold text-white mb-2">🎡 Roleta Premiada</h4>
-                        <p class="text-xs text-gray-500 mb-2">Igual ao bilhete premiado, mas o número não aparece pro cliente — ele só descobre girando a roleta. Se a cota dele bater, a roleta acerta o prêmio.</p>
-                        <div id="box-add-roleta" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
-                            <input id="inp-roleta-cota" placeholder="Cota" class="input-dark w-1/4">
-                            <input id="inp-roleta-titulo" placeholder="Título do prêmio" class="input-dark w-1/2">
-                            <input id="inp-roleta-valor" placeholder="Valor (opcional)" class="input-dark w-1/4">
-                            <button type="button" class="btn-primary" onclick="addRoleta()">Add</button>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-semibold text-white">🎡 Roleta Instantânea</h4>
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <span class="toggle-switch"><input type="checkbox" name="roleta_ativada" id="inp-roleta-ativada" onchange="toggleRoletaBox()"><span class="toggle-track"><span class="toggle-thumb"></span></span></span>
+                                <span class="text-sm text-gray-300">Ativar</span>
+                            </label>
                         </div>
-                        <div id="lista-roleta" class="space-y-2"></div>
+                        <div id="box-roleta-config" class="hidden space-y-4">
+                            <p class="text-xs text-gray-500">O cliente ganha giros de roleta conforme a quantidade de títulos que comprar. Cada giro pode bater com um prêmio pré-configurado ou dar "Tente Denovo" — sem nunca revelar a posição sorteada.</p>
+
+                            <div>
+                                <label class="text-xs text-gray-400">Tamanho do pool de giros (total de posições possíveis, ex: 40)</label>
+                                <input type="number" name="roleta_pool_total" id="inp-roleta-pool" class="input-dark mt-1" placeholder="Ex: 40" min="1">
+                            </div>
+
+                            <div class="border-t border-gray-800 pt-3">
+                                <h5 class="text-sm font-semibold text-gray-300 mb-2">Faixas: título → giros ganhos</h5>
+                                <div id="box-add-roleta-tier" class="flex gap-2 mb-3 opacity-50 pointer-events-none">
+                                    <input id="tier-minimo" type="number" placeholder="A cada X títulos" class="input-dark">
+                                    <input id="tier-giros" type="number" placeholder="Recebe Y giros" class="input-dark">
+                                    <button type="button" class="btn-primary" onclick="addRoletaTier()">Add</button>
+                                </div>
+                                <div id="lista-roleta-tiers-admin" class="space-y-2"></div>
+                            </div>
+
+                            <div class="border-t border-gray-800 pt-3">
+                                <h5 class="text-sm font-semibold text-gray-300 mb-2">Prêmios do pool (posições vencedoras)</h5>
+                                <p class="text-xs text-gray-500 mb-2">O "número do giro" é só a posição dentro do pool (1 até o tamanho do pool definido acima), não é uma cota real.</p>
+                                <div id="box-add-roleta" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
+                                    <input id="inp-roleta-cota" placeholder="Nº do giro (1-pool)" class="input-dark w-1/4">
+                                    <input id="inp-roleta-titulo" placeholder="Título do prêmio" class="input-dark w-1/2">
+                                    <input id="inp-roleta-valor" placeholder="Valor (ex: R$120 ou o DOBRO)" class="input-dark w-1/4">
+                                    <button type="button" class="btn-primary" onclick="addRoleta()">Add</button>
+                                </div>
+                                <div id="lista-roleta" class="space-y-2"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="border-t border-gray-800 pt-4">
@@ -597,6 +626,18 @@
             </div>
             <div id="lista-pedidos" class="bg-darkCard rounded-xl border border-gray-800 p-4">
                 <div id="tabela-pedidos" class="space-y-3"></div>
+                <div id="paginacao-pedidos"></div>
+            </div>
+        </div>
+
+        <!-- Modal de detalhe do pedido -->
+        <div id="modal-detalhe-pedido" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+            <div class="modal-box max-w-md w-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-white">Detalhes do Pedido</h3>
+                    <button onclick="$('#modal-detalhe-pedido').addClass('hidden')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+                <div id="detalhe-pedido-corpo"></div>
             </div>
         </div>
 
@@ -635,11 +676,27 @@
                 <div class="w-full md:w-1/3"><label class="text-sm text-gray-400">Até</label><input type="date" id="filtro-data-ate" class="input-dark mt-1"></div>
                 <button class="btn-primary">Filtrar</button>
             </form>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="p-4 rounded-xl bg-darkCard border border-gray-800"><p class="text-sm text-gray-400">Faturamento</p><p class="text-xl font-bold text-green-400" id="rel-faturamento">R$ 0,00</p></div>
-                <div class="p-4 rounded-xl bg-darkCard border border-gray-800"><p class="text-sm text-gray-400">Pedidos</p><p class="text-xl font-bold text-blue-400" id="rel-pedidos">0</p></div>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                <div class="metric-card"><p class="text-xs opacity-60">Faturamento</p><p class="text-lg font-bold text-green-400" id="rel-faturamento">R$ 0,00</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Pedidos</p><p class="text-lg font-bold text-blue-400" id="rel-pedidos">0</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Clientes</p><p class="text-lg font-bold text-cyan-400" id="rel-clientes">0</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Despesas</p><p class="text-lg font-bold text-red-400" id="rel-despesas">R$ 0,00</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Lucro Líquido</p><p class="text-lg font-bold" id="rel-lucro">R$ 0,00</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">ROI</p><p class="text-lg font-bold text-purple-400" id="rel-roi">—</p></div>
             </div>
-            <div class="bg-darkCard p-4 rounded-xl border border-gray-800"><h3 class="text-gray-300 mb-4 font-bold">Vendas por dia</h3><canvas id="grafico-vendas" height="80"></canvas></div>
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 mb-6"><h3 class="text-gray-300 mb-4 font-bold">Vendas por dia</h3><canvas id="grafico-vendas" height="80"></canvas></div>
+
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800">
+                <h3 class="text-gray-300 mb-3 font-bold">💸 Despesas</h3>
+                <p class="text-xs text-gray-500 mb-3">Adicione despesas (prêmio, tráfego pago, etc.) — elas entram no cálculo de Lucro Líquido e ROI do período filtrado acima.</p>
+                <div class="flex gap-2 mb-4 flex-wrap">
+                    <input id="despesa-nome" placeholder="Nome (ex: Tráfego pago)" class="input-dark" style="max-width:220px">
+                    <input id="despesa-valor" type="number" step="0.01" placeholder="Valor (R$)" class="input-dark" style="max-width:140px">
+                    <input id="despesa-data" type="date" class="input-dark" style="max-width:160px">
+                    <button class="btn-primary" onclick="addDespesa()">Adicionar</button>
+                </div>
+                <div id="lista-despesas" class="space-y-2"></div>
+            </div>
         </div>
 
         <!-- ===================== COMPARATIVO DE LINKS ===================== -->
@@ -951,6 +1008,7 @@ function carregarDashboard() {
         $('#card-pedidos').text(d.total_pedidos);
         $('#card-ticket').text(formatBR(d.ticket_medio));
         $('#card-acessos').text(d.acessos || 0);
+        $('#card-clientes').text(d.total_clientes || 0);
     });
     fetch(`/api/admin/dashboard/vendas-diarias?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
         const ctx = document.getElementById('grafico-vendas-dash');
@@ -1146,20 +1204,38 @@ function carregarSorteios() {
     api('GET', '/api/admin/sorteios').then(data => {
         SORTEIOS_CACHE = data || [];
         popularSelectsSorteios();
-        const rows = SORTEIOS_CACHE.map(s => `
+        const rows = SORTEIOS_CACHE.map(s => {
+            const vendidas = s.cotas_vendidas || 0;
+            const total = s.total_cotas || 1;
+            const pct = Math.min(100, (vendidas / total) * 100);
+            return `
             <tr>
                 <td class="p-4 text-white">${s.nome}</td>
                 <td class="p-4"><span class="badge ${s.status === 'ativo' ? 'badge-organico' : 'badge-outro'}">${s.status}</span></td>
-                <td class="p-4 text-gray-300">${s.cotas_vendidas || 0} / ${s.total_cotas || 0}</td>
-                <td class="p-4">
+                <td class="p-4 text-gray-300" style="min-width:180px;">
+                    <div class="flex justify-between text-xs mb-1"><span>${vendidas} / ${total}</span><span>${pct.toFixed(1)}%</span></div>
+                    <div style="background:var(--border); border-radius:999px; height:8px; overflow:hidden;"><div style="width:${pct}%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); height:100%;"></div></div>
+                </td>
+                <td class="p-4 relative">
                     <button class="text-purple-400 hover:text-purple-300 mr-3" onclick="abrirFormSorteio('${s.id}')"><i class="bi bi-pencil"></i> Editar</button>
+                    <button class="text-gray-300 hover:text-white mr-3" onclick="toggleMenuAcoes('${s.id}', event)"><i class="bi bi-three-dots-vertical"></i></button>
                     <button class="text-red-400 hover:text-red-300" onclick="excluirSorteio('${s.id}')"><i class="bi bi-trash"></i></button>
+                    <div id="menu-acoes-${s.id}" class="hidden absolute right-4 top-full mt-1 bg-[var(--card-2)] border border-[var(--border)] rounded-lg shadow-lg z-20 text-sm" style="min-width:220px;">
+                        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${s.id}/export?filtro=compradores'">📋 Baixar lista de compradores</a>
+                        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${s.id}/export?filtro=expirados'">⏱️ Baixar pedidos expirados</a>
+                    </div>
                 </td>
             </tr>
-        `).join('');
+        `;}).join('');
         $('#tabela-sorteios').html(rows || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum sorteio cadastrado.</td></tr>');
     });
 }
+function toggleMenuAcoes(id, e) {
+    e.stopPropagation();
+    $('[id^="menu-acoes-"]').not(`#menu-acoes-${id}`).addClass('hidden');
+    $(`#menu-acoes-${id}`).toggleClass('hidden');
+}
+$(document).on('click', function() { $('[id^="menu-acoes-"]').addClass('hidden'); });
 
 function excluirSorteio(id) {
     confirmar('Excluir sorteio', 'Isso vai apagar o sorteio e todos os dados relacionados (cotas, funis, prêmios). Não pode ser desfeito.').then(yes => {
@@ -1176,12 +1252,16 @@ function limparFormSorteio() {
     $('#preview-extra-imgs').empty();
     $('#lista-premios').empty();
     $('#lista-roleta').empty();
+    $('#lista-roleta-tiers-admin').empty();
     $('#lista-bloqueios').empty();
     $('#lista-agendamentos').empty();
     $('#lista-funis').empty();
     $('#lista-links-sorteio').empty();
-    $('#box-add-premio, #box-add-roleta, #box-bloqueio, #box-add-funil, #box-add-link').addClass('opacity-50 pointer-events-none');
+    $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').addClass('opacity-50 pointer-events-none');
     $('#aviso-premios, #aviso-links, #aviso-funis').show();
+    $('#inp-roleta-ativada').prop('checked', false);
+    $('#inp-roleta-pool').val('');
+    toggleRoletaBox();
     setMascaraMoedaValor(0);
     setTotalCotasValor('1000000');
     setBotoesRapidos('500,1000,2000,5000');
@@ -1203,7 +1283,7 @@ function abrirFormSorteio(id) {
     }
 
     $('#form-sorteio-titulo').text('Editar Sorteio');
-    $('#box-add-premio, #box-add-roleta, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
+    $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
     $('#aviso-premios, #aviso-links, #aviso-funis').hide();
 
     api('GET', `/api/admin/sorteios/${id}`).then(s => {
@@ -1223,6 +1303,9 @@ function abrirFormSorteio(id) {
         $('#inp-coletar-cpf').prop('checked', !!s.coletar_cpf);
         $('#inp-coletar-email').prop('checked', !!s.coletar_email);
         $('#inp-coletar-endereco').prop('checked', !!s.coletar_endereco);
+        $('#inp-roleta-ativada').prop('checked', !!s.roleta_ativada);
+        toggleRoletaBox();
+        $('#inp-roleta-pool').val(s.roleta_pool_total || '');
         setBotoesRapidos(s.botoes_rapidos);
         setMascaraTelefoneValor(s.suporte_whatsapp);
         $('#inp-ganhador-nome').val(s.ganhador_nome || '');
@@ -1235,6 +1318,7 @@ function abrirFormSorteio(id) {
 
         carregarPremios(id);
         carregarRoleta(id);
+        carregarRoletaTiers(id);
         carregarBloqueios(id);
         carregarFunis(id);
         carregarLinksSorteio(id);
@@ -1269,9 +1353,10 @@ $('#form-criar-sorteio').on('submit', function(e) {
             hideOverlay();
             SORTEIO_ATUAL_ID = d.sorteio.id;
             $('#input-sorteio-id').val(d.sorteio.id);
-            $('#box-add-premio, #box-add-roleta, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
+            $('#box-add-premio, #box-add-roleta, #box-add-roleta-tier, #box-bloqueio, #box-add-funil, #box-add-link').removeClass('opacity-50 pointer-events-none');
             $('#aviso-premios, #aviso-links, #aviso-funis').hide();
             carregarFunis(d.sorteio.id);
+            carregarRoletaTiers(d.sorteio.id);
             carregarLinksSorteio(d.sorteio.id);
             alert('Sorteio salvo com sucesso!');
             carregarSorteios();
@@ -1314,6 +1399,28 @@ function addRoleta() {
         carregarRoleta(SORTEIO_ATUAL_ID);
     });
 }
+
+function toggleRoletaBox() {
+    $('#box-roleta-config').toggleClass('hidden', !$('#inp-roleta-ativada').is(':checked'));
+}
+
+// ---- Faixas de giros da roleta (tiers) ----
+function carregarRoletaTiers(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/roleta-tiers`).then(d => {
+        const tiers = d.tiers || [];
+        $('#lista-roleta-tiers-admin').html(tiers.map(t => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center"><span>A cada <b>${t.minimo_cotas}</b> títulos → <b>${t.quantidade_giros}</b> giros</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerRoletaTier('${t.id}')">Remover</button></div>`).join('') || '<p class="text-xs text-gray-500">Nenhuma faixa configurada.</p>');
+    });
+}
+function addRoletaTier() {
+    const minimo_cotas = $('#tier-minimo').val();
+    const quantidade_giros = $('#tier-giros').val();
+    if (!minimo_cotas || !quantidade_giros) return alert('Preencha os dois campos.');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/roleta-tiers`, { minimo_cotas, quantidade_giros }).then(() => {
+        $('#tier-minimo').val(''); $('#tier-giros').val('');
+        carregarRoletaTiers(SORTEIO_ATUAL_ID);
+    });
+}
+function removerRoletaTier(id) { api('DELETE', `/api/admin/roleta-tiers/${id}`).then(() => carregarRoletaTiers(SORTEIO_ATUAL_ID)); }
 
 // ---- Bloqueios ----
 function carregarBloqueios(sorteioId) {
@@ -1516,8 +1623,13 @@ function popularFiltroLinksSorteio() {
 
 // ---------------- PEDIDOS ----------------
 let PEDIDOS_FILTRO_ATUAL = 'todos';
+let PEDIDOS_CACHE = [];
+let PEDIDOS_PAGINA = 1;
+const PEDIDOS_POR_PAGINA = 20;
+
 function carregarPedidos(filter) {
     PEDIDOS_FILTRO_ATUAL = filter;
+    PEDIDOS_PAGINA = 1;
     $('#pedidos-status-tabs .periodo-btn').removeClass('active');
     $(`#pedidos-status-tabs .periodo-btn[data-f="${filter}"]`).addClass('active');
 
@@ -1529,28 +1641,79 @@ function carregarPedidos(filter) {
     const qs = params.length ? '?' + params.join('&') : '';
 
     fetch(`/api/admin/pedidos${qs}`, { credentials: 'include' }).then(r => r.json()).then(data => {
-        const statusCor = { pago: 'text-green-400', aguardando: 'text-yellow-400', cancelado: 'text-red-400' };
-        const html = (data || []).map(p => {
-            const aprovarBtn = p.status === 'aguardando' ? `<button class="btn-primary text-xs" onclick="aprovarPedido('${p.id}')">Aprovar</button>` : '';
-            const funilTag = p.funis ? `<span class="badge badge-outro ml-2">🧩 ${p.funis.nome}</span>` : '';
-            const data_fmt = p.created_at ? new Date(p.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-            return `
-                <div class="pedido-card">
-                    <div>
-                        <div class="font-semibold text-white">${p.usuarios?.nome_completo || '—'} ${funilTag}</div>
-                        <div class="text-gray-400 text-sm">${p.sorteios?.nome || ''} · ${p.quantidade_cotas} cotas · ${formatBR(p.valor_total)}</div>
-                        <div class="text-xs ${statusCor[p.status] || 'text-gray-500'} font-semibold">${p.status} <span class="text-gray-600 font-normal">· ${data_fmt}</span></div>
-                    </div>
-                    <div class="flex gap-2">
-                        ${aprovarBtn}
-                        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs" onclick="excluirPedido('${p.id}')">🗑️</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        $('#tabela-pedidos').html(html || '<p class="text-gray-400 text-center p-4">Nenhum pedido encontrado.</p>');
+        PEDIDOS_CACHE = data || [];
+        renderPedidosPagina();
     });
 }
+
+function statusVisual(p) {
+    if (p.status === 'aguardando' && p.expira_em && new Date(p.expira_em) < new Date()) return { texto: 'expirado', cor: 'text-red-400' };
+    const cores = { pago: 'text-green-400', aguardando: 'text-yellow-400', cancelado: 'text-red-400' };
+    return { texto: p.status, cor: cores[p.status] || 'text-gray-500' };
+}
+
+function renderPedidosPagina() {
+    const inicio = (PEDIDOS_PAGINA - 1) * PEDIDOS_POR_PAGINA;
+    const pagina = PEDIDOS_CACHE.slice(inicio, inicio + PEDIDOS_POR_PAGINA);
+    const html = pagina.map(p => {
+        const aprovarBtn = p.status === 'aguardando' ? `<button class="btn-primary text-xs" onclick="event.stopPropagation(); aprovarPedido('${p.id}')">Aprovar</button>` : '';
+        const funilTag = p.funis ? `<span class="badge badge-outro ml-2">🧩 ${p.funis.nome}</span>` : '';
+        const data_fmt = p.created_at ? new Date(p.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        const sv = statusVisual(p);
+        return `
+            <div class="pedido-card" style="cursor:pointer" onclick="abrirDetalhePedido('${p.id}')">
+                <div>
+                    <div class="font-semibold text-white">${p.usuarios?.nome_completo || '—'} ${funilTag}</div>
+                    <div class="text-gray-400 text-sm">${p.sorteios?.nome || ''} · ${p.quantidade_cotas} cotas · ${formatBR(p.valor_total)}</div>
+                    <div class="text-xs ${sv.cor} font-semibold">${sv.texto} <span class="text-gray-600 font-normal">· ${data_fmt}</span></div>
+                </div>
+                <div class="flex gap-2">
+                    ${aprovarBtn}
+                    <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs" onclick="event.stopPropagation(); excluirPedido('${p.id}')">🗑️</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    $('#tabela-pedidos').html(html || '<p class="text-gray-400 text-center p-4">Nenhum pedido encontrado.</p>');
+    renderPaginacaoPedidos();
+}
+
+function renderPaginacaoPedidos() {
+    const totalPaginas = Math.ceil(PEDIDOS_CACHE.length / PEDIDOS_POR_PAGINA);
+    if (totalPaginas <= 1) { $('#paginacao-pedidos').empty(); return; }
+    let botoes = '';
+    for (let i = 1; i <= totalPaginas; i++) {
+        botoes += `<button class="px-3 py-1 rounded text-xs ${i === PEDIDOS_PAGINA ? 'btn-primary' : 'border border-gray-700 text-gray-300'}" onclick="PEDIDOS_PAGINA=${i}; renderPedidosPagina();">${i}</button>`;
+    }
+    $('#paginacao-pedidos').html(`<div class="flex gap-2 justify-center mt-4 flex-wrap">${botoes}</div>`);
+}
+
+function abrirDetalhePedido(id) {
+    const p = PEDIDOS_CACHE.find(x => x.id === id);
+    if (!p) return;
+    const sv = statusVisual(p);
+    const cotas = (p.cotas || []).map(c => `<span class="chip">${c.numero_cota}</span>`).join(' ');
+    $('#detalhe-pedido-corpo').html(`
+        <div class="space-y-2 text-sm">
+            <div><span class="opacity-60">Comprador:</span> <b>${p.usuarios?.nome_completo || '—'}</b></div>
+            <div><span class="opacity-60">Telefone:</span> ${p.usuarios?.telefone || '—'}</div>
+            <div><span class="opacity-60">Sorteio:</span> ${p.sorteios?.nome || '—'}</div>
+            <div><span class="opacity-60">Funil:</span> ${p.funis?.nome || 'Padrão'}</div>
+            <div><span class="opacity-60">Quantidade:</span> ${p.quantidade_cotas}</div>
+            <div><span class="opacity-60">Valor:</span> ${formatBR(p.valor_total)}</div>
+            <div><span class="opacity-60">Status:</span> <b class="${sv.cor}">${sv.texto}</b></div>
+            <div><span class="opacity-60">Criado em:</span> ${p.created_at ? new Date(p.created_at).toLocaleString('pt-BR') : '—'}</div>
+            <div><span class="opacity-60">Expira em:</span> ${p.expira_em ? new Date(p.expira_em).toLocaleString('pt-BR') : '—'}</div>
+            ${cotas ? `<div class="pt-2 border-t border-gray-800"><span class="opacity-60">Cotas:</span><div class="flex flex-wrap gap-1 mt-2">${cotas}</div></div>` : ''}
+        </div>
+        <div class="flex gap-2 mt-4">
+            ${p.status === 'aguardando' ? `<button class="btn-primary flex-1" onclick="aprovarPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden');">Aprovar Pedido</button>` : ''}
+            <button class="bg-red-600 text-white flex-1 rounded-lg" onclick="excluirPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden');">Excluir</button>
+        </div>
+    `);
+    $('#modal-detalhe-pedido').removeClass('hidden').css('display', 'flex');
+}
+
 function aprovarPedido(id) { api('POST', `/api/admin/pedidos/${id}/aprovar`).then(() => carregarPedidos(PEDIDOS_FILTRO_ATUAL)).catch(err => alert(err.error || 'Erro')); }
 function excluirPedido(id) {
     confirmar('Excluir pedido', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/pedidos/${id}`).then(() => carregarPedidos(PEDIDOS_FILTRO_ATUAL)); });
@@ -1604,6 +1767,12 @@ function carregarRelatorios() {
     fetch(url, { credentials: 'include' }).then(r => r.json()).then(d => {
         $('#rel-faturamento').text(formatBR(d.total_faturado));
         $('#rel-pedidos').text(d.total_pedidos || 0);
+        $('#rel-clientes').text(d.total_clientes || 0);
+        $('#rel-despesas').text(formatBR(d.total_despesas));
+        const lucro = Number(d.lucro_liquido || 0);
+        $('#rel-lucro').text(formatBR(lucro)).removeClass('text-green-400 text-red-400').addClass(lucro >= 0 ? 'text-green-400' : 'text-red-400');
+        $('#rel-roi').text(d.roi === null || d.roi === undefined ? '—' : `${d.roi.toFixed(1)}%`);
+
         const ctx = document.getElementById('grafico-vendas');
         if (VENDAS_CHART_REL) VENDAS_CHART_REL.destroy();
         VENDAS_CHART_REL = new Chart(ctx, {
@@ -1612,6 +1781,41 @@ function carregarRelatorios() {
             options: { plugins: { legend: { labels: { color: '#e6edf3' } } }, scales: { x: { ticks: { color: '#9ca3af' } }, y: { ticks: { color: '#9ca3af' } } } }
         });
     });
+    carregarDespesas();
+}
+
+// ---------------- DESPESAS ----------------
+function carregarDespesas() {
+    const from = $('#filtro-data-de').val();
+    const to = $('#filtro-data-ate').val();
+    let url = '/api/admin/despesas';
+    const params = [];
+    if (from) params.push(`from=${from}`);
+    if (to) params.push(`to=${to}`);
+    if (params.length) url += '?' + params.join('&');
+
+    api('GET', url).then(d => {
+        const despesas = d.despesas || [];
+        $('#lista-despesas').html(despesas.map(x => `
+            <div class="pedido-card">
+                <div><div class="font-semibold text-sm">${x.nome}</div><div class="text-xs opacity-60">${x.data ? new Date(x.data).toLocaleDateString('pt-BR') : ''}</div></div>
+                <div class="flex items-center gap-3"><span class="font-bold text-red-400">${formatBR(x.valor)}</span><button class="text-red-400 hover:text-red-300" onclick="removerDespesa('${x.id}')"><i class="bi bi-trash"></i></button></div>
+            </div>
+        `).join('') || '<p class="text-gray-400 text-sm text-center py-2">Nenhuma despesa lançada nesse período.</p>');
+    });
+}
+function addDespesa() {
+    const nome = $('#despesa-nome').val();
+    const valor = $('#despesa-valor').val();
+    const data = $('#despesa-data').val();
+    if (!nome || !valor) return alert('Preencha nome e valor da despesa.');
+    api('POST', '/api/admin/despesas', { nome, valor, data: data ? `${data}T12:00:00` : undefined }).then(() => {
+        $('#despesa-nome').val(''); $('#despesa-valor').val(''); $('#despesa-data').val('');
+        carregarRelatorios();
+    });
+}
+function removerDespesa(id) {
+    confirmar('Excluir despesa', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/despesas/${id}`).then(() => carregarRelatorios()); });
 }
 $('#form-filtro-relatorio').on('submit', function(e) { e.preventDefault(); carregarRelatorios(); });
 

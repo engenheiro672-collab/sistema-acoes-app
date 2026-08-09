@@ -67,24 +67,30 @@ async function safeUpdatePedidos(id, payload) {
 }
 
 // Detecta automaticamente a origem do acesso (Google Ads, Facebook/Instagram Ads, WhatsApp, orgânico...)
-function detectarOrigemAutomatica(query, referer) {
+function detectarOrigemAutomatica(query, referer, funil) {
   const q = query || {};
-  if (q.gclid) return { codigo: 'auto-google-ads', nome: 'Google Ads (automático)', canal: 'google_ads' };
-  if (q.fbclid) return { codigo: 'auto-facebook-ads', nome: 'Facebook/Instagram Ads (automático)', canal: 'facebook_ads' };
-  if (q.ttclid) return { codigo: 'auto-tiktok-ads', nome: 'TikTok Ads (automático)', canal: 'tiktok_ads' };
+  const sufixo = funil ? `--${funil.slug}` : '';
+  const nomeFunil = funil ? ` (funil: ${funil.nome})` : '';
+  if (q.gclid) return { codigo: `auto-google-ads${sufixo}`, nome: `Google Ads (automático)${nomeFunil}`, canal: 'google_ads' };
+  if (q.fbclid) return { codigo: `auto-facebook-ads${sufixo}`, nome: `Facebook/Instagram Ads (automático)${nomeFunil}`, canal: 'facebook_ads' };
+  if (q.ttclid) return { codigo: `auto-tiktok-ads${sufixo}`, nome: `TikTok Ads (automático)${nomeFunil}`, canal: 'tiktok_ads' };
   const utmSource = (q.utm_source || '').toLowerCase();
-  if (utmSource.includes('whatsapp') || utmSource === 'wpp') return { codigo: 'auto-whatsapp', nome: 'WhatsApp (automático)', canal: 'whatsapp' };
-  if (utmSource.includes('instagram')) return { codigo: 'auto-instagram-organico', nome: 'Instagram Orgânico (automático)', canal: 'instagram_organico' };
-  if (utmSource.includes('facebook')) return { codigo: 'auto-facebook-organico', nome: 'Facebook Orgânico (automático)', canal: 'facebook_organico' };
-  if (utmSource) return { codigo: `auto-${utmSource}`, nome: `${utmSource} (automático)`, canal: 'outro' };
-  if (referer && /whatsapp/i.test(referer)) return { codigo: 'auto-whatsapp', nome: 'WhatsApp (automático)', canal: 'whatsapp' };
-  if (referer && /instagram/i.test(referer)) return { codigo: 'auto-instagram-organico', nome: 'Instagram Orgânico (automático)', canal: 'instagram_organico' };
-  if (referer && /facebook/i.test(referer)) return { codigo: 'auto-facebook-organico', nome: 'Facebook Orgânico (automático)', canal: 'facebook_organico' };
-  return { codigo: 'auto-direto', nome: 'Acesso direto/orgânico (automático)', canal: 'direto' };
+  if (utmSource.includes('whatsapp') || utmSource === 'wpp') return { codigo: `auto-whatsapp${sufixo}`, nome: `WhatsApp (automático)${nomeFunil}`, canal: 'whatsapp' };
+  if (utmSource.includes('instagram')) return { codigo: `auto-instagram-organico${sufixo}`, nome: `Instagram Orgânico (automático)${nomeFunil}`, canal: 'instagram_organico' };
+  if (utmSource.includes('facebook')) return { codigo: `auto-facebook-organico${sufixo}`, nome: `Facebook Orgânico (automático)${nomeFunil}`, canal: 'facebook_organico' };
+  if (utmSource) return { codigo: `auto-${utmSource}${sufixo}`, nome: `${utmSource} (automático)${nomeFunil}`, canal: 'outro' };
+  // Atenção: WhatsApp e Instagram costumam abrir links no navegador interno deles (in-app browser),
+  // que MUITAS VEZES não envia o cabeçalho "referer" por privacidade — nesse caso não tem como
+  // detectar automaticamente e o acesso cai em "direto/orgânico". Pra rastreio garantido desses
+  // canais, o ideal é sempre usar um link manual (aba Links) em vez de depender só da detecção automática.
+  if (referer && /whatsapp/i.test(referer)) return { codigo: `auto-whatsapp${sufixo}`, nome: `WhatsApp (automático)${nomeFunil}`, canal: 'whatsapp' };
+  if (referer && /instagram/i.test(referer)) return { codigo: `auto-instagram-organico${sufixo}`, nome: `Instagram Orgânico (automático)${nomeFunil}`, canal: 'instagram_organico' };
+  if (referer && /facebook/i.test(referer)) return { codigo: `auto-facebook-organico${sufixo}`, nome: `Facebook Orgânico (automático)${nomeFunil}`, canal: 'facebook_organico' };
+  return { codigo: `auto-direto${sufixo}`, nome: `Acesso direto/orgânico (automático)${nomeFunil}`, canal: 'direto' };
 }
 
 // Garante que um link de rastreamento existe (cria automaticamente se for detecção automática) e incrementa cliques
-async function registrarClique(sorteio_id, codigo, nome, canal) {
+async function registrarClique(sorteio_id, codigo, nome, canal, funil_id) {
   try {
     if (!sorteio_id || !codigo) return null;
     const { data: existente } = await supabase.from('links_rastreamento').select('*').eq('sorteio_id', sorteio_id).eq('codigo', codigo).maybeSingle();
@@ -94,7 +100,7 @@ async function registrarClique(sorteio_id, codigo, nome, canal) {
       linkId = existente.id;
     } else {
       const { data: novo } = await supabase.from('links_rastreamento').insert({
-        sorteio_id, codigo, nome: nome || codigo, canal: canal || 'outro', cliques: 1, created_at: new Date().toISOString()
+        sorteio_id, codigo, nome: nome || codigo, canal: canal || 'outro', funil_id: funil_id || null, cliques: 1, created_at: new Date().toISOString()
       }).select().single();
       linkId = novo?.id || null;
     }
@@ -260,6 +266,11 @@ async function trackearAcesso(req, res, next) {
   try {
     const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', req.params.slug).maybeSingle();
     if (sorteio) {
+      let funil = null;
+      if (req.params.funilSlug) {
+        const { data: f } = await supabase.from('funis').select('id, nome, slug').eq('sorteio_id', sorteio.id).eq('slug', req.params.funilSlug).maybeSingle();
+        funil = f || null;
+      }
       if (req.query.lk) {
         const { data: link } = await supabase.from('links_rastreamento').select('*').eq('sorteio_id', sorteio.id).eq('codigo', req.query.lk).maybeSingle();
         if (link) {
@@ -267,8 +278,8 @@ async function trackearAcesso(req, res, next) {
           await supabase.from('acessos_log').insert({ sorteio_id: sorteio.id, link_id: link.id, created_at: new Date().toISOString() });
         }
       } else {
-        const auto = detectarOrigemAutomatica(req.query, req.headers.referer);
-        await registrarClique(sorteio.id, auto.codigo, auto.nome, auto.canal);
+        const auto = detectarOrigemAutomatica(req.query, req.headers.referer, funil);
+        await registrarClique(sorteio.id, auto.codigo, auto.nome, auto.canal, funil?.id);
       }
     }
   } catch (err) { console.error('trackearAcesso error', err); }
@@ -363,7 +374,28 @@ async function getSorteioPublicData(slug, funilSlug) {
   const restantes = Math.max(0, Number(sorteio.total_cotas || 0) - Number(vendidas || 0) - bloq.size - agnd.size);
   const { data: bilhetesTudo } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: true });
   const bilhetes = (bilhetesTudo || []).filter(b => (b.tipo || 'bilhete') === 'bilhete');
-  const roleta_premios = (bilhetesTudo || []).filter(b => b.tipo === 'roleta');
+  const roletaTodos = (bilhetesTudo || []).filter(b => b.tipo === 'roleta');
+
+  // Enriquece os bilhetes de tipo "bilhete" com nome do comprador (pra mostrar ao lado, como no site de referência)
+  const usuarioIdsBilhetes = [...new Set(bilhetes.filter(b => b.status === 'reivindicada').map(b => b.usuario_id).filter(Boolean))];
+  const { data: usuariosBilhetes } = usuarioIdsBilhetes.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsBilhetes) : { data: [] };
+  const usuarioMapBilhetes = (usuariosBilhetes || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
+  const bilhetesComNome = bilhetes.map(b => ({ ...b, ganhador_nome: b.status === 'reivindicada' ? (usuarioMapBilhetes[b.usuario_id] || null) : null }));
+
+  // Roleta: nunca expõe o número do giro — só título/valor/nome de quem ganhou (igual ao site de referência)
+  const roletaGanhas = roletaTodos.filter(r => r.status === 'reivindicada');
+  const usuarioIdsRoleta = [...new Set(roletaGanhas.map(r => r.usuario_id).filter(Boolean))];
+  const { data: usuariosRoleta } = usuarioIdsRoleta.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsRoleta) : { data: [] };
+  const usuarioMapRoleta = (usuariosRoleta || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
+  const roleta_resultados = {
+    total: roletaTodos.length,
+    ganhas: roletaGanhas.length,
+    vencedores: roletaGanhas.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: usuarioMapRoleta[r.usuario_id] || null }))
+  };
+
+  const { data: roleta_tiers } = sorteio.roleta_ativada
+    ? await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio.id).order('minimo_cotas', { ascending: true })
+    : { data: [] };
 
   let funil = null;
   if (funilSlug) {
@@ -378,7 +410,7 @@ async function getSorteioPublicData(slug, funilSlug) {
     tiktok_pixel_id: sorteio.pixel_tiktok_override || meta.pixel_tiktok || '',
     gtm_id: sorteio.pixel_gtm_override || meta.pixel_gtm || ''
   };
-  return { sorteio, bilhetes_premiados: bilhetes, roleta_premios, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels };
+  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels };
 }
 
 app.get('/api/public/sorteio/:slug', async (req, res) => {
@@ -435,6 +467,42 @@ app.get('/api/public/checkout/:token', async (req, res) => {
   } catch (err) { console.error('GET /api/public/checkout/:token', err); return fail(res); }
 });
 
+// Lista os giros de roleta de um pedido (sem revelar o resultado dos que ainda não foram girados)
+app.get('/api/public/pedidos/:token/roletas', async (req, res) => {
+  try {
+    const { data: pedido } = await supabase.from('pedidos').select('id').eq('token', req.params.token).maybeSingle();
+    if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+    const { data: giros } = await supabase.from('roleta_giros').select('*').eq('pedido_id', pedido.id).order('created_at', { ascending: true });
+    const publico = (giros || []).map(g => ({
+      id: g.id, girado: g.girado,
+      premio_titulo: g.girado ? g.premio_titulo : null,
+      valor_premio: g.girado ? g.valor_premio : null,
+      ganhou: g.girado ? !!g.premio_titulo : null
+    }));
+    return ok(res, { giros: publico });
+  } catch (err) { console.error('GET pedidos/:token/roletas', err); return fail(res); }
+});
+
+// "Gira" um giro específico — o resultado já estava determinado desde a aprovação do pagamento,
+// aqui só revelamos e, se for prêmio, confirmamos a reivindicação do bilhete de roleta correspondente.
+app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
+  try {
+    const { data: giro } = await supabase.from('roleta_giros').select('*').eq('id', req.params.giroId).maybeSingle();
+    if (!giro) return res.status(404).json({ error: 'Giro não encontrado' });
+    if (giro.girado) return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: giro.valor_premio, ganhou: !!giro.premio_titulo });
+
+    await supabase.from('roleta_giros').update({ girado: true, girado_em: new Date().toISOString() }).eq('id', giro.id);
+
+    if (giro.bilhete_premiado_id) {
+      await supabase.from('bilhetes_premiados').update({
+        status: 'reivindicada', usuario_id: giro.usuario_id, pedido_id: giro.pedido_id, reivindicada_em: new Date().toISOString()
+      }).eq('id', giro.bilhete_premiado_id).eq('status', 'disponivel');
+    }
+
+    return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: giro.valor_premio, ganhou: !!giro.premio_titulo });
+  } catch (err) { console.error('POST roletas/:giroId/girar', err); return fail(res); }
+});
+
 // 🧪 MODO TESTE — só funciona se MODO_TESTE_PAGAMENTO estiver ligado nas configurações.
 // Serve pra você testar o fluxo inteiro (sorteio → checkout → cotas geradas) sem ter um gateway
 // de pagamento real configurado ainda. NÃO envolve dinheiro real. Desligue antes de divulgar o link pra clientes.
@@ -469,6 +537,20 @@ app.post('/api/public/meus-bilhetes', async (req, res) => {
     const results = (pedidos || []).map(p => ({ ...p, cotas: p.cotas || [] }));
     return res.json(results);
   } catch (err) { console.error('POST /api/public/meus-bilhetes', err); return fail(res); }
+});
+
+// Verifica se um telefone já é de um comprador conhecido (pra pular nome/CPF/etc no checkout)
+app.post('/api/public/usuarios/verificar', async (req, res) => {
+  try {
+    const telefone = String(req.body?.telefone || '').replace(/\D/g, '');
+    if (!telefone) return fail(res, 'Telefone é obrigatório', 400);
+    const { data: usuario } = await supabase.from('usuarios').select('nome_completo, email, cpf, endereco').eq('telefone', telefone).maybeSingle();
+    if (!usuario) return ok(res, { existe: false });
+    return ok(res, {
+      existe: true, nome_completo: usuario.nome_completo,
+      tem_email: !!usuario.email, tem_cpf: !!usuario.cpf, tem_endereco: !!usuario.endereco
+    });
+  } catch (err) { console.error('POST usuarios/verificar', err); return fail(res); }
 });
 
 // --- PAGAMENTOS ---
@@ -656,11 +738,11 @@ async function gerarCotasUnicas(pedido) {
 
     await safeUpdatePedidos(pedido.id, { cotas_geradas: 1, cotas_array: inserted.map(r => r.numero_cota), status: 'pago', updated_at: new Date().toISOString() });
 
-    // Verifica se alguma das cotas geradas bate com um bilhete premiado (ou roleta) ainda disponível,
-    // e já vincula o ganhador (usuário + pedido) — é isso que alimenta "Buscar Ganhador" e a aba de Roleta.
+    // Verifica se alguma das cotas geradas bate com um BILHETE premiado ainda disponível
+    // (a roleta usa um pool separado — veja atribuirGirosRoleta logo abaixo).
     try {
       const numeros = inserted.map(r => r.numero_cota);
-      const { data: possiveisPremios } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('status', 'disponivel').in('numero_cota', numeros);
+      const { data: possiveisPremios } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'bilhete').eq('status', 'disponivel').in('numero_cota', numeros);
       for (const premio of (possiveisPremios || [])) {
         await supabase.from('bilhetes_premiados').update({
           status: 'reivindicada', usuario_id: user_id, pedido_id: pedido.id, reivindicada_em: new Date().toISOString()
@@ -668,22 +750,68 @@ async function gerarCotasUnicas(pedido) {
       }
     } catch (err) { console.error('Erro ao vincular bilhete premiado', err); }
 
+    // Roleta: se o sorteio tiver a roleta ativada, calcula quantos giros esse pedido ganhou
+    // (com base na faixa de cotas compradas) e sorteia os "números de giro" desse pedido dentro
+    // do pool de roleta — cada giro pode ou não bater com um prêmio pré-configurado.
+    try { await atribuirGirosRoleta(sorteio_id, pedido, user_id); } catch (err) { console.error('Erro ao atribuir giros de roleta', err); }
+
     return inserted;
 
   } catch (err) { console.error('❌ Erro gerarCotasUnicas:', err); return []; }
+}
+
+// Calcula quantos giros de roleta um pedido ganhou (pela faixa de cotas compradas) e sorteia
+// números de giro únicos dentro do pool da roleta desse sorteio, verificando prêmios na hora.
+async function atribuirGirosRoleta(sorteio_id, pedido, user_id) {
+  const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, roleta_pool_total').eq('id', sorteio_id).maybeSingle();
+  if (!sorteio || !sorteio.roleta_ativada || !sorteio.roleta_pool_total) return;
+
+  const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio_id).order('minimo_cotas', { ascending: false });
+  const qtdComprada = Number(pedido.quantidade_cotas || 0);
+  const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
+  const qtdGiros = tierAlcançado ? Number(tierAlcançado.quantidade_giros) : 0;
+  if (qtdGiros <= 0) return;
+
+  const poolTotal = Number(sorteio.roleta_pool_total);
+  const { data: giroExistentes } = await supabase.from('roleta_giros').select('numero_giro').eq('sorteio_id', sorteio_id);
+  const usados = new Set((giroExistentes || []).map(g => g.numero_giro));
+
+  const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel');
+  const premiosMap = new Map((premiosRoleta || []).map(p => [Number(p.numero_cota), p]));
+
+  const novasLinhas = [];
+  let tentativas = 0;
+  while (novasLinhas.length < qtdGiros && usados.size < poolTotal && tentativas < poolTotal * 20) {
+    tentativas++;
+    const candidato = 1 + Math.floor(Math.random() * poolTotal);
+    if (usados.has(candidato)) continue;
+    usados.add(candidato);
+    const premio = premiosMap.get(candidato);
+    novasLinhas.push({
+      sorteio_id, pedido_id: pedido.id, usuario_id: user_id, numero_giro: candidato,
+      premio_titulo: premio ? premio.premio_titulo : null,
+      valor_premio: premio ? premio.valor_premio : null,
+      bilhete_premiado_id: premio ? premio.id : null,
+      girado: false, created_at: new Date().toISOString()
+    });
+  }
+  if (novasLinhas.length === 0) return;
+
+  await supabase.from('roleta_giros').insert(novasLinhas);
 }
 
 // --- API PEDIDOS PUBLIC (com suporte a funil_id) ---
 app.post('/api/public/pedidos/iniciar', async (req, res) => {
   try {
     const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo } = req.body || {};
-    if (!sorteio_id || !quantidade || !nome_completo || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
+    if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
     const cpfLimpo = cpf ? String(cpf).replace(/\D/g, '') : null;
     const { data: usuarioExistente } = await supabase.from('usuarios').select('*').eq('telefone', telefoneLimpo).maybeSingle();
     let usuario = usuarioExistente;
     if (!usuario) {
+      if (!nome_completo) return res.status(400).json({ error: 'Nome é obrigatório para novos compradores' });
       const { data: novo, error: nErr } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo, email, cpf: cpfLimpo, endereco }).select().single();
       if (nErr) return fail(res, 'Erro ao criar usuário');
       usuario = novo;
@@ -992,6 +1120,26 @@ app.get('/api/admin/sorteios/:id/roleta/resultados', ensureAdminAuth, async (req
   } catch (e) { console.error('GET roleta/resultados', e); return fail(res); }
 });
 
+// Faixas de giros: "a cada X títulos comprados, ganha Y giros de roleta"
+app.get('/api/admin/sorteios/:id/roleta-tiers', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', req.params.id).order('minimo_cotas', { ascending: true });
+    return ok(res, { tiers: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/sorteios/:id/roleta-tiers', ensureAdminAuth, async (req, res) => {
+  try {
+    const { minimo_cotas, quantidade_giros } = req.body || {};
+    if (!minimo_cotas || !quantidade_giros) return fail(res, 'Preencha os dois campos', 400);
+    const { data, error } = await supabase.from('roleta_tiers').insert({ sorteio_id: req.params.id, minimo_cotas, quantidade_giros }).select();
+    if (error) return fail(res, error.message);
+    return ok(res, data);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/roleta-tiers/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('roleta_tiers').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
+});
+
 // ==================================================================
 // 📊 DASHBOARD API (métricas, buscas)
 // ==================================================================
@@ -1117,7 +1265,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
       if (end_date) q = q.lte('updated_at', end_date);
       return q;
     };
-    let qf = supabase.from('pedidos').select('valor_total').eq('status', 'pago');
+    let qf = supabase.from('pedidos').select('valor_total, user_id').eq('status', 'pago');
     qf = baseFilter(qf);
     const { data: paid } = await qf;
 
@@ -1132,6 +1280,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     const faturamento = (paid || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const pendente = (pend || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const total_pedidos = (all || []).length;
+    const total_clientes = new Set((paid || []).map(p => p.user_id).filter(Boolean)).size;
     const ticket_medio = total_pedidos > 0 ? (faturamento / total_pedidos) : 0;
 
     let qa = supabase.from('acessos_log').select('*', { head: true, count: 'exact' });
@@ -1140,7 +1289,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     if (end_date) qa = qa.lte('created_at', end_date);
     const { count: acessos } = await qa;
 
-    return ok(res, { faturamento, pendente, total_pedidos, ticket_medio, acessos: acessos || 0 });
+    return ok(res, { faturamento, pendente, total_pedidos, total_clientes, ticket_medio, acessos: acessos || 0 });
   } catch (err) { return fail(res); }
 });
 
@@ -1335,6 +1484,8 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       coletar_cpf: body.coletar_cpf === true || body.coletar_cpf === 'true' || body.coletar_cpf === 'on',
       coletar_email: body.coletar_email === true || body.coletar_email === 'true' || body.coletar_email === 'on',
       coletar_endereco: body.coletar_endereco === true || body.coletar_endereco === 'true' || body.coletar_endereco === 'on',
+      roleta_ativada: body.roleta_ativada === true || body.roleta_ativada === 'true' || body.roleta_ativada === 'on',
+      roleta_pool_total: body.roleta_pool_total ? parseInt(body.roleta_pool_total) : 0,
       updated_at: new Date().toISOString()
     };
 
@@ -1402,7 +1553,7 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
   try {
     const from = req.query.from ? new Date(`${req.query.from}T00:00:00`) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const to = req.query.to ? new Date(`${req.query.to}T23:59:59`) : new Date();
-    const { data: paid } = await supabase.from('pedidos').select('updated_at, valor_total').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString());
+    const { data: paid } = await supabase.from('pedidos').select('updated_at, valor_total, user_id').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString());
     const map = {};
     (paid || []).forEach(p => {
       const k = (p.updated_at || '').slice(0, 10);
@@ -1412,8 +1563,39 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
     const series = Object.values(map).sort((a, b) => a.dia.localeCompare(b.dia));
     const total_pedidos = series.reduce((acc, r) => acc + r.pedidos, 0);
     const total_faturado = series.reduce((acc, r) => acc + r.faturamento, 0);
-    res.json({ from: String(req.query.from || ''), to: String(req.query.to || ''), series, total_pedidos, total_faturado });
+    const total_clientes = new Set((paid || []).map(p => p.user_id).filter(Boolean)).size;
+
+    const { data: despesas } = await supabase.from('despesas').select('*').gte('data', from.toISOString()).lte('data', to.toISOString());
+    const total_despesas = (despesas || []).reduce((s, d) => s + Number(d.valor || 0), 0);
+    const lucro_liquido = total_faturado - total_despesas;
+    const roi = total_despesas > 0 ? (lucro_liquido / total_despesas) * 100 : null;
+
+    res.json({ from: String(req.query.from || ''), to: String(req.query.to || ''), series, total_pedidos, total_faturado, total_clientes, total_despesas, lucro_liquido, roi });
   } catch (err) { res.status(500).json({ error: 'Erro ao gerar relatório' }); }
+});
+
+// --- Despesas (pra calcular lucro líquido e ROI) ---
+app.get('/api/admin/despesas', ensureAdminAuth, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    let q = supabase.from('despesas').select('*').order('data', { ascending: false });
+    if (from) q = q.gte('data', `${from}T00:00:00`);
+    if (to) q = q.lte('data', `${to}T23:59:59`);
+    const { data } = await q;
+    return ok(res, { despesas: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/despesas', ensureAdminAuth, async (req, res) => {
+  try {
+    const { nome, valor, data } = req.body || {};
+    if (!nome || !valor) return fail(res, 'Nome e valor são obrigatórios', 400);
+    const { data: inserted, error } = await supabase.from('despesas').insert({ nome, valor, data: data || new Date().toISOString() }).select();
+    if (error) return fail(res, error.message);
+    return ok(res, inserted);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/despesas/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('despesas').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
 });
 
 app.get('/api/admin/clientes', ensureAdminAuth, async (_req, res) => {
@@ -1451,6 +1633,34 @@ app.get('/api/admin/clientes/export', ensureAdminAuth, async (_req, res) => {
 app.get('/api/admin/sorteios/:id/export', ensureAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const filtro = req.query.filtro || 'cotas';
+
+    if (filtro === 'expirados') {
+      const nowISO = new Date().toISOString();
+      const { data: pedidos } = await supabase.from('pedidos').select('*, usuarios(nome_completo, telefone)').eq('sorteio_id', id).eq('status', 'aguardando').lt('expira_em', nowISO);
+      const rows = (pedidos || []).map(p => ({ nome: p.usuarios?.nome_completo, telefone: p.usuarios?.telefone, quantidade_cotas: p.quantidade_cotas, valor: p.valor_total, expirou_em: p.expira_em }));
+      const csv = csvStringify(rows, { header: true });
+      res.setHeader('Content-Type', 'text/csv'); res.setHeader('Content-Disposition', 'attachment; filename="pedidos-expirados.csv"'); return res.send(csv);
+    }
+
+    if (filtro === 'compradores') {
+      const { data: pedidos } = await supabase.from('pedidos').select('*, usuarios(nome_completo, telefone, email, cpf)').eq('sorteio_id', id).eq('status', 'pago');
+      // Um comprador pode ter feito mais de um pedido — agrupa por usuário
+      const porUsuario = new Map();
+      (pedidos || []).forEach(p => {
+        const uid = p.user_id;
+        if (!uid) return;
+        const cur = porUsuario.get(uid) || { nome: p.usuarios?.nome_completo, telefone: p.usuarios?.telefone, email: p.usuarios?.email, cpf: p.usuarios?.cpf, total_cotas: 0, total_gasto: 0 };
+        cur.total_cotas += Number(p.quantidade_cotas || 0);
+        cur.total_gasto += Number(p.valor_total || 0);
+        porUsuario.set(uid, cur);
+      });
+      const rows = Array.from(porUsuario.values());
+      const csv = csvStringify(rows, { header: true });
+      res.setHeader('Content-Type', 'text/csv'); res.setHeader('Content-Disposition', 'attachment; filename="compradores.csv"'); return res.send(csv);
+    }
+
+    // filtro padrão: 'cotas' — lista de cotas geradas (comportamento original)
     const { data: c } = await supabase.from('cotas').select('numero_cota, pedido_id').eq('sorteio_id', id);
     const pIds = [...new Set((c || []).map(x => x.pedido_id))];
     const { data: p } = await supabase.from('pedidos').select('id, valor_total, created_at, user_id').in('id', pIds);
