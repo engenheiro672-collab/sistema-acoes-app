@@ -49,7 +49,7 @@
         .pagamento-aprovado.bonus .pagamento-aprovado-icon { color: #f59e0b; }
         .pagamento-aprovado.bonus .pagamento-aprovado-title { color: #f59e0b; }
         .bonus-tag { display: inline-block; background: #f59e0b; color: #1a1a1a; font-weight: 700; padding: 0.35rem 1rem; border-radius: 9999px; margin-top: 0.75rem; font-size: 0.9rem; }
-        .btn-grupo-vip { background-color: #25d366; color: white; font-weight: 700; font-size: 1.125rem; padding: 0.75rem 1.5rem; border-radius: 8px; margin-top: 1.5rem; display: inline-block; text-decoration: none; transition: background-color 0.2s; }
+        .btn-grupo-vip { background-color: #25d366; color: white; font-weight: 700; font-size: 1.125rem; padding: 0.75rem 1.5rem; border-radius: 8px; margin-top: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; text-decoration: none; transition: background-color 0.2s; }
         .btn-grupo-vip:hover { background-color: #1ebe5a; }
         .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
         @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
@@ -84,7 +84,21 @@
             </div>
         </div>
 
-        <p class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
+        <div id="card-pago" class="card flex items-center space-x-4 hidden">
+            <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:#22c55e;"></i>
+            <div>
+                <h2 id="pos-pagamento-titulo" class="aguardando-title" style="color:#22c55e;">Pagamento identificado!</h2>
+                <p id="pos-pagamento-mensagem" class="text-gray-400">Seus números já foram gerados. Boa sorte!</p>
+            </div>
+        </div>
+        <div id="bonus-tag-box" class="text-center"></div>
+
+        <a id="btn-grupo-vip" href="#" target="_blank" class="btn-grupo-vip hidden w-full text-center justify-center" style="font-size:1.1rem; padding: 1rem; box-shadow: 0 0 0 4px rgba(37,211,102,0.25); animation: pulse-vip 2s infinite;">
+            <i class="bi bi-whatsapp"></i> Entrar no Grupo VIP
+        </a>
+        <style>@keyframes pulse-vip { 0%,100% { box-shadow: 0 0 0 4px rgba(37,211,102,0.25); } 50% { box-shadow: 0 0 0 10px rgba(37,211,102,0.1); } }</style>
+
+        <p id="cronometro-box" class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
 
         <div id="card-instrucoes" class="card">
             <div class="instrucao-passo">
@@ -154,34 +168,18 @@
                 <div class="detalhe-item"><span class="detalhe-label">Expira em:</span><span id="detalhe-expira" class="detalhe-valor"></span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Quantidade:</span><span id="detalhe-quantidade" class="detalhe-valor">0</span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Total:</span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
-                <div class="detalhe-item"><span class="detalhe-label">Títulos:</span><span id="detalhe-titulos-status" class="detalhe-valor text-gray-400">Após o pagamento</span></div>
+                <div class="detalhe-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
+                    <span class="detalhe-label">Títulos:</span>
+                    <span id="detalhe-titulos-status" class="detalhe-valor text-gray-400">Após o pagamento</span>
+                    <div id="cotas-geradas" class="flex flex-wrap gap-2 w-full"></div>
+                    <button id="btn-ver-mais-titulos" class="text-center text-gray-400 font-semibold hover:text-white hidden text-sm">
+                        <i class="bi bi-chevron-down"></i> Ver mais títulos
+                    </button>
+                </div>
             </div>
         </div>
-    </main>
 
-    <!-- Tela pós-pagamento PADRÃO -->
-    <div id="pagamento-aprovado" class="pagamento-aprovado container mx-auto max-w-2xl p-4">
-        <i class="bi bi-check-circle-fill pagamento-aprovado-icon"></i>
-        <h2 id="pos-pagamento-titulo" class="pagamento-aprovado-title">Pagamento Aprovado!</h2>
-        <p id="pos-pagamento-mensagem" class="pagamento-aprovado-desc">Seus números já foram gerados. Boa sorte!</p>
-        <div id="bonus-tag-box"></div>
-
-        <a id="btn-grupo-vip" href="#" target="_blank" class="btn-grupo-vip hidden" style="font-size:1.25rem; padding: 1rem 2rem; box-shadow: 0 0 0 4px rgba(37,211,102,0.25); animation: pulse-vip 2s infinite;">
-            <i class="bi bi-whatsapp"></i> Entrar no Grupo VIP
-        </a>
-        <style>@keyframes pulse-vip { 0%,100% { box-shadow: 0 0 0 4px rgba(37,211,102,0.25); } 50% { box-shadow: 0 0 0 10px rgba(37,211,102,0.1); } }</style>
-
-        <div class="mt-8">
-            <h3 class="text-xl font-semibold text-white mb-2">Seus Números da Sorte <span id="contador-titulos" class="text-sm text-gray-400 font-normal"></span></h3>
-            <div id="cotas-geradas" class="flex flex-wrap justify-center gap-2 bg-gray-900 p-4 rounded-lg">
-                <p class="text-sm text-gray-400">Carregando seus números...</p>
-            </div>
-            <button id="btn-ver-mais-titulos" class="w-full text-center text-gray-400 mt-3 font-semibold hover:text-white hidden">
-                <i class="bi bi-chevron-down"></i> Ver mais títulos
-            </button>
-        </div>
-
-        <div id="secao-roletas-checkout" class="mt-8 hidden text-left">
+        <div id="secao-roletas-checkout" class="card hidden text-left">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-xl font-semibold text-white"><i class="bi bi-lightning-fill text-yellow-400"></i> Roletas</h3>
                 <span id="contador-roletas-checkout" class="text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm">0/0</span>
@@ -189,7 +187,8 @@
             <button id="btn-girar-todas" class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2 rounded-lg mb-3">GIRAR TODAS</button>
             <div id="lista-giros-checkout" class="space-y-2"></div>
         </div>
-    </div>
+    </main>
+
 
     <!-- Modal da roleta girando -->
     <div id="modal-roleta" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 p-4">
@@ -282,9 +281,7 @@
                 if (segundos <= 0) {
                     clearInterval(timerInterval);
                     $cronometro.text("Expirado");
-                    $('#card-aguardando').hide();
-                    $('#card-instrucoes').hide();
-                    $('#card-aviso').hide();
+                    $('#card-aguardando, #card-instrucoes, #card-aviso, #card-modo-teste, #cronometro-box').hide();
                     $('#card-expirado').removeClass('hidden');
                     $('#detalhe-situacao').text('Expirado').removeClass('text-yellow-400').addClass('text-red-500');
                     try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/expirado`); } catch (e) {}
@@ -299,9 +296,9 @@
 
         // Preenche a tela de pós-pagamento de acordo com o FUNIL (padrão ou bônus)
         function aplicarTemaPosPagamento(funil) {
-            const $box = $('#pagamento-aprovado');
             const isBonus = funil && funil.pos_pagamento_tipo === 'bonus';
-            $box.toggleClass('bonus', !!isBonus);
+            $('#card-pago i').css('color', isBonus ? '#f59e0b' : '#22c55e');
+            $('#pos-pagamento-titulo').css('color', isBonus ? '#f59e0b' : '#22c55e');
 
             if (isBonus) {
                 $('#pos-pagamento-titulo').text(funil.pos_pagamento_titulo || 'Sua compra foi premiada! 🎉');
@@ -313,7 +310,7 @@
                     $('#bonus-tag-box').empty();
                 }
             } else {
-                $('#pos-pagamento-titulo').text('Pagamento Aprovado!');
+                $('#pos-pagamento-titulo').text('Pagamento identificado!');
                 $('#pos-pagamento-mensagem').text('Seus números já foram gerados. Boa sorte!');
                 $('#bonus-tag-box').empty();
             }
@@ -325,7 +322,7 @@
             const $cotasContainer = $('#cotas-geradas');
             const visiveis = TODAS_COTAS.slice(0, COTAS_VISIVEIS);
             $cotasContainer.html(visiveis.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
-            $('#contador-titulos').text(`(${TODAS_COTAS.length})`);
+            $('#detalhe-titulos-status').text(`${TODAS_COTAS.length} título(s):`).removeClass('hidden');
             $('#btn-ver-mais-titulos').toggleClass('hidden', COTAS_VISIVEIS >= TODAS_COTAS.length);
         }
         $('#btn-ver-mais-titulos').on('click', function() { COTAS_VISIVEIS += 30; renderCotasPagina(); });
@@ -346,8 +343,10 @@
 
         function aprovarPagamentoFront(data) {
             isPago = true;
-            $('#checkout-container').hide();
-            $('#pagamento-aprovado').show();
+            $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-aviso, #card-modo-teste').hide();
+            $('#card-pago').removeClass('hidden').show();
+            $('#detalhe-situacao').text('Pago').removeClass('text-yellow-400 text-red-500').addClass('text-green-400');
+            $('#detalhe-titulos-status').addClass('hidden');
 
             aplicarTemaPosPagamento(data.funil || FUNIL_DATA);
             renderCotas((data.cotas && data.cotas.length) ? data.cotas : COTAS_GERADAS_INICIAIS);
@@ -366,7 +365,6 @@
                 });
             }
 
-            $('#detalhe-situacao').text('Pago').removeClass('text-yellow-400 text-red-500').addClass('text-green-400');
             try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/aprovado`); } catch (e) {}
 
             carregarRoletas();
@@ -525,9 +523,7 @@
                         aprovarPagamentoFront(data);
                     } else if (ds === 'expirado' || data.status === '0') {
                         clearInterval(timerInterval);
-                        $('#card-aguardando').hide();
-                        $('#card-instrucoes').hide();
-                        $('#card-aviso').hide();
+                        $('#card-aguardando, #card-instrucoes, #card-aviso, #card-modo-teste, #cronometro-box').hide();
                         $('#card-expirado').removeClass('hidden');
                         $('#detalhe-situacao').text('Expirado').removeClass('text-yellow-400').addClass('text-red-500');
                         try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/expirado`); } catch (e) {}
