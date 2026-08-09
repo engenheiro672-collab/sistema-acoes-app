@@ -38,7 +38,7 @@
     .tab-btn { padding: 8px 16px; border-radius: 8px 8px 0 0; color: var(--text-dim); cursor: pointer; font-weight: 600; }
     .tab-btn.active { background-color: var(--card); color: var(--text); border-bottom: 2px solid var(--accent); }
     .img-preview-box { width: 100%; height: 180px; border: 2px dashed var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-size: cover; background-position: center; color: var(--text-dim); overflow: hidden; }
-    .modal-box { background-color: var(--card-2); border-radius: 12px; padding: 24px; max-width: 480px; width: 92%; }
+    .modal-box { background-color: var(--card-2); border-radius: 12px; padding: 24px; max-width: 480px; width: 92%; max-height: 85vh; overflow-y: auto; }
     .pedido-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .funil-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
     .badge { font-size: 0.7rem; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
@@ -626,6 +626,7 @@
                 </div>
             </div>
             <div id="lista-clientes" class="bg-darkCard rounded-xl border border-gray-800 p-4"></div>
+            <div id="paginacao-clientes"></div>
         </div>
 
         <!-- Modal de detalhe do cliente -->
@@ -700,8 +701,9 @@
                             <th class="p-3 sortable-th" data-campo="pendente">Pendente <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="ticket_medio">Ticket Médio <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="conversao">Conversão <span class="sort-arrow"></span></th>
+                            <th class="p-3">Ação</th>
                         </tr></thead>
-                        <tbody id="tabela-links-comparativo"><tr><td colspan="9" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
+                        <tbody id="tabela-links-comparativo"><tr><td colspan="10" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -860,6 +862,36 @@
                     <input id="conf-system-name" class="input-dark mb-2" placeholder="Ex: Máquina Milionária">
                     <input id="conf-system-sub" class="input-dark mb-4" placeholder="Ex: painel administrativo">
                     <button type="submit" class="btn-primary w-full">Salvar nome</button>
+                </form>
+            </div>
+
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md mb-6">
+                <h3 class="font-semibold text-white mb-1">Redes sociais</h3>
+                <p class="text-xs text-gray-500 mb-4">Ative o que quiser — aparece como botõezinhos flutuantes na lateral direita de todos os sites de sorteio.</p>
+                <form id="form-social">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="social-instagram-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <input id="social-instagram-url" class="input-dark" placeholder="Link do Instagram">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="social-telegram-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <input id="social-telegram-url" class="input-dark" placeholder="Link do grupo do Telegram">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="social-facebook-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <input id="social-facebook-url" class="input-dark" placeholder="Link do Facebook">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="social-whatsapp-grupo-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <input id="social-whatsapp-grupo-url" class="input-dark" placeholder="Link do grupo do WhatsApp">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="social-whatsapp-suporte-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <input id="social-whatsapp-suporte-numero" class="input-dark" placeholder="WhatsApp de suporte (ex: 5511999999999)">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary w-full mt-4">Salvar redes sociais</button>
                 </form>
             </div>
             <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md text-center">
@@ -1286,6 +1318,7 @@ function carregarSorteios() {
                     <button class="text-gray-300 hover:text-white mr-3" onclick="toggleMenuAcoes('${s.id}', event)"><i class="bi bi-three-dots-vertical"></i></button>
                     <button class="text-red-400 hover:text-red-300" onclick="excluirSorteio('${s.id}')"><i class="bi bi-trash"></i></button>
                     <div id="menu-acoes-${s.id}" class="hidden absolute right-4 top-full mt-1 bg-[var(--card-2)] border border-[var(--border)] rounded-lg shadow-lg z-20 text-sm" style="min-width:220px;">
+                        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="navigator.clipboard.writeText('${window.location.origin}/sorteio/${s.slug}'); notificar('Link oficial copiado!','sucesso'); $('#menu-acoes-${s.id}').addClass('hidden');">🔗 Copiar link oficial do sorteio</a>
                         <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${s.id}/export?filtro=compradores'">📋 Baixar lista de compradores</a>
                         <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${s.id}/export?filtro=expirados'">⏱️ Baixar pedidos expirados</a>
                     </div>
@@ -1710,7 +1743,7 @@ $(document).on('input', '#funil-grupo-teste', function() {
 
 // ---- LINKS DE RASTREAMENTO (página própria) ----
 function canalLabel(canal) {
-    const map = { whatsapp: 'WhatsApp', instagram_organico: 'Instagram Orgânico', facebook_organico: 'Facebook Orgânico', facebook_ads: 'Facebook Ads', google_ads: 'Google Ads', tiktok_ads: 'TikTok Ads', direto: 'Direto/Orgânico', outro: 'Outro' };
+    const map = { whatsapp: 'WhatsApp', instagram_organico: 'Instagram Orgânico', facebook_organico: 'Facebook Orgânico', facebook_ads: 'Facebook Ads', google_ads: 'Google Ads', tiktok_ads: 'TikTok Ads', direto: 'Link Oficial', outro: 'Outro' };
     return map[canal] || canal;
 }
 
@@ -1799,7 +1832,7 @@ function renderTabelaComparativo() {
             return ORDENACAO_ATUAL.direcao === 'asc' ? va - vb : vb - va;
         });
     }
-    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="9" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
+    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="10" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
     $('#tabela-links-comparativo').html(links.map(l => `
         <tr class="link-row border-b border-gray-800/60">
             <td class="p-3 text-white">${l.nome}</td>
@@ -1811,6 +1844,7 @@ function renderTabelaComparativo() {
             <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
             <td class="p-3">${formatBR(l.ticket_medio)}</td>
             <td class="p-3">${(l.conversao || 0).toFixed(1)}%</td>
+            <td class="p-3">${l.url ? `<button class="text-purple-300 hover:text-purple-200 text-xs" onclick="navigator.clipboard.writeText('${l.url}'); notificar('Link copiado!','sucesso')"><i class="bi bi-clipboard"></i> Copiar</button>` : '<span class="text-gray-600 text-xs">—</span>'}</td>
         </tr>
     `).join(''));
 }
@@ -1834,7 +1868,7 @@ function popularFiltroLinksSorteio() {
 let PEDIDOS_FILTRO_ATUAL = 'todos';
 let PEDIDOS_CACHE = [];
 let PEDIDOS_PAGINA = 1;
-const PEDIDOS_POR_PAGINA = 20;
+const PEDIDOS_POR_PAGINA = 10;
 
 function carregarPedidos(filter) {
     PEDIDOS_FILTRO_ATUAL = filter;
@@ -1897,15 +1931,34 @@ function renderPaginacaoPedidos() {
     $('#paginacao-pedidos').html(`<div class="flex gap-2 justify-center mt-4 flex-wrap">${botoes}</div>`);
 }
 
+let COTAS_MODAL_VISIVEIS = 5;
 function abrirDetalhePedido(id) {
     const p = PEDIDOS_CACHE.find(x => x.id === id);
     if (!p) return;
+    COTAS_MODAL_VISIVEIS = 5;
+    PEDIDO_MODAL_ATUAL = p;
+    renderModalPedido();
+    $('#modal-detalhe-pedido').removeClass('hidden').css('display', 'flex');
+}
+let PEDIDO_MODAL_ATUAL = null;
+function renderModalPedido() {
+    const p = PEDIDO_MODAL_ATUAL;
+    if (!p) return;
     const sv = statusVisual(p);
-    const cotas = (p.cotas || []).map(c => `<span class="chip">${c.numero_cota}</span>`).join(' ');
+    const todasCotas = p.cotas || [];
+    const visiveis = todasCotas.slice(0, COTAS_MODAL_VISIVEIS);
+    const cotasHtml = visiveis.map(c => `<span class="chip">${c.numero_cota}</span>`).join(' ');
+    const verMaisBtn = todasCotas.length > COTAS_MODAL_VISIVEIS
+        ? `<button class="text-xs text-purple-300 mt-2" onclick="COTAS_MODAL_VISIVEIS += 20; renderModalPedido();"><i class="bi bi-chevron-down"></i> Ver mais (${todasCotas.length - COTAS_MODAL_VISIVEIS} restantes)</button>` : '';
+    const linkPagamento = `${window.location.origin}/checkout/${p.token}`;
+    const tel = p.usuarios?.telefone;
+    const whatsappBtn = tel ? `<a href="https://wa.me/${tel}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white flex-1 rounded-lg py-2 text-center text-sm font-semibold"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : '';
+
     $('#detalhe-pedido-corpo').html(`
         <div class="space-y-2 text-sm">
             <div><span class="opacity-60">Comprador:</span> <b>${p.usuarios?.nome_completo || '—'}</b></div>
-            <div><span class="opacity-60">Telefone:</span> ${p.usuarios?.telefone || '—'}</div>
+            <div><span class="opacity-60">Telefone:</span> ${tel || '—'}</div>
+            ${p.usuarios?.cpf ? `<div><span class="opacity-60">CPF:</span> ${p.usuarios.cpf}</div>` : ''}
             <div><span class="opacity-60">Sorteio:</span> ${p.sorteios?.nome || '—'}</div>
             <div><span class="opacity-60">Funil:</span> ${p.funis?.nome || 'Padrão'}</div>
             <div><span class="opacity-60">Quantidade:</span> ${p.quantidade_cotas}</div>
@@ -1913,14 +1966,21 @@ function abrirDetalhePedido(id) {
             <div><span class="opacity-60">Status:</span> <b class="${sv.cor}">${sv.texto}</b></div>
             <div><span class="opacity-60">Criado em:</span> ${p.created_at ? new Date(p.created_at).toLocaleString('pt-BR') : '—'}</div>
             <div><span class="opacity-60">Expira em:</span> ${p.expira_em ? new Date(p.expira_em).toLocaleString('pt-BR') : '—'}</div>
-            ${cotas ? `<div class="pt-2 border-t border-gray-800"><span class="opacity-60">Cotas:</span><div class="flex flex-wrap gap-1 mt-2">${cotas}</div></div>` : ''}
+            <div class="pt-2 border-t border-gray-800">
+                <span class="opacity-60">Link de pagamento/checkout:</span>
+                <div class="flex gap-2 mt-1">
+                    <input readonly value="${linkPagamento}" class="input-dark text-xs" style="flex:1">
+                    <button class="btn-primary text-xs px-3" onclick="navigator.clipboard.writeText('${linkPagamento}'); notificar('Link copiado!','sucesso')">Copiar</button>
+                </div>
+            </div>
+            ${todasCotas.length ? `<div class="pt-2 border-t border-gray-800"><span class="opacity-60">Cotas (${todasCotas.length}):</span><div class="flex flex-wrap gap-1 mt-2">${cotasHtml}</div>${verMaisBtn}</div>` : ''}
         </div>
         <div class="flex gap-2 mt-4">
-            ${p.status === 'aguardando' ? `<button class="btn-primary flex-1" onclick="aprovarPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden').css('display', '');">Aprovar Pedido</button>` : ''}
-            <button class="bg-red-600 text-white flex-1 rounded-lg" onclick="excluirPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden').css('display', '');">Excluir</button>
+            ${p.status === 'aguardando' ? `<button class="btn-primary flex-1" onclick="aprovarPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden').css('display', '');">Aprovar</button>` : ''}
+            ${whatsappBtn}
+            <button class="bg-red-600 text-white rounded-lg px-3" onclick="excluirPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden').css('display', '');"><i class="bi bi-trash"></i></button>
         </div>
     `);
-    $('#modal-detalhe-pedido').removeClass('hidden').css('display', 'flex');
 }
 
 function aprovarPedido(id) { api('POST', `/api/admin/pedidos/${id}/aprovar`).then(() => { carregarPedidos(PEDIDOS_FILTRO_ATUAL); notificar('Pedido aprovado!', 'sucesso'); }).catch(err => notificar(err.error || 'Erro', 'erro')); }
@@ -1930,24 +1990,73 @@ function excluirPedido(id) {
 
 // ---------------- CLIENTES ----------------
 let CLIENTES_CACHE = [];
+let CLIENTES_PAGINA = 1;
+const CLIENTES_POR_PAGINA = 10;
+
+// Mostra só o começo e o fim de um número (telefone/CPF), escondendo o meio com asteriscos
+function mascararNumero(valor) {
+    const v = String(valor || '').replace(/\D/g, '');
+    if (v.length <= 6) return v;
+    return v.slice(0, 4) + '*'.repeat(v.length - 6) + v.slice(-2);
+}
+
 function renderClientes() {
     const busca = ($('#clientes-busca').val() || '').toLowerCase().trim();
-    const lista = busca ? CLIENTES_CACHE.filter(c => (c.nome_completo || '').toLowerCase().includes(busca) || (c.telefone || '').includes(busca)) : CLIENTES_CACHE;
-    const html = lista.map(c => `
-        <div class="pedido-card" style="cursor:pointer" onclick="abrirModalCliente('${c.id}')">
-            <div><div class="font-semibold">${c.nome_completo}</div><div class="text-gray-400 text-sm">${c.telefone || ''}</div></div>
-            <div class="flex items-center gap-3"><div class="font-bold text-green-400">${formatBR(c.total_gasto || 0)}</div><i class="bi bi-chevron-right text-gray-500"></i></div>
-        </div>
-    `).join('');
-    $('#lista-clientes').html(html || '<p class="text-gray-400 text-center p-4">Nenhum cliente encontrado.</p>');
+    const filtrados = busca ? CLIENTES_CACHE.filter(c => (c.nome_completo || '').toLowerCase().includes(busca) || (c.telefone || '').includes(busca)) : CLIENTES_CACHE;
+    CLIENTES_FILTRADOS = filtrados;
+    renderClientesPagina();
 }
+let CLIENTES_FILTRADOS = [];
+
+function renderClientesPagina() {
+    const inicio = (CLIENTES_PAGINA - 1) * CLIENTES_POR_PAGINA;
+    const pagina = CLIENTES_FILTRADOS.slice(inicio, inicio + CLIENTES_POR_PAGINA);
+    const html = pagina.map(c => {
+        const ativoBadge = c.ativo_ultimo_sorteio ? '<span class="badge badge-organico">Ativo</span>' : '<span class="badge badge-outro">Inativo</span>';
+        const ultimaCompraTxt = c.ultima_compra ? new Date(c.ultima_compra).toLocaleDateString('pt-BR') : '—';
+        const entrouTxt = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
+        return `
+        <div class="pedido-card" style="cursor:pointer;" onclick="abrirModalCliente('${c.id}')">
+            <div>
+                <div class="flex items-center gap-2 flex-wrap"><span class="font-semibold">${c.nome_completo}</span> ${ativoBadge}</div>
+                <div class="text-gray-400 text-sm">${mascararNumero(c.telefone)}${c.cpf ? ' · CPF ' + mascararNumero(c.cpf) : ''}</div>
+                <div class="text-xs text-gray-500">Entrou em ${entrouTxt} · Última compra: ${ultimaCompraTxt}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="font-bold text-green-400">${formatBR(c.total_gasto || 0)}</div>
+                ${c.telefone ? `<a href="https://wa.me/${c.telefone}" target="_blank" onclick="event.stopPropagation()" class="text-green-400 hover:text-green-300"><i class="bi bi-whatsapp"></i></a>` : ''}
+                <button onclick="event.stopPropagation(); excluirCliente('${c.id}')" class="text-red-400 hover:text-red-300"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+    $('#lista-clientes').html(html || '<p class="text-gray-400 text-center p-4">Nenhum cliente encontrado.</p>');
+    renderPaginacaoClientes();
+}
+function renderPaginacaoClientes() {
+    const totalPaginas = Math.ceil(CLIENTES_FILTRADOS.length / CLIENTES_POR_PAGINA);
+    if (totalPaginas <= 1) { $('#paginacao-clientes').empty(); return; }
+    let botoes = '';
+    for (let i = 1; i <= totalPaginas; i++) {
+        botoes += `<button class="px-3 py-1 rounded text-xs ${i === CLIENTES_PAGINA ? 'btn-primary' : 'border border-gray-700 text-gray-300'}" onclick="CLIENTES_PAGINA=${i}; renderClientesPagina();">${i}</button>`;
+    }
+    $('#paginacao-clientes').html(`<div class="flex gap-2 justify-center mt-4 flex-wrap">${botoes}</div>`);
+}
+
 function carregarClientes() {
     fetch('/api/admin/clientes', { credentials: 'include' }).then(r => r.json()).then(data => {
         CLIENTES_CACHE = data || [];
+        CLIENTES_PAGINA = 1;
         renderClientes();
     });
 }
-$(document).on('input', '#clientes-busca', renderClientes);
+$(document).on('input', '#clientes-busca', function() { CLIENTES_PAGINA = 1; renderClientes(); });
+
+function excluirCliente(id) {
+    confirmar('Excluir cliente', 'Isso remove o cadastro do cliente. Os pedidos já feitos continuam no histórico. Não pode ser desfeito.').then(yes => {
+        if (!yes) return;
+        api('DELETE', `/api/admin/clientes/${id}`).then(() => { notificar('Cliente excluído.', 'sucesso'); carregarClientes(); });
+    });
+}
 
 function abrirModalCliente(id) {
     const cliente = CLIENTES_CACHE.find(c => c.id === id);
@@ -1958,7 +2067,7 @@ function abrirModalCliente(id) {
     fetch(`/api/admin/clientes/${id}/pedidos`, { credentials: 'include' }).then(r => r.json()).then(pedidos => {
         $('#modal-cliente-pedidos-count').text((pedidos || []).length);
         $('#modal-cliente-pedidos').html((pedidos || []).map(p => `
-            <div class="pedido-card"><div><div class="font-semibold text-sm">${p.sorteios?.nome || ''}</div><div class="text-xs text-gray-400">${p.quantidade_cotas} cotas · ${p.status}</div></div><div class="font-bold text-sm ${p.status === 'pago' ? 'text-green-400' : 'text-yellow-400'}">${formatBR(p.valor_total)}</div></div>
+            <div class="pedido-card"><div><div class="font-semibold text-sm">${p.sorteios?.nome || ''}</div><div class="text-xs text-gray-400">${p.quantidade_cotas} cotas · ${p.status} · ${p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : ''}</div></div><div class="font-bold text-sm ${p.status === 'pago' ? 'text-green-400' : 'text-yellow-400'}">${formatBR(p.valor_total)}</div></div>
         `).join('') || '<p class="text-gray-400 text-sm">Nenhum pedido.</p>');
     });
 }
@@ -2098,8 +2207,35 @@ function carregarConta() {
         if (cfg.LOGO_URL) $('#logo-preview').css('background-image', `url(${cfg.LOGO_URL})`);
         $('#conf-system-name').val(cfg.SYSTEM_NAME || '');
         $('#conf-system-sub').val(cfg.SYSTEM_SUB || '');
+
+        $('#social-instagram-ativo').prop('checked', cfg.SOCIAL_INSTAGRAM_ATIVO === 'true');
+        $('#social-instagram-url').val(cfg.SOCIAL_INSTAGRAM_URL || '');
+        $('#social-telegram-ativo').prop('checked', cfg.SOCIAL_TELEGRAM_ATIVO === 'true');
+        $('#social-telegram-url').val(cfg.SOCIAL_TELEGRAM_URL || '');
+        $('#social-facebook-ativo').prop('checked', cfg.SOCIAL_FACEBOOK_ATIVO === 'true');
+        $('#social-facebook-url').val(cfg.SOCIAL_FACEBOOK_URL || '');
+        $('#social-whatsapp-grupo-ativo').prop('checked', cfg.SOCIAL_WHATSAPP_GRUPO_ATIVO === 'true');
+        $('#social-whatsapp-grupo-url').val(cfg.SOCIAL_WHATSAPP_GRUPO_URL || '');
+        $('#social-whatsapp-suporte-ativo').prop('checked', cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true');
+        $('#social-whatsapp-suporte-numero').val(cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '');
     });
 }
+$('#form-social').on('submit', function(e) {
+    e.preventDefault();
+    const payload = {
+        SOCIAL_INSTAGRAM_ATIVO: String($('#social-instagram-ativo').is(':checked')),
+        SOCIAL_INSTAGRAM_URL: $('#social-instagram-url').val(),
+        SOCIAL_TELEGRAM_ATIVO: String($('#social-telegram-ativo').is(':checked')),
+        SOCIAL_TELEGRAM_URL: $('#social-telegram-url').val(),
+        SOCIAL_FACEBOOK_ATIVO: String($('#social-facebook-ativo').is(':checked')),
+        SOCIAL_FACEBOOK_URL: $('#social-facebook-url').val(),
+        SOCIAL_WHATSAPP_GRUPO_ATIVO: String($('#social-whatsapp-grupo-ativo').is(':checked')),
+        SOCIAL_WHATSAPP_GRUPO_URL: $('#social-whatsapp-grupo-url').val(),
+        SOCIAL_WHATSAPP_SUPORTE_ATIVO: String($('#social-whatsapp-suporte-ativo').is(':checked')),
+        SOCIAL_WHATSAPP_SUPORTE_NUMERO: $('#social-whatsapp-suporte-numero').val()
+    };
+    api('POST', '/api/admin/configuracoes', payload).then(() => notificar('Redes sociais salvas!', 'sucesso'));
+});
 $('#form-conta').on('submit', function(e) {
     e.preventDefault();
     const email = $('#conta-email').val();

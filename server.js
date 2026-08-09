@@ -86,7 +86,7 @@ function detectarOrigemAutomatica(query, referer, funil) {
   if (referer && /whatsapp/i.test(referer)) return { codigo: `auto-whatsapp${sufixo}`, nome: `WhatsApp (automático)${nomeFunil}`, canal: 'whatsapp' };
   if (referer && /instagram/i.test(referer)) return { codigo: `auto-instagram-organico${sufixo}`, nome: `Instagram Orgânico (automático)${nomeFunil}`, canal: 'instagram_organico' };
   if (referer && /facebook/i.test(referer)) return { codigo: `auto-facebook-organico${sufixo}`, nome: `Facebook Orgânico (automático)${nomeFunil}`, canal: 'facebook_organico' };
-  return { codigo: `auto-direto${sufixo}`, nome: `Acesso direto/orgânico (automático)${nomeFunil}`, canal: 'direto' };
+  return { codigo: `auto-direto${sufixo}`, nome: `Link Oficial do Sorteio${nomeFunil}`, canal: 'direto' };
 }
 
 // Garante que um link de rastreamento existe (cria automaticamente se for detecção automática) e incrementa cliques
@@ -207,7 +207,14 @@ async function getPublicMeta() {
     pixel_id: cfg.FACEBOOK_PIXEL_ID || process.env.FACEBOOK_PIXEL_ID || '',
     pixel_google: cfg.GOOGLE_ADS_ID || '',
     pixel_tiktok: cfg.TIKTOK_PIXEL_ID || '',
-    pixel_gtm: cfg.GTM_ID || ''
+    pixel_gtm: cfg.GTM_ID || '',
+    redes_sociais: {
+      instagram: { ativo: cfg.SOCIAL_INSTAGRAM_ATIVO === 'true', url: cfg.SOCIAL_INSTAGRAM_URL || '' },
+      telegram: { ativo: cfg.SOCIAL_TELEGRAM_ATIVO === 'true', url: cfg.SOCIAL_TELEGRAM_URL || '' },
+      facebook: { ativo: cfg.SOCIAL_FACEBOOK_ATIVO === 'true', url: cfg.SOCIAL_FACEBOOK_URL || '' },
+      whatsapp_grupo: { ativo: cfg.SOCIAL_WHATSAPP_GRUPO_ATIVO === 'true', url: cfg.SOCIAL_WHATSAPP_GRUPO_URL || '' },
+      whatsapp_suporte: { ativo: cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true', numero: cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '' }
+    }
   };
 }
 
@@ -1134,7 +1141,14 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
       const pendente = (pedidos || []).filter(p => p.status === 'aguardando').reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
       const conversao = link.cliques > 0 ? (pagos.length / link.cliques) * 100 : 0;
-      resultados.push({ ...link, pedidos_pagos: pagos.length, faturamento, pendente, ticket_medio, conversao });
+      // Link oficial (auto-direto do sorteio, sem funil) tem URL limpa; links criados manualmente usam ?lk=
+      let url = null;
+      const slug = link.sorteios?.slug;
+      if (slug) {
+        if (link.codigo === 'auto-direto') url = `${req.protocol}://${req.get('host')}/sorteio/${slug}`;
+        else if (!link.codigo.startsWith('auto-')) url = `${req.protocol}://${req.get('host')}/sorteio/${slug}?lk=${link.codigo}`;
+      }
+      resultados.push({ ...link, url, pedidos_pagos: pagos.length, faturamento, pendente, ticket_medio, conversao });
     }
     return ok(res, { links: resultados });
   } catch (e) { console.error('GET comparativo', e); return fail(res); }
@@ -1622,7 +1636,7 @@ app.get('/api/admin/pedidos', ensureAdminAuth, async (req, res) => {
   try {
     const { filter, start_date, end_date } = req.query;
     const nowISO = new Date().toISOString();
-    let q = supabase.from('pedidos').select('*, usuarios(nome_completo, telefone), sorteios(nome, slug), cotas(numero_cota), funis(nome, slug)');
+    let q = supabase.from('pedidos').select('*, usuarios(nome_completo, telefone, cpf), sorteios(nome, slug), cotas(numero_cota), funis(nome, slug)');
     if (filter === 'pagos') q = q.eq('status', 'pago');
     else if (filter === 'pendentes') q = q.eq('status', 'aguardando').gte('expira_em', nowISO);
     else if (filter === 'expirados') q = q.eq('status', 'aguardando').lt('expira_em', nowISO);
@@ -1708,11 +1722,29 @@ app.delete('/api/admin/despesas/:id', ensureAdminAuth, async (req, res) => {
 });
 
 app.get('/api/admin/clientes', ensureAdminAuth, async (_req, res) => {
-  const { data: u } = await supabase.from('usuarios').select('*').order('created_at', { ascending: false }).limit(500);
-  const { data: p } = await supabase.from('pedidos').select('user_id, valor_total').eq('status', 'pago');
-  const g = {}; (p || []).forEach(x => g[x.user_id] = (g[x.user_id] || 0) + Number(x.valor_total || 0));
-  const c = (u || []).map(user => ({ ...user, total_gasto: Number((g[user.id] || 0).toFixed(2)) }));
+  const { data: u } = await supabase.from('usuarios').select('*').order('created_at', { ascending: false }).limit(1000);
+  const { data: p } = await supabase.from('pedidos').select('user_id, valor_total, status, created_at, sorteio_id').eq('status', 'pago');
+
+  // Descobre o sorteio "mais recente" (o último criado) pra saber se o cliente comprou nele (ativo no último sorteio)
+  const { data: ultimoSorteio } = await supabase.from('sorteios').select('id').order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  const gasto = {}, ultimaCompra = {}, ativoUltimoSorteio = {};
+  (p || []).forEach(x => {
+    gasto[x.user_id] = (gasto[x.user_id] || 0) + Number(x.valor_total || 0);
+    if (!ultimaCompra[x.user_id] || x.created_at > ultimaCompra[x.user_id]) ultimaCompra[x.user_id] = x.created_at;
+    if (ultimoSorteio && x.sorteio_id === ultimoSorteio.id) ativoUltimoSorteio[x.user_id] = true;
+  });
+
+  const c = (u || []).map(user => ({
+    ...user,
+    total_gasto: Number((gasto[user.id] || 0).toFixed(2)),
+    ultima_compra: ultimaCompra[user.id] || null,
+    ativo_ultimo_sorteio: !!ativoUltimoSorteio[user.id]
+  }));
   return res.json(c);
+});
+app.delete('/api/admin/clientes/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('usuarios').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
 });
 app.get('/api/admin/clientes/:id/pedidos', ensureAdminAuth, async (req, res) => {
   const { data } = await supabase.from('pedidos').select('*, sorteios(nome)').eq('user_id', req.params.id).order('created_at', { ascending: false });

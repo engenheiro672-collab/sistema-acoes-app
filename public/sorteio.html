@@ -181,6 +181,8 @@
 
     </main>
 
+    <div id="redes-sociais-flutuantes" class="fixed right-3 top-1/2 flex flex-col gap-2 z-40" style="transform: translateY(-50%);"></div>
+
     <div id="modal-meus-numeros" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
         <div class="modal-content bg-[#2b2b2b] p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -377,7 +379,25 @@
         }
 
         // Lê a config de botões (JSON novo com "popular", ou CSV antigo) e desenha até 6 botões dinâmicos
-        let chanceDobroInterval = null;
+        function renderRedesSociaisFlutuantes(redes) {
+            if (!redes) return;
+            const cores = { instagram: '#E1306C', telegram: '#229ED9', facebook: '#1877F2', whatsapp_grupo: '#25D366', whatsapp_suporte: '#25D366' };
+            const icones = { instagram: 'bi-instagram', telegram: 'bi-telegram', facebook: 'bi-facebook', whatsapp_grupo: 'bi-whatsapp', whatsapp_suporte: 'bi-headset' };
+            const itens = [];
+            if (redes.instagram?.ativo && redes.instagram.url) itens.push({ tipo: 'instagram', href: redes.instagram.url });
+            if (redes.telegram?.ativo && redes.telegram.url) itens.push({ tipo: 'telegram', href: redes.telegram.url });
+            if (redes.facebook?.ativo && redes.facebook.url) itens.push({ tipo: 'facebook', href: redes.facebook.url });
+            if (redes.whatsapp_grupo?.ativo && redes.whatsapp_grupo.url) itens.push({ tipo: 'whatsapp_grupo', href: redes.whatsapp_grupo.url });
+            if (redes.whatsapp_suporte?.ativo && redes.whatsapp_suporte.numero) itens.push({ tipo: 'whatsapp_suporte', href: `https://wa.me/${redes.whatsapp_suporte.numero}` });
+
+            $('#redes-sociais-flutuantes').html(itens.map(it => `
+                <a href="${it.href}" target="_blank" style="background:${cores[it.tipo]}; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.25rem; box-shadow:0 4px 10px rgba(0,0,0,0.4);">
+                    <i class="bi ${icones[it.tipo]}"></i>
+                </a>
+            `).join(''));
+        }
+
+
         function iniciarChanceDobro(chance) {
             clearInterval(chanceDobroInterval);
             if (!chance) { $('#banner-chance-dobro').addClass('hidden'); return; }
@@ -439,6 +459,7 @@
 
             renderBotoesCota(sorteio.botoes_rapidos);
             iniciarChanceDobro(data.chance_dobro_ativa);
+            renderRedesSociaisFlutuantes(data.redes_sociais);
 
             if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);
