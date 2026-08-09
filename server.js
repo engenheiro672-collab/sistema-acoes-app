@@ -372,7 +372,7 @@ async function getSorteioPublicData(slug, funilSlug) {
   const bloq = new Set((bloqueadas || []).map(b => b.numero_cota));
   const agnd = new Set((agendadas || []).filter(a => (a.release_at || a.liberar_em) && (a.release_at || a.liberar_em) > nowISO).map(a => a.numero_cota));
   const restantes = Math.max(0, Number(sorteio.total_cotas || 0) - Number(vendidas || 0) - bloq.size - agnd.size);
-  const { data: bilhetesTudo } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: true });
+  const { data: bilhetesTudo } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: false });
   const bilhetes = (bilhetesTudo || []).filter(b => (b.tipo || 'bilhete') === 'bilhete');
   const roletaTodos = (bilhetesTudo || []).filter(b => b.tipo === 'roleta');
 
@@ -384,13 +384,18 @@ async function getSorteioPublicData(slug, funilSlug) {
 
   // Roleta: nunca expõe o número do giro — só título/valor/nome de quem ganhou (igual ao site de referência)
   const roletaGanhas = roletaTodos.filter(r => r.status === 'reivindicada');
+  const roletaDisponiveis = roletaTodos.filter(r => r.status !== 'reivindicada');
   const usuarioIdsRoleta = [...new Set(roletaGanhas.map(r => r.usuario_id).filter(Boolean))];
   const { data: usuariosRoleta } = usuarioIdsRoleta.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsRoleta) : { data: [] };
   const usuarioMapRoleta = (usuariosRoleta || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
   const roleta_resultados = {
     total: roletaTodos.length,
     ganhas: roletaGanhas.length,
-    vencedores: roletaGanhas.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: usuarioMapRoleta[r.usuario_id] || null }))
+    // Lista completa (ganhas primeiro, depois disponíveis) — nunca inclui numero_cota
+    lista: [
+      ...roletaGanhas.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: usuarioMapRoleta[r.usuario_id] || null, reivindicada: true })),
+      ...roletaDisponiveis.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: null, reivindicada: false }))
+    ]
   };
 
   const { data: roleta_tiers } = sorteio.roleta_ativada

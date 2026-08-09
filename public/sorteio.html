@@ -37,14 +37,15 @@
         .btn-participar i { font-size: 1.5rem; margin-right: 0.75rem; }
         .btn-participar-price { font-size: 1.5rem; font-weight: 700; }
         .titulos-premiados { padding: 1.5rem 1rem; }
-        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; background-color: #2a303c; }
-        .premio-item.reivindicado { background-color: #16A34A; }
-        .premio-cota { font-weight: 600; font-size: 1rem; color: #a0aec0; background-color: #374151; padding: 0.5rem 1rem; border-radius: 6px; }
-        .premio-item.reivindicado .premio-cota { color: #fff; background-color: #c2410c; }
-        .premio-nome { font-weight: 600; color: #fff; flex-grow: 1; text-align: center; }
-        .premio-status { font-weight: 500; color: #a0aec0; }
-        .premio-item.reivindicado .premio-status { color: #fff; font-weight: 600; }
-        .premio-status .trofeu { color: #f7b731; margin-left: 4px; }
+        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; margin-bottom: 0.6rem; border-radius: 10px; background-color: #12141c; border: 1px solid #1f2937; }
+        .premio-item.reivindicado { background: #1f9d55; border-color: #1f9d55; }
+        .premio-cota { font-weight: 700; font-size: 0.95rem; color: #e5e7eb; background-color: #4b5563; padding: 0.5rem 1rem; border-radius: 999px; min-width: 90px; text-align: center; }
+        .premio-item.reivindicado .premio-cota { color: #14532d; background-color: #ffffff; }
+        .premio-nome { font-weight: 600; color: #e5e7eb; flex-grow: 1; text-align: center; font-size: 0.95rem; }
+        .premio-item.reivindicado .premio-nome { color: #ffffff; }
+        .premio-status { font-weight: 600; color: #9ca3af; font-size: 0.95rem; white-space: nowrap; }
+        .premio-item.reivindicado .premio-status { color: #fff; font-weight: 700; }
+        .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
         .modal { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
         .tag-pulse { background-color: #22C55E; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 9999px; animation: pulse-opacity 1.5s infinite; }
@@ -436,10 +437,12 @@
             if (sorteio.roleta_ativada && roleta_resultados && roleta_resultados.total > 0) {
                 $('#secao-roleta-resultados').removeClass('hidden');
                 $('#contador-roleta').text(`${roleta_resultados.ganhas}/${roleta_resultados.total}`);
-                renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roleta_resultados.vencedores || [], 5, v => `
-                    <div class="premio-item reivindicado">
+                renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roleta_resultados.lista || [], 5, v => `
+                    <div class="premio-item ${v.reivindicada ? 'reivindicado' : ''}">
                         <span class="premio-nome" style="text-align:left; flex-grow:2;">${v.valor_premio || v.premio_titulo || 'Prêmio'}</span>
-                        <span class="premio-status">${v.ganhador_nome || 'Ganhador'} <i class="bi bi-trophy-fill trofeu"></i></span>
+                        ${v.reivindicada
+                            ? `<span class="premio-status">${v.ganhador_nome ? v.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                            : `<span class="premio-status">Disponível</span>`}
                     </div>
                 `);
             } else {
