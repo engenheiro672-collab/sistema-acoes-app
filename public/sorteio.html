@@ -536,7 +536,7 @@
             });
             $('#close-modal-checkout').on('click', function() {
                 const modalCheckout = $('#modal-checkout');
-                modalCheckout.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden'); });
+                modalCheckout.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden').css('display', ''); });
                 modalCheckout.find('.modal-content').animate({ transform: 'scale(0.95)' }, 300);
             });
 
@@ -551,7 +551,7 @@
             $(document).on('click', function() { $('#menu-dropdown').addClass('hidden'); });
             $('#close-modal-meus-numeros').on('click', function() {
                 const modal = $('#modal-meus-numeros');
-                modal.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden'); });
+                modal.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden').css('display', ''); });
                 modal.find('.modal-content').animate({ transform: 'scale(0.95)' }, 300);
             });
 

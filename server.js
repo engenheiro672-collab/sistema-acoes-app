@@ -747,7 +747,7 @@ async function gerarCotasUnicas(pedido) {
     // (a roleta usa números de cota reais também, mas é tratada à parte — veja atribuirGirosRoleta).
     const numeros = inserted.map(r => r.numero_cota);
     try {
-      const { data: possiveisPremios } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'bilhete').eq('status', 'disponivel').in('numero_cota', numeros);
+      const { data: possiveisPremios } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'bilhete').eq('status', 'disponivel').eq('ativo', true).in('numero_cota', numeros);
       for (const premio of (possiveisPremios || [])) {
         await supabase.from('bilhetes_premiados').update({
           status: 'reivindicada', usuario_id: user_id, pedido_id: pedido.id, reivindicada_em: new Date().toISOString()
@@ -1748,8 +1748,8 @@ app.delete('/api/admin/agendamentos/:id', ensureAdminAuth, async (req, res) => {
 
 app.post('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) => {
   try {
-    const { id } = req.params; const { numero_cota, premio_titulo } = req.body;
-    const { data, error } = await supabase.from('bilhetes_premiados').insert({ sorteio_id: id, numero_cota, premio_titulo, tipo: 'bilhete', status: 'disponivel' }).select();
+    const { id } = req.params; const { numero_cota, premio_titulo, ativo } = req.body;
+    const { data, error } = await supabase.from('bilhetes_premiados').insert({ sorteio_id: id, numero_cota, premio_titulo, tipo: 'bilhete', status: 'disponivel', ativo: ativo !== false }).select();
     if (error) return fail(res, error.message); return ok(res, data);
   } catch (e) { return fail(res); }
 });

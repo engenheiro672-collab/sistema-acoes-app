@@ -56,6 +56,15 @@
     .table-clean th { font-weight: 600; color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.03em; }
     .link-row:hover { background-color: var(--hover); }
 
+    /* ---------- RESPONSIVIDADE MOBILE ---------- */
+    main { padding: 1rem; }
+    @media (min-width: 768px) { main { padding: 1.5rem; } }
+    .table-clean { min-width: 640px; } /* garante rolagem horizontal em vez de quebrar a tabela */
+    @media (max-width: 767px) {
+        .modal-box { max-width: 94vw; padding: 16px; }
+        #brand-box { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+    }
+
     /* ---------- TOGGLE SWITCH (liga/desliga) ---------- */
     .toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
@@ -112,14 +121,22 @@
     </div>
 </div>
 
+<!-- Barra superior só no mobile: botão de menu -->
+<div class="md:hidden flex items-center justify-between p-3 bg-darkCard border-b border-gray-800 sticky top-0 z-30">
+    <span class="font-bold text-white" id="mobile-brand-name">Painel</span>
+    <button id="btn-abrir-menu-mobile" class="text-2xl text-white"><i class="bi bi-list"></i></button>
+</div>
+<div id="overlay-menu-mobile" class="hidden fixed inset-0 bg-black bg-opacity-60 z-40 md:hidden"></div>
+
 <div class="flex min-h-screen">
-    <aside class="w-64 bg-darkCard border-r border-gray-800 flex-shrink-0 flex flex-col">
+    <aside id="sidebar" class="w-64 bg-darkCard border-r border-gray-800 flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-200">
         <div class="p-4 border-b border-gray-800 flex justify-between items-start" id="brand-box">
             <div>
                 <h1 class="text-lg font-bold leading-tight" id="sidebar-brand-name">Carregando...</h1>
                 <p class="text-xs opacity-60" id="sidebar-brand-sub">painel administrativo</p>
             </div>
             <div class="flex items-center gap-1 relative">
+                <button id="btn-fechar-menu-mobile" class="md:hidden text-lg opacity-70 hover:opacity-100 mr-1"><i class="bi bi-x-lg"></i></button>
                 <button id="btn-notificacoes" class="text-lg opacity-70 hover:opacity-100 relative" title="Notificações"><i class="bi bi-bell"></i><span id="badge-notificacoes" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">0</span></button>
                 <button id="btn-tema" class="text-lg opacity-70 hover:opacity-100" title="Alternar dia/noite">🌙</button>
             </div>
@@ -438,9 +455,10 @@
                     <div>
                         <h4 class="font-semibold text-white mb-2">🏆 Bilhete Premiado</h4>
                         <p class="text-xs text-gray-500 mb-2">Adicione um número de cota e o título do prêmio. Quando essa cota for gerada pra algum cliente, ela aparece como premiada.</p>
-                        <div id="box-add-premio" class="flex gap-2 mb-4 opacity-50 pointer-events-none">
+                        <div id="box-add-premio" class="flex gap-2 mb-4 opacity-50 pointer-events-none items-center">
                             <input id="inp-premio-cota" placeholder="Cota" class="input-dark w-1/3">
                             <input id="inp-premio-titulo" placeholder="Título do prêmio" class="input-dark w-2/3">
+                            <label class="flex items-center gap-2 text-xs text-gray-300 whitespace-nowrap"><input type="checkbox" id="inp-premio-ativo" checked> Ativo</label>
                             <button type="button" id="btn-add-premio" class="btn-primary" onclick="addPremio()">Add</button>
                         </div>
                         <div id="lista-premios" class="space-y-2"></div>
@@ -632,7 +650,7 @@
             <div class="modal-box max-w-md w-full">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-white">Detalhes do Pedido</h3>
-                    <button onclick="$('#modal-detalhe-pedido').addClass('hidden')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    <button onclick="$('#modal-detalhe-pedido').addClass('hidden').css('display', '')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
                 </div>
                 <div id="detalhe-pedido-corpo"></div>
             </div>
@@ -655,7 +673,7 @@
             <div class="modal-box max-w-lg w-full">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-white" id="modal-cliente-nome">Cliente</h3>
-                    <button onclick="$('#modal-cliente').addClass('hidden')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    <button onclick="$('#modal-cliente').addClass('hidden').css('display', '')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
                 </div>
                 <div class="flex gap-2 mb-4 text-sm">
                     <div class="metric-card flex-1"><p class="text-xs opacity-60">Total gasto</p><p class="text-lg font-bold text-green-400" id="modal-cliente-total">R$ 0,00</p></div>
@@ -838,12 +856,25 @@ function confirmar(titulo, msg) {
         $('#confirm-title').text(titulo);
         $('#confirm-msg').text(msg);
         $('#modal-confirm').removeClass('hidden').css('display','flex');
-        $('#btn-confirm-yes').off('click').on('click', () => { $('#modal-confirm').addClass('hidden'); resolve(true); });
-        $('#btn-confirm-no').off('click').on('click', () => { $('#modal-confirm').addClass('hidden'); resolve(false); });
+        $('#btn-confirm-yes').off('click').on('click', () => { $('#modal-confirm').addClass('hidden').css('display', ''); resolve(true); });
+        $('#btn-confirm-no').off('click').on('click', () => { $('#modal-confirm').addClass('hidden').css('display', ''); resolve(false); });
     });
 }
 
 function formatBR(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+// Notificação bonitinha no lugar do alert() feio do navegador
+function notificar(mensagem, tipo) {
+    const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
+    const cor = cores[tipo] || cores.aviso;
+    const $toast = $(`<div style="position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px); opacity:0; transition: opacity .25s, transform .25s; z-index:99999; background:${cor}; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.4); font-size:0.9rem; font-weight:600; max-width:90vw; text-align:center;">${mensagem}</div>`);
+    $('body').append($toast);
+    requestAnimationFrame(() => { $toast.css({ opacity: 1, transform: 'translateX(-50%) translateY(0)' }); });
+    setTimeout(() => {
+        $toast.css({ opacity: 0, transform: 'translateX(-50%) translateY(-20px)' });
+        setTimeout(() => $toast.remove(), 300);
+    }, 3500);
+}
 
 // ---------------- MÁSCARA DE MOEDA ----------------
 function mascaraMoeda(input) {
@@ -887,12 +918,12 @@ function onStatusChange() {
 }
 function buscarGanhadorPorCota() {
     const numero = $('#ganhador-busca-cota').val();
-    if (!numero || !SORTEIO_ATUAL_ID) return alert('Selecione a cota e certifique-se de que o sorteio já foi salvo.');
+    if (!numero || !SORTEIO_ATUAL_ID) return notificar('Selecione a cota e certifique-se de que o sorteio já foi salvo.', 'erro');
     api('POST', '/api/admin/dashboard/buscar-ganhador', { raffle: SORTEIO_ATUAL_ID, number: numero }).then(d => {
         $('#inp-ganhador-cota').val(numero);
         $('#inp-ganhador-nome').val(d.cliente?.nome_completo || '');
-        if (!d.cliente?.nome_completo) alert('Cota encontrada, mas sem comprador vinculado ainda. Digite o nome manualmente se quiser.');
-    }).catch(() => alert('Cota não encontrada — se quiser, digite o nome do ganhador manualmente.'));
+        if (!d.cliente?.nome_completo) notificar('Cota encontrada, mas sem comprador vinculado ainda. Digite o nome manualmente se quiser.', 'aviso');
+    }).catch(() => notificar('Cota não encontrada — se quiser, digite o nome do ganhador manualmente.', 'erro'));
 }
 
 // ---------------- SELETOR TOTAL DE COTAS ----------------
@@ -939,12 +970,26 @@ function checkSession() {
 }
 
 // ---------------- NAVEGAÇÃO ----------------
+// ---------------- MENU MOBILE (sidebar recolhível) ----------------
+function abrirMenuMobile() {
+    $('#sidebar').removeClass('-translate-x-full');
+    $('#overlay-menu-mobile').removeClass('hidden');
+}
+function fecharMenuMobile() {
+    $('#sidebar').addClass('-translate-x-full');
+    $('#overlay-menu-mobile').addClass('hidden');
+}
+$('#btn-abrir-menu-mobile').on('click', abrirMenuMobile);
+$('#btn-fechar-menu-mobile').on('click', fecharMenuMobile);
+$('#overlay-menu-mobile').on('click', fecharMenuMobile);
+
 function navTo(page, el) {
     $('.page-section').removeClass('active');
     $('#page-' + page).addClass('active');
     $('.sidebar-item').removeClass('active');
     if (el) $(el).addClass('active');
     else $('#nav-' + page).addClass('active');
+    fecharMenuMobile();
 
     if (page === 'dashboard') { carregarDashboard(); }
     if (page === 'sorteios') { carregarSorteios(); }
@@ -1067,7 +1112,7 @@ function abrirTelaGanhador(nome, telefone, cota) {
     $('#tela-ganhador').removeClass('hidden').css('display', 'flex');
     dispararConfete();
 }
-function fecharTelaGanhador() { $('#tela-ganhador').addClass('hidden'); }
+function fecharTelaGanhador() { $('#tela-ganhador').addClass('hidden').css('display', ''); }
 
 $('#form-buscar-ganhador').on('submit', function(e) {
     e.preventDefault();
@@ -1357,10 +1402,10 @@ $('#form-criar-sorteio').on('submit', function(e) {
             carregarFunis(d.sorteio.id);
             carregarRoletaTiers(d.sorteio.id);
             carregarLinksSorteio(d.sorteio.id);
-            alert('Sorteio salvo com sucesso!');
+            notificar('Sorteio salvo com sucesso!', 'sucesso');
             carregarSorteios();
         })
-        .catch(err => { hideOverlay(); alert('Erro ao salvar: ' + (err.error || 'erro desconhecido')); });
+        .catch(err => { hideOverlay(); notificar('Erro ao salvar: ' + (err.error || 'erro desconhecido'), 'erro'); });
 });
 
 // ---- Prêmios ----
@@ -1373,8 +1418,9 @@ function carregarPremios(sorteioId) {
 function addPremio() {
     const numero_cota = $('#inp-premio-cota').val();
     const premio_titulo = $('#inp-premio-titulo').val();
-    if (!numero_cota || !premio_titulo) return alert('Preencha cota e título.');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/premios`, { numero_cota, premio_titulo }).then(() => {
+    const ativo = $('#inp-premio-ativo').is(':checked');
+    if (!numero_cota || !premio_titulo) return notificar('Preencha cota e título.', 'erro');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/premios`, { numero_cota, premio_titulo, ativo }).then(() => {
         $('#inp-premio-cota').val(''); $('#inp-premio-titulo').val('');
         carregarPremios(SORTEIO_ATUAL_ID);
     });
@@ -1392,7 +1438,7 @@ function addRoleta() {
     const numero_cota = $('#inp-roleta-cota').val();
     const premio_titulo = $('#inp-roleta-titulo').val();
     const valor_premio = $('#inp-roleta-valor').val();
-    if (!numero_cota || !premio_titulo) return alert('Preencha cota e título.');
+    if (!numero_cota || !premio_titulo) return notificar('Preencha cota e título.', 'erro');
     api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/roleta`, { numero_cota, premio_titulo, valor_premio }).then(() => {
         $('#inp-roleta-cota').val(''); $('#inp-roleta-titulo').val(''); $('#inp-roleta-valor').val('');
         carregarRoleta(SORTEIO_ATUAL_ID);
@@ -1413,7 +1459,7 @@ function carregarRoletaTiers(sorteioId) {
 function addRoletaTier() {
     const minimo_cotas = $('#tier-minimo').val();
     const quantidade_giros = $('#tier-giros').val();
-    if (!minimo_cotas || !quantidade_giros) return alert('Preencha os dois campos.');
+    if (!minimo_cotas || !quantidade_giros) return notificar('Preencha os dois campos.', 'erro');
     api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/roleta-tiers`, { minimo_cotas, quantidade_giros }).then(() => {
         $('#tier-minimo').val(''); $('#tier-giros').val('');
         carregarRoletaTiers(SORTEIO_ATUAL_ID);
@@ -1508,9 +1554,9 @@ function carregarFunis(sorteioId) {
 }
 
 function criarFunil() {
-    if (!SORTEIO_ATUAL_ID) return alert('Salve o sorteio primeiro.');
+    if (!SORTEIO_ATUAL_ID) return notificar('Salve o sorteio primeiro.', 'erro');
     const nome = $('#funil-nome').val();
-    if (!nome) return alert('Dê um nome para o funil.');
+    if (!nome) return notificar('Dê um nome para o funil.', 'erro');
     const payload = {
         nome,
         origem: $('#funil-origem').val(),
@@ -1528,7 +1574,7 @@ function criarFunil() {
         $('#funil-grupo-teste').val(''); $('#funil-peso-box').hide();
         $('#funil-pos-tipo').val('padrao'); toggleBonusFields();
         carregarFunis(SORTEIO_ATUAL_ID);
-    }).catch(err => alert('Erro ao criar funil: ' + (err.error || '')));
+    }).catch(err => notificar('Erro ao criar funil: ' + (err.error || ''), 'erro'));
 }
 
 function excluirFunil(id) {
@@ -1583,13 +1629,13 @@ function carregarLinksSorteio(sorteioId) {
     });
 }
 function criarLink() {
-    if (!SORTEIO_ATUAL_ID) return alert('Salve o sorteio primeiro.');
+    if (!SORTEIO_ATUAL_ID) return notificar('Salve o sorteio primeiro.', 'erro');
     const nome = $('#link-nome').val();
-    if (!nome) return alert('Dê um nome para o link.');
+    if (!nome) return notificar('Dê um nome para o link.', 'erro');
     api('POST', `/api/admin/sorteios/${SORTEIO_ATUAL_ID}/links`, { nome, canal: $('#link-canal').val(), funil_id: $('#link-funil').val() || null }).then(() => {
         $('#link-nome').val('');
         carregarLinksSorteio(SORTEIO_ATUAL_ID);
-    }).catch(err => alert(err.error || 'Erro ao criar link'));
+    }).catch(err => notificar(err.error || 'Erro ao criar link', 'erro'));
 }
 function excluirLink(id) {
     confirmar('Excluir link', 'As métricas desse link deixarão de ser rastreadas.').then(yes => { if (yes) api('DELETE', `/api/admin/links/${id}`).then(() => carregarLinksSorteio(SORTEIO_ATUAL_ID)); });
@@ -1706,14 +1752,14 @@ function abrirDetalhePedido(id) {
             ${cotas ? `<div class="pt-2 border-t border-gray-800"><span class="opacity-60">Cotas:</span><div class="flex flex-wrap gap-1 mt-2">${cotas}</div></div>` : ''}
         </div>
         <div class="flex gap-2 mt-4">
-            ${p.status === 'aguardando' ? `<button class="btn-primary flex-1" onclick="aprovarPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden');">Aprovar Pedido</button>` : ''}
-            <button class="bg-red-600 text-white flex-1 rounded-lg" onclick="excluirPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden');">Excluir</button>
+            ${p.status === 'aguardando' ? `<button class="btn-primary flex-1" onclick="aprovarPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden').css('display', '');">Aprovar Pedido</button>` : ''}
+            <button class="bg-red-600 text-white flex-1 rounded-lg" onclick="excluirPedido('${p.id}'); $('#modal-detalhe-pedido').addClass('hidden').css('display', '');">Excluir</button>
         </div>
     `);
     $('#modal-detalhe-pedido').removeClass('hidden').css('display', 'flex');
 }
 
-function aprovarPedido(id) { api('POST', `/api/admin/pedidos/${id}/aprovar`).then(() => carregarPedidos(PEDIDOS_FILTRO_ATUAL)).catch(err => alert(err.error || 'Erro')); }
+function aprovarPedido(id) { api('POST', `/api/admin/pedidos/${id}/aprovar`).then(() => { carregarPedidos(PEDIDOS_FILTRO_ATUAL); notificar('Pedido aprovado!', 'sucesso'); }).catch(err => notificar(err.error || 'Erro', 'erro')); }
 function excluirPedido(id) {
     confirmar('Excluir pedido', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/pedidos/${id}`).then(() => carregarPedidos(PEDIDOS_FILTRO_ATUAL)); });
 }
@@ -1807,7 +1853,7 @@ function addDespesa() {
     const nome = $('#despesa-nome').val();
     const valor = $('#despesa-valor').val();
     const data = $('#despesa-data').val();
-    if (!nome || !valor) return alert('Preencha nome e valor da despesa.');
+    if (!nome || !valor) return notificar('Preencha nome e valor da despesa.', 'erro');
     api('POST', '/api/admin/despesas', { nome, valor, data: data ? `${data}T12:00:00` : undefined }).then(() => {
         $('#despesa-nome').val(''); $('#despesa-valor').val(''); $('#despesa-data').val('');
         carregarRelatorios();
@@ -1842,22 +1888,22 @@ function carregarGateway() {
 $('#conf-modo-teste').on('change', function() {
     const ligado = $(this).is(':checked');
     api('POST', '/api/admin/configuracoes', { MODO_TESTE_PAGAMENTO: ligado ? 'true' : 'false' })
-        .then(() => { if (ligado) alert('⚠️ Modo Teste LIGADO — o botão "Já paguei" vai aparecer no checkout. Lembre de desligar antes de divulgar pra clientes reais.'); });
+        .then(() => { if (ligado) notificar('⚠️ Modo Teste LIGADO — o botão "Já paguei" vai aparecer no checkout.', 'aviso'); });
 });
 $('#form-gateway-mp').on('submit', function(e) {
     e.preventDefault();
     api('POST', '/api/admin/configuracoes', { MERCADOPAGO_ACCESS_TOKEN: $('#conf-mercadopago-token').val(), GATEWAY_PROVIDER: 'mercadopago' })
-        .then(() => alert('Mercado Pago salvo e ativado como gateway principal!'));
+        .then(() => notificar('Mercado Pago salvo e ativado como gateway principal!', 'sucesso'));
 });
 $('#form-gateway-pay2m').on('submit', function(e) {
     e.preventDefault();
     api('POST', '/api/admin/configuracoes', { PAY2M_CLIENT_ID: $('#conf-pay2m-id').val(), PAY2M_CLIENT_SECRET: $('#conf-pay2m-secret').val(), GATEWAY_PROVIDER: 'pay2m' })
-        .then(() => alert('Pay2M salvo e ativado como gateway principal!'));
+        .then(() => notificar('Pay2M salvo e ativado como gateway principal!', 'sucesso'));
 });
 $('#form-gateway-paggue').on('submit', function(e) {
     e.preventDefault();
     api('POST', '/api/admin/configuracoes', { PAGGUE_ACCESS_TOKEN: $('#conf-paggue-token').val(), GATEWAY_PROVIDER: 'paggue' })
-        .then(() => alert('Paggue salvo e ativado como gateway principal!'));
+        .then(() => notificar('Paggue salvo e ativado como gateway principal!', 'sucesso'));
 });
 
 // ---------------- PIXELS & MARKETING (globais) ----------------
@@ -1879,7 +1925,7 @@ $('#form-marketing').on('submit', function(e) {
         TIKTOK_PIXEL_ID: $('#conf-tiktok-id').val(),
         GTM_ID: $('#conf-gtm-id').val()
     };
-    api('POST', '/api/admin/configuracoes', payload).then(() => alert('Configurações salvas!'));
+    api('POST', '/api/admin/configuracoes', payload).then(() => notificar('Configurações salvas!', 'sucesso'));
 });
 
 function carregarConta() {
@@ -1895,7 +1941,7 @@ $('#form-conta').on('submit', function(e) {
     const email = $('#conta-email').val();
     const new_password = $('#conta-pass').val();
     const confirm_password = $('#conta-pass-confirm').val();
-    api('POST', '/api/admin/conta', { email, new_password, confirm_password }).then(() => alert('Conta atualizada!')).catch(err => alert(err.error || 'Erro'));
+    api('POST', '/api/admin/conta', { email, new_password, confirm_password }).then(() => notificar('Conta atualizada!', 'sucesso')).catch(err => notificar(err.error || 'Erro', 'erro'));
 });
 $('#form-identidade').on('submit', function(e) {
     e.preventDefault();
@@ -1903,7 +1949,7 @@ $('#form-identidade').on('submit', function(e) {
     const SYSTEM_SUB = $('#conf-system-sub').val() || 'painel administrativo';
     api('POST', '/api/admin/configuracoes', { SYSTEM_NAME, SYSTEM_SUB }).then(() => {
         aplicarIdentidade(SYSTEM_NAME, SYSTEM_SUB);
-        alert('Nome do sistema atualizado!');
+        notificar('Nome do sistema atualizado!', 'sucesso');
     });
 });
 function aplicarIdentidade(nome, sub) {
@@ -1918,6 +1964,7 @@ function aplicarIdentidade(nome, sub) {
         $('#sidebar-brand-name').html(`<span class="brand-word-2">${texto}</span>`);
     }
     $('#sidebar-brand-sub').text(sub || 'painel administrativo');
+    $('#mobile-brand-name').text(texto);
     document.title = `${texto} - Admin`;
 }
 
