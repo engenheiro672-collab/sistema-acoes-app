@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Sorteio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
+
+    <style>
+        body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; }
+        .header-bar { background-color: #1a1a1a; padding: 1rem; }
+        .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
+        .title-bar { background-color: #1a1a1a; color: #fff; }
+        .btn-meus-titulos { color: #fff; font-weight: 600; }
+        .price-bar { color: #a0aec0; }
+        .price-bar strong { color: #f7b731; font-size: 1.125rem; margin-left: 8px; }
+        .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; }
+        @media (max-width: 420px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; } .cota-num { font-size: 1.5rem !important; } }
+        .cota-btn { background-color: #000; border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: 2px solid transparent; position: relative; }
+        .cota-btn:hover { background-color: #111; }
+        .cota-btn.popular { background-color: #D9F7E6; border: 2px solid #16A34A; }
+        .cota-btn.popular .cota-num { color: #15803D; }
+        .cota-btn.popular .cota-label { color: #15803D; }
+        .cota-btn.selecionado { border: 2px solid #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.35); }
+        .cota-badge { font-size: 0.75rem; font-weight: 600; background-color: #22C55E; color: #ffffff; padding: 2px 10px; border-radius: 12px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); }
+        .cota-num { font-size: 2.25rem; font-weight: 700; color: #fff; }
+        .cota-label { font-size: 1rem; font-weight: 500; color: #a0aec0; }
+        .purchase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 0 1rem 1rem 1rem; }
+        .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #2a303c; border-radius: 8px; padding: 0.5rem; }
+        .manual-selector button { font-size: 2rem; font-weight: 300; color: #a0aec0; width: 50px; height: 50px; }
+        .manual-selector input { width: 100%; text-align: center; font-size: 1.5rem; font-weight: 600; color: #fff; background: none; border: none; outline: none; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .btn-participar { background-color: #16A34A; color: #fff; width: 100%; border-radius: 8px; padding: 1rem; font-size: 1.125rem; font-weight: 600; text-align: left; display: flex; align-items: center; line-height: 1.3; }
+        .btn-participar i { font-size: 1.5rem; margin-right: 0.75rem; }
+        .btn-participar-price { font-size: 1.5rem; font-weight: 700; }
+        .titulos-premiados { padding: 1.5rem 1rem; }
+        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; margin-bottom: 0.35rem; border-radius: 12px; background-color: #12141c; border: 1px solid #1f2937; }
+        .premio-item.reivindicado { background: #1f9d55; border-color: #1f9d55; }
+        .premio-cota { font-weight: 700; font-size: 0.8rem; color: #e5e7eb; background-color: #4b5563; padding: 0.3rem 0.7rem; border-radius: 999px; min-width: 68px; text-align: center; }
+        .premio-item.reivindicado .premio-cota { color: #14532d; background-color: #ffffff; }
+        .premio-nome { font-weight: 600; color: #e5e7eb; flex-grow: 1; text-align: center; font-size: 0.8rem; }
+        .premio-item.reivindicado .premio-nome { color: #ffffff; }
+        .premio-status { font-weight: 600; color: #9ca3af; font-size: 0.8rem; white-space: nowrap; }
+        .premio-item.reivindicado .premio-status { color: #fff; font-weight: 700; }
+        .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
+        .modal { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
+        .tag-pulse { background-color: #22C55E; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 9999px; animation: pulse-opacity 1.5s infinite; }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } }
+        .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+        .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
+        .input-com-icon { padding-left: 3rem !important; width: 100%; }
+        .erro-msg { color: #f87171; font-size: 0.875rem; margin-top: 0.25rem; }
+        .confirm-bar { display: flex; align-items: center; background-color: #2f855a; color: #fff; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; }
+        .confirm-bar-icon { display: inline-block; background-color: #fff; color: #2f855a; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; margin-right: 0.75rem; font-weight: bold; }
+        .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
+        @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        /* Carrossel de imagens */
+        .carrossel { position: relative; overflow: hidden; }
+        .carrossel-track { display: flex; transition: transform 0.35s ease; }
+        .carrossel-slide { width: 100%; flex-shrink: 0; }
+        .carrossel-slide img { width: 100%; height: 350px; object-fit: cover; display: block; }
+        .carrossel-dots { position: absolute; bottom: 8px; left: 0; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 10; }
+        .carrossel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; }
+        .carrossel-dot.active { background: #fff; }
+        .carrossel-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: #fff; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
+        .carrossel-arrow.prev { left: 8px; }
+        .carrossel-arrow.next { right: 8px; }
+        /* Menu dropdown */
+        .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
+        .menu-dropdown a, .menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 16px; color: #e6edf3; font-size: 0.9rem; }
+        .menu-dropdown a:hover, .menu-dropdown button:hover { background: #343c4a; }
+    </style>
+</head>
+<body class="pb-8">
+
+    <header class="header-bar shadow-lg sticky top-0 z-50 relative">
+        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
+            <div id="logo-box" class="text-2xl font-bold text-white">LOGO</div>
+            <div class="flex items-center gap-4">
+                <a href="/inicio" class="text-gray-300 hover:text-white"><i class="bi bi-arrow-left"></i> Voltar</a>
+                <button id="btn-menu" class="text-gray-300 hover:text-white text-xl"><i class="bi bi-list"></i></button>
+            </div>
+        </nav>
+        <div id="menu-dropdown" class="menu-dropdown hidden">
+            <button id="menu-meus-titulos"><i class="bi bi-ticket-detailed"></i> Meus Títulos</button>
+            <a id="menu-whatsapp-suporte" href="#" target="_blank" class="hidden"><i class="bi bi-whatsapp"></i> Suporte via WhatsApp</a>
+        </div>
+    </header>
+
+    <main id="sorteio-container" class="container mx-auto max-w-2xl">
+
+        <section class="relative carrossel" id="carrossel-box">
+            <div class="carrossel-track" id="carrossel-track">
+                <div class="carrossel-slide"><img id="sorteio-img" src="" alt="Prêmio"></div>
+            </div>
+            <div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent" style="pointer-events:none;">
+                <span id="sorteio-tag" class="tag-pulse">Adquira já!</span>
+                <h1 id="sorteio-nome" class="text-3xl font-bold text-white mt-2">Carregando...</h1>
+                <p id="sorteio-desc" class="text-gray-200"></p>
+            </div>
+        </section>
+
+        <div class="title-bar flex justify-between items-center p-4">
+            <button id="btn-meus-numeros" class="btn-meus-titulos text-lg">
+                <i class="bi bi-ticket-detailed"></i> Meus Títulos
+            </button>
+            <div class="price-bar text-right">
+                Por apenas
+                <strong id="preco-cota">R$ 0,00</strong>
+            </div>
+        </div>
+
+        <div id="banner-chance-dobro" class="mx-4 mt-4 hidden" style="background:linear-gradient(135deg,#facc15,#f59e0b); border-radius:14px; padding:1rem; color:#1a1a1a;">
+            <div class="flex items-center gap-2 mb-1">
+                <span style="font-size:1.5rem;">⚡</span>
+                <h3 id="chance-dobro-titulo" class="font-black text-lg leading-tight">Chance em Dobro!</h3>
+            </div>
+            <p class="text-sm font-semibold mb-2">Compre agora e leve o DOBRO de títulos pelo mesmo preço!</p>
+            <div style="background:rgba(0,0,0,0.15); border-radius:999px; height:10px; overflow:hidden; margin-bottom:6px;">
+                <div id="chance-dobro-barra" style="height:100%; background:#1a1a1a; width:0%; transition:width 1s linear;"></div>
+            </div>
+            <p class="text-xs font-bold text-center">Acaba em <span id="chance-dobro-contagem">--:--:--</span></p>
+        </div>
+
+        <section class="mt-4">
+            <p class="text-center text-gray-300 mb-4">Quanto mais títulos, mais chances de ganhar!</p>
+
+            <div class="cota-grid" id="cota-grid"></div>
+
+            <div class="purchase-grid">
+                <div class="manual-selector">
+                    <button id="btn-remove-cota" class="btn-control"><i class="bi bi-dash-circle"></i></button>
+                    <input id="input-qtd" type="number" value="30">
+                    <button id="btn-add-cota" class="btn-control"><i class="bi bi-plus-circle"></i></button>
+                </div>
+
+                <button id="btn-participar" class="btn-participar">
+                    <i class="bi bi-check-circle"></i>
+                    <div>
+                        <span>Quero participar</span>
+                        <div class="btn-participar-price" id="cta-preco-total">R$ 0,00</div>
+                    </div>
+                </button>
+            </div>
+            <p id="erro-limite" class="text-center text-red-400 text-sm mt-2 hidden">
+                A compra mínima é de <strong id="erro-min">1</strong> cota e a máxima é de <strong id="erro-max">1000000</strong> cotas.
+            </p>
+        </section>
+
+        <section id="secao-roleta-tiers" class="mt-6 px-1 hidden">
+            <h3 class="text-xl font-semibold mb-3">🎯 Roletas Instantâneas <span class="text-sm text-gray-400 font-normal">combos</span></h3>
+            <div id="lista-roleta-tiers" class="space-y-3"></div>
+        </section>
+
+        <section class="titulos-premiados mt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-semibold"><i class="bi bi-trophy-fill text-yellow-400"></i> Títulos Premiados <span class="text-sm text-gray-400 font-normal">instantâneos</span></h3>
+                <span id="contador-premiados" class="text-gray-400 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">0/0</span>
+            </div>
+            <div id="lista-premios"></div>
+            <button id="btn-mostrar-mais-premios" class="w-full text-center text-gray-400 mt-4 font-semibold hover:text-white hidden">
+                <i class="bi bi-chevron-down"></i> Mostrar Mais
+            </button>
+        </section>
+
+        <section id="secao-roleta-resultados" class="titulos-premiados mt-2 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-semibold">⚡ Roletas Instantâneas</h3>
+                <span id="contador-roleta" class="text-gray-400 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">0/0</span>
+            </div>
+            <div id="lista-roleta-vencedores"></div>
+            <button id="btn-mostrar-mais-roleta" class="w-full text-center text-gray-400 mt-4 font-semibold hover:text-white hidden">
+                <i class="bi bi-chevron-down"></i> Mostrar Mais
+            </button>
+        </section>
+
+    </main>
+
+    <div id="redes-sociais-flutuantes" class="fixed right-3 top-1/2 flex flex-col gap-2 z-40" style="transform: translateY(-50%);"></div>
+
+    <div id="modal-meus-numeros" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="modal-content bg-[#2b2b2b] p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-white">Consultar Meus Bilhetes</h3>
+                <button id="close-modal-meus-numeros" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <form id="form-meus-bilhetes">
+                <label class="block text-sm mb-2 text-gray-300" for="phone-input-modal">Digite seu telefone (com DDD):</label>
+                <input id="phone-input-modal" type="tel" class="w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600" placeholder="(11) 99999-9999" required>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-4">
+                    Buscar
+                </button>
+            </form>
+            <div id="resultado-bilhetes" class="mt-4 max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="modal-checkout" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="modal-content bg-[#2b2b2b] p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-white">Finalizar Pedido</h3>
+                <button id="close-modal-checkout" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div id="checkout-confirm-bar" class="confirm-bar hidden">
+                <span class="confirm-bar-icon">✓</span>
+                <span id="checkout-confirm-text"></span>
+            </div>
+
+            <!-- ETAPA 1: só telefone. Se já for um comprador conhecido, pula direto pra etapa 2 preenchida -->
+            <form id="form-checkout-telefone">
+                <label class="block text-sm mb-2 text-gray-300" for="checkout-tel">Telefone (com DDD):</label>
+                <div class="input-icon-wrapper">
+                    <i class="bi bi-phone input-icon"></i>
+                    <input id="checkout-tel" type="tel" class="input-com-icon w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600" placeholder="(11) 99999-9999" required>
+                </div>
+                <p class="text-xs text-red-400 font-semibold mt-2">IMPORTANTE, DIGITE SEU NÚMERO CORRETAMENTE!</p>
+                <button type="submit" id="btn-continuar-telefone" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded mt-4 text-lg">
+                    Continuar
+                </button>
+            </form>
+
+            <!-- ETAPA 2: dados adicionais — só aparece se for comprador novo, ou faltar algum dado ativado pro sorteio -->
+            <form id="form-checkout-dados" class="hidden">
+                <div id="campo-nome" class="mb-4">
+                    <label class="block text-sm mb-2 text-gray-300" for="checkout-nome">Nome Completo:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-person input-icon"></i>
+                        <input id="checkout-nome" type="text" class="input-com-icon w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600">
+                    </div>
+                    <p id="erro-nome" class="erro-msg hidden">Por favor, insira seu nome e sobrenome.</p>
+                </div>
+
+                <div id="campo-cpf" class="mb-4 hidden">
+                    <label class="block text-sm mb-2 text-gray-300" for="checkout-cpf">CPF:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-card-text input-icon"></i>
+                        <input id="checkout-cpf" type="text" class="input-com-icon w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600" placeholder="000.000.000-00" maxlength="14">
+                    </div>
+                </div>
+
+                <div id="campo-email" class="mb-4 hidden">
+                    <label class="block text-sm mb-2 text-gray-300" for="checkout-email">Email:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-envelope input-icon"></i>
+                        <input id="checkout-email" type="email" class="input-com-icon w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600" placeholder="seuemail@exemplo.com">
+                    </div>
+                </div>
+
+                <div id="campo-endereco" class="mb-4 hidden">
+                    <label class="block text-sm mb-2 text-gray-300" for="checkout-endereco">Endereço:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-geo-alt input-icon"></i>
+                        <input id="checkout-endereco" type="text" class="input-com-icon w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600" placeholder="Rua, número, bairro, cidade">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded mt-4 text-lg">
+                    Concluir Reserva
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Lê slug do sorteio e (opcionalmente) slug do funil pela URL ---
+        // Suporta: /sorteio/:slug  e  /sorteio/:slug/:funilSlug
+        const pathParts = window.location.pathname.split('/').filter(Boolean); // ['sorteio', slug, funilSlug?]
+        const SORTEIO_SLUG = pathParts[1] || '';
+        const FUNIL_SLUG = pathParts[2] || null;
+        const URL_PARAMS = new URLSearchParams(window.location.search);
+        const LINK_CODIGO = URL_PARAMS.get('lk') || null;
+
+        let SORTEIO_DATA = {};
+        let BILHETES_PREMIADOS = [];
+        let FUNIL_DATA = null;
+        let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
+        let quantidadeCotas = 30;
+
+        function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        // Notificação bonitinha no lugar do alert() feio do navegador
+        function notificar(mensagem, tipo) {
+            const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
+            const cor = cores[tipo] || cores.aviso;
+            const $toast = $(`<div style="position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px); opacity:0; transition: opacity .25s, transform .25s; z-index:9999; background:${cor}; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.4); font-size:0.9rem; font-weight:600; max-width:90vw; text-align:center;">${mensagem}</div>`);
+            $('body').append($toast);
+            requestAnimationFrame(() => { $toast.css({ opacity: 1, transform: 'translateX(-50%) translateY(0)' }); });
+            setTimeout(() => {
+                $toast.css({ opacity: 0, transform: 'translateX(-50%) translateY(-20px)' });
+                setTimeout(() => $toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Injeta os 4 pixels suportados (Facebook, Google Ads, TikTok, GTM), cada um só se tiver ID configurado
+        function injetarPixels(pixels) {
+            if (!pixels) return;
+            if (pixels.facebook_pixel_id) {
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                fbq('init', pixels.facebook_pixel_id);
+                fbq('track', 'PageView');
+            }
+            if (pixels.google_ads_id) {
+                const s1 = document.createElement('script'); s1.async = true; s1.src = `https://www.googletagmanager.com/gtag/js?id=${pixels.google_ads_id}`;
+                document.head.appendChild(s1);
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = function(){ dataLayer.push(arguments); };
+                gtag('js', new Date()); gtag('config', pixels.google_ads_id);
+            }
+            if (pixels.tiktok_pixel_id) {
+                (function (w, d, t) { w.TiktokAnalyticsObject = t; var ttq = w[t] = w[t] || []; ttq.methods = ["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"]; ttq.setAndDefer = function (t, e) { t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))) } }; for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]); ttq.load = function (e, n) { var i = "https://analytics.tiktok.com/i18n/pixel/events.js"; ttq._i = ttq._i || {}; ttq._i[e] = []; ttq._i[e]._u = i; ttq._t = ttq._t || {}; ttq._t[e] = +new Date; ttq._o = ttq._o || {}; ttq._o[e] = n || {}; var o = document.createElement("script"); o.type = "text/javascript"; o.async = true; o.src = i + "?sdkid=" + e + "&lib=" + t; var a = document.getElementsByTagName("script")[0]; a.parentNode.insertBefore(o, a) }; ttq.load(pixels.tiktok_pixel_id); ttq.page(); })(window, document, 'ttq');
+            }
+            if (pixels.gtm_id) {
+                (function (w, d, s, l, i) { w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' }); var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f); })(window, document, 'script', 'dataLayer', pixels.gtm_id);
+            }
+        }
+
+        function atualizarPreco() {
+            const total = quantidadeCotas * PRECO;
+            $('#input-qtd').val(quantidadeCotas);
+            $('#cta-preco-total').text(formatarMoeda(total));
+
+            const $erro = $('#erro-limite');
+            if (quantidadeCotas < MIN_QTY || quantidadeCotas > MAX_QTY) {
+                $erro.removeClass('hidden');
+                $('#erro-min').text(MIN_QTY);
+                $('#erro-max').text(MAX_QTY);
+            } else {
+                $erro.addClass('hidden');
+            }
+        }
+
+        function renderCarrossel(sorteio) {
+            const imagens = [sorteio.foto_url, ...(sorteio.fotos_galeria || [])].filter(Boolean);
+            const $track = $('#carrossel-track');
+            if (imagens.length <= 1) {
+                $('#sorteio-img').attr('src', imagens[0] || '');
+                return;
+            }
+            $track.html(imagens.map(img => `<div class="carrossel-slide"><img src="${img}" alt="Prêmio"></div>`).join(''));
+            $('#carrossel-box').append(`
+                <div class="carrossel-arrow prev"><i class="bi bi-chevron-left"></i></div>
+                <div class="carrossel-arrow next"><i class="bi bi-chevron-right"></i></div>
+                <div class="carrossel-dots">${imagens.map((_, i) => `<span class="carrossel-dot ${i === 0 ? 'active' : ''}" data-i="${i}"></span>`).join('')}</div>
+            `);
+            let atual = 0;
+            function irPara(i) {
+                atual = (i + imagens.length) % imagens.length;
+                $track.css('transform', `translateX(-${atual * 100}%)`);
+                $('.carrossel-dot').removeClass('active').eq(atual).addClass('active');
+            }
+            $('#carrossel-box .prev').on('click', () => irPara(atual - 1));
+            $('#carrossel-box .next').on('click', () => irPara(atual + 1));
+            $('#carrossel-box').on('click', '.carrossel-dot', function() { irPara(Number($(this).data('i'))); });
+            let autoplay = setInterval(() => irPara(atual + 1), 5000);
+        }
+
+        // Renderiza uma lista com "Mostrar Mais" progressivo (5 em 5), reaproveitado pra bilhetes e roleta
+        function renderListaPaginada(seletorLista, seletorBotao, itens, passo, templateFn) {
+            let visiveis = passo;
+            function desenhar() {
+                $(seletorLista).html(itens.slice(0, visiveis).map(templateFn).join(''));
+                $(seletorBotao).toggleClass('hidden', visiveis >= itens.length);
+            }
+            $(seletorBotao).off('click').on('click', function() { visiveis += passo; desenhar(); });
+            desenhar();
+        }
+
+        // Lê a config de botões (JSON novo com "popular", ou CSV antigo) e desenha até 6 botões dinâmicos
+        function renderRedesSociaisFlutuantes(redes) {
+            if (!redes) return;
+            const cores = { instagram: '#E1306C', telegram: '#229ED9', facebook: '#1877F2', whatsapp_grupo: '#25D366', whatsapp_suporte: '#25D366' };
+            const icones = { instagram: 'bi-instagram', telegram: 'bi-telegram', facebook: 'bi-facebook', whatsapp_grupo: 'bi-whatsapp', whatsapp_suporte: 'bi-headset' };
+            const itens = [];
+            if (redes.instagram?.ativo && redes.instagram.url) itens.push({ tipo: 'instagram', href: redes.instagram.url });
+            if (redes.telegram?.ativo && redes.telegram.url) itens.push({ tipo: 'telegram', href: redes.telegram.url });
+            if (redes.facebook?.ativo && redes.facebook.url) itens.push({ tipo: 'facebook', href: redes.facebook.url });
+            if (redes.whatsapp_grupo?.ativo && redes.whatsapp_grupo.url) itens.push({ tipo: 'whatsapp_grupo', href: redes.whatsapp_grupo.url });
+            if (redes.whatsapp_suporte?.ativo && redes.whatsapp_suporte.numero) itens.push({ tipo: 'whatsapp_suporte', href: `https://wa.me/${redes.whatsapp_suporte.numero}` });
+
+            $('#redes-sociais-flutuantes').html(itens.map(it => `
+                <a href="${it.href}" target="_blank" style="background:${cores[it.tipo]}; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.25rem; box-shadow:0 4px 10px rgba(0,0,0,0.4);">
+                    <i class="bi ${icones[it.tipo]}"></i>
+                </a>
+            `).join(''));
+        }
+
+
+        function iniciarChanceDobro(chance) {
+            clearInterval(chanceDobroInterval);
+            if (!chance) { $('#banner-chance-dobro').addClass('hidden'); return; }
+
+            const inicio = new Date(chance.data_inicio).getTime();
+            const fim = new Date(chance.data_fim).getTime();
+            $('#chance-dobro-titulo').text(chance.titulo || 'Chance em Dobro!');
+            $('#banner-chance-dobro').removeClass('hidden');
+
+            function atualizar() {
+                const agora = Date.now();
+                if (agora >= fim) { $('#banner-chance-dobro').addClass('hidden'); clearInterval(chanceDobroInterval); return; }
+                const progresso = Math.min(100, Math.max(0, ((agora - inicio) / (fim - inicio)) * 100));
+                $('#chance-dobro-barra').css('width', progresso + '%');
+                const restanteMs = fim - agora;
+                const h = Math.floor(restanteMs / 3600000);
+                const m = Math.floor((restanteMs % 3600000) / 60000);
+                const s = Math.floor((restanteMs % 60000) / 1000);
+                $('#chance-dobro-contagem').text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+            }
+            atualizar();
+            chanceDobroInterval = setInterval(atualizar, 1000);
+        }
+
+        function renderBotoesCota(config) {
+            let botoes = [];
+            if (config) {
+                try {
+                    const parsed = JSON.parse(config);
+                    if (Array.isArray(parsed) && parsed.length) botoes = parsed;
+                } catch (e) {
+                    const valores = String(config).split(',').map(x => parseInt(x)).filter(Boolean);
+                    botoes = valores.map((v, i) => ({ valor: v, popular: i === 1 || (valores.length === 1 && i === 0) }));
+                }
+            }
+            if (botoes.length === 0) botoes = [{ valor: 500 }, { valor: 1000, popular: true }, { valor: 2000 }, { valor: 5000 }];
+
+            $('#cota-grid').html(botoes.slice(0, 6).map(b => `
+                <div class="cota-btn btn-add-cota ${b.popular ? 'popular' : ''}" data-qtd="${b.valor}">
+                    ${b.popular ? '<span class="cota-badge">Mais popular</span>' : ''}
+                    <div class="cota-num ${b.popular ? 'text-[#15803D]' : ''}">+${b.valor}</div>
+                    <div class="cota-label ${b.popular ? 'text-[#15803D]' : ''}">SELECIONAR</div>
+                </div>
+            `).join(''));
+        }
+
+        function renderPagina(data) {
+            const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
+            SORTEIO_DATA = sorteio || {};
+            BILHETES_PREMIADOS = bilhetes_premiados || [];
+            FUNIL_DATA = funil || null;
+
+            PRECO = Number(sorteio.preco_cota || 0);
+            MIN_QTY = Number(sorteio.minimo_cotas_compra || 1);
+            MAX_QTY = Number(sorteio.maximo_cotas_compra || 1000000);
+            MIN_VISIBLE = Number(sorteio.minimo_visivel_seletor || 30);
+            TOTAL = Number(sorteio.total_cotas || 100);
+            quantidadeCotas = MIN_VISIBLE;
+
+            renderBotoesCota(sorteio.botoes_rapidos);
+            iniciarChanceDobro(data.chance_dobro_ativa);
+            renderRedesSociaisFlutuantes(data.redes_sociais);
+
+            if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
+            injetarPixels(pixels);
+
+            $('#page-title').text(`${sorteio.nome || ''} - Sorteios`);
+            renderCarrossel(sorteio);
+            $('#sorteio-nome').text(sorteio.nome || '');
+            $('#sorteio-desc').text(sorteio.subtitulo || 'Participe e concorra!');
+            $('#preco-cota').text(PRECO ? formatarMoeda(PRECO) : 'R$ 0,00');
+            $('#input-qtd').attr('min', MIN_QTY).attr('max', MAX_QTY);
+
+            // Faixas de roleta (ex: "A cada 300 títulos, receba 4 roletas")
+            if (sorteio.roleta_ativada && roleta_tiers && roleta_tiers.length > 0) {
+                $('#secao-roleta-tiers').removeClass('hidden');
+                $('#lista-roleta-tiers').html(roleta_tiers.map(t => `
+                    <div class="premio-item" style="background:linear-gradient(90deg,#166534,#16a34a); flex-direction:column; align-items:flex-start; gap:2px;">
+                        <div style="display:flex; justify-content:space-between; width:100%;">
+                            <span class="text-sm text-white">A cada <strong>${t.minimo_cotas} títulos</strong></span>
+                            <strong class="text-white">Receba ${t.quantidade_giros} Roletas 🎯</strong>
+                        </div>
+                        <span class="text-xs text-green-100">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</span>
+                    </div>
+                `).join(''));
+            } else {
+                $('#secao-roleta-tiers').addClass('hidden');
+            }
+
+            const premiados = BILHETES_PREMIADOS;
+            const reivindicados = premiados.filter(p => p.status === 'reivindicada').length;
+            $('#contador-premiados').text(`${reivindicados}/${premiados.length}`);
+            renderListaPaginada('#lista-premios', '#btn-mostrar-mais-premios', premiados, 5, premio => `
+                <div class="premio-item ${premio.status === 'reivindicada' ? 'reivindicado' : ''}">
+                    <span class="premio-cota">${premio.numero_cota}</span>
+                    <span class="premio-nome">${premio.premio_titulo}</span>
+                    ${premio.status === 'reivindicada'
+                        ? `<span class="premio-status">${premio.ganhador_nome ? premio.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                        : `<span class="premio-status">Disponível</span>`}
+                </div>
+            `);
+
+            // Roletas já sorteadas (nunca mostra o número do giro, só o prêmio e quem ganhou)
+            if (sorteio.roleta_ativada && roleta_resultados && roleta_resultados.total > 0) {
+                $('#secao-roleta-resultados').removeClass('hidden');
+                $('#contador-roleta').text(`${roleta_resultados.ganhas}/${roleta_resultados.total}`);
+                renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roleta_resultados.lista || [], 5, v => `
+                    <div class="premio-item ${v.reivindicada ? 'reivindicado' : ''}">
+                        <span class="premio-nome" style="text-align:left; flex-grow:2;">${v.valor_premio || v.premio_titulo || 'Prêmio'}</span>
+                        ${v.reivindicada
+                            ? `<span class="premio-status">${v.ganhador_nome ? v.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                            : `<span class="premio-status">Disponível</span>`}
+                    </div>
+                `);
+            } else {
+                $('#secao-roleta-resultados').addClass('hidden');
+            }
+
+            if (sorteio.suporte_whatsapp) {
+                const msg = encodeURIComponent(`Olá, tenho uma dúvida sobre o sorteio ${sorteio.nome || ''}`);
+                $('#menu-whatsapp-suporte').attr('href', `https://wa.me/${sorteio.suporte_whatsapp}?text=${msg}`).removeClass('hidden');
+            }
+
+            $('#campo-cpf').toggleClass('hidden', !sorteio.coletar_cpf);
+            $('#checkout-cpf').prop('required', !!sorteio.coletar_cpf);
+            $('#campo-email').toggleClass('hidden', !sorteio.coletar_email);
+            $('#checkout-email').prop('required', !!sorteio.coletar_email);
+            $('#campo-endereco').toggleClass('hidden', !sorteio.coletar_endereco);
+            $('#checkout-endereco').prop('required', !!sorteio.coletar_endereco);
+
+            atualizarPreco();
+        }
+
+        function carregarSorteio() {
+            const url = FUNIL_SLUG
+                ? `/api/public/sorteio/${SORTEIO_SLUG}/funil/${FUNIL_SLUG}`
+                : `/api/public/sorteio/${SORTEIO_SLUG}`;
+            $.get(url)
+                .done(function(resp) { renderPagina(resp); })
+                .fail(function() {
+                    $('#sorteio-nome').text('Sorteio não encontrado');
+                    $('#sorteio-desc').text('Verifique o link e tente novamente.');
+                });
+        }
+
+        $(document).ready(function() {
+            carregarSorteio();
+
+            var SPMaskBehavior = function (val) {
+                return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009';
+            };
+            var spOptions = {
+                onKeyPress: function(val, e, field, options) {
+                    field.mask(SPMaskBehavior.apply({}, arguments), options);
+                }
+            };
+            $('#checkout-tel').mask(SPMaskBehavior, spOptions);
+            $('#phone-input-modal').mask(SPMaskBehavior, spOptions);
+            $('#checkout-cpf').mask('000.000.000-00');
+
+            $('#cota-grid').on('click', '.btn-add-cota', function() {
+                const qtd = $(this).data('qtd');
+                if (qtd !== undefined) {
+                    quantidadeCotas = Math.min(MAX_QTY, quantidadeCotas + Number(qtd));
+                    atualizarPreco();
+                    $('.btn-add-cota').removeClass('selecionado');
+                    $(this).addClass('selecionado');
+                }
+            });
+            $('#btn-add-cota').on('click', function() {
+                if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+            });
+            $('#btn-remove-cota').on('click', function() {
+                if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+            });
+            $('#input-qtd').on('change', function() {
+                let val = parseInt($(this).val());
+                if (isNaN(val) || val < MIN_QTY) val = MIN_QTY;
+                if (val > MAX_QTY) val = MAX_QTY;
+                quantidadeCotas = val;
+                atualizarPreco();
+            });
+
+            $('#btn-participar').on('click', function() {
+                if (quantidadeCotas < MIN_QTY || quantidadeCotas > MAX_QTY) {
+                    notificar(`O número de cotas deve ser entre ${MIN_QTY} e ${MAX_QTY}.`, 'erro');
+                    return;
+                }
+                const modalCheckout = $('#modal-checkout');
+                const nomeSorteio = (SORTEIO_DATA.nome || '').toUpperCase();
+                const qtd = quantidadeCotas;
+                $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong>`);
+                $('#checkout-confirm-bar').removeClass('hidden');
+
+                // Volta pra etapa 1 (telefone) toda vez que abre — mas já pré-preenche se tiver dado salvo
+                $('#form-checkout-dados').addClass('hidden');
+                $('#form-checkout-telefone').removeClass('hidden');
+                const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
+                if (salvo?.telefone) $('#checkout-tel').val(salvo.telefoneFormatado || '');
+
+                modalCheckout.removeClass('hidden').css('opacity', 0).animate({ opacity: 1 }, 300);
+                modalCheckout.find('.modal-content').css('transform', 'scale(0.95)').animate({ transform: 'scale(1)' }, 300);
+            });
+            $('#close-modal-checkout').on('click', function() {
+                const modalCheckout = $('#modal-checkout');
+                modalCheckout.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden').css('display', ''); });
+                modalCheckout.find('.modal-content').animate({ transform: 'scale(0.95)' }, 300);
+            });
+
+            function abrirModalMeusNumeros() {
+                const modal = $('#modal-meus-numeros');
+                modal.removeClass('hidden').css('opacity', 0).animate({ opacity: 1 }, 300);
+                modal.find('.modal-content').css('transform', 'scale(0.95)').animate({ transform: 'scale(1)' }, 300);
+            }
+            $('#btn-meus-numeros').on('click', abrirModalMeusNumeros);
+            $('#menu-meus-titulos').on('click', function() { $('#menu-dropdown').addClass('hidden'); abrirModalMeusNumeros(); });
+            $('#btn-menu').on('click', function(e) { e.stopPropagation(); $('#menu-dropdown').toggleClass('hidden'); });
+            $(document).on('click', function() { $('#menu-dropdown').addClass('hidden'); });
+            $('#close-modal-meus-numeros').on('click', function() {
+                const modal = $('#modal-meus-numeros');
+                modal.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden').css('display', ''); });
+                modal.find('.modal-content').animate({ transform: 'scale(0.95)' }, 300);
+            });
+
+            $('#form-meus-bilhetes').on('submit', function(e) {
+                e.preventDefault();
+                const telefone = $('#phone-input-modal').val();
+                const resultadoContainer = $('#resultado-bilhetes');
+                resultadoContainer.html('<p class="text-center text-white">Buscando...</p>');
+                $.ajax({
+                    url: '/api/public/meus-bilhetes',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ telefone: telefone.replace(/\D/g, '') }),
+                    success: function(pedidos) {
+                        resultadoContainer.empty();
+                        if (!pedidos || pedidos.length === 0) {
+                            resultadoContainer.html('<p class="text-center text-yellow-400">Nenhum pedido pago encontrado para este telefone.</p>');
+                            return;
+                        }
+                        pedidos.forEach(pedido => {
+                            const cotasVisiveis = (pedido.cotas || []).slice(0, 5);
+                            const cotasOcultas = (pedido.cotas || []).length - cotasVisiveis.length;
+                            const cotasHtml = cotasVisiveis.map(cota => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${cota.numero_cota}</span>`).join(' ');
+                            resultadoContainer.append(`
+                                <div class="bg-[#2a303c] p-4 mb-4 rounded-lg">
+                                    <h4 class="font-semibold text-white">${pedido.sorteios?.nome || ''}</h4>
+                                    <p class="text-sm text-gray-300">${pedido.quantidade_cotas} cotas - ${formatarMoeda(pedido.valor_total)}</p>
+                                    <div class="mt-4"><p class="text-sm text-gray-300 mb-2">Seus números:</p><div class="flex flex-wrap gap-2">${cotasHtml} ${cotasOcultas > 0 ? `<span class="text-xs text-gray-500 ml-2">(e mais ${cotasOcultas} cotas)</span>` : ''}</div></div>
+                                </div>
+                            `);
+                        });
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.error || 'Erro ao buscar bilhetes. Tente novamente.';
+                        resultadoContainer.html(`<p class="text-center text-red-400">${errorMsg}</p>`);
+                    }
+                });
+            });
+
+            // ETAPA 1: telefone. Verifica se é um comprador conhecido antes de pedir o resto dos dados.
+            let COMPRADOR_CONHECIDO = null;
+            $('#form-checkout-telefone').on('submit', function(e) {
+                e.preventDefault();
+                const tel = $('#checkout-tel').val();
+                if (!tel || tel.replace(/\D/g, '').length < 10) { notificar('Por favor, insira um telefone válido com DDD.', 'erro'); return; }
+                const telLimpo = tel.replace(/\D/g, '');
+
+                $('#btn-continuar-telefone').prop('disabled', true).text('Verificando...');
+                $.ajax({
+                    url: '/api/public/usuarios/verificar', type: 'POST', contentType: 'application/json',
+                    data: JSON.stringify({ telefone: telLimpo })
+                }).done(function(resp) {
+                    $('#btn-continuar-telefone').prop('disabled', false).text('Continuar');
+                    COMPRADOR_CONHECIDO = resp.existe ? resp : null;
+
+                    // Mostra só os campos que realmente faltam (nome só se for comprador novo)
+                    const precisaNome = !COMPRADOR_CONHECIDO;
+                    const precisaCpf = SORTEIO_DATA.coletar_cpf && !(COMPRADOR_CONHECIDO?.tem_cpf);
+                    const precisaEmail = SORTEIO_DATA.coletar_email && !(COMPRADOR_CONHECIDO?.tem_email);
+                    const precisaEndereco = SORTEIO_DATA.coletar_endereco && !(COMPRADOR_CONHECIDO?.tem_endereco);
+
+                    $('#campo-nome').toggleClass('hidden', !precisaNome);
+                    $('#campo-cpf').toggleClass('hidden', !precisaCpf);
+                    $('#campo-email').toggleClass('hidden', !precisaEmail);
+                    $('#campo-endereco').toggleClass('hidden', !precisaEndereco);
+
+                    if (!precisaNome && !precisaCpf && !precisaEmail && !precisaEndereco) {
+                        // Comprador já tem tudo — envia direto, sem nem mostrar a etapa 2
+                        finalizarCompra(telLimpo, COMPRADOR_CONHECIDO?.nome_completo || '', '', '', '');
+                    } else {
+                        $('#form-checkout-telefone').addClass('hidden');
+                        $('#form-checkout-dados').removeClass('hidden');
+                    }
+                }).fail(function() {
+                    $('#btn-continuar-telefone').prop('disabled', false).text('Continuar');
+                    // Se a verificação falhar, segue o fluxo normal pedindo tudo que estiver ativado
+                    $('#campo-nome').removeClass('hidden');
+                    $('#campo-cpf').toggleClass('hidden', !SORTEIO_DATA.coletar_cpf);
+                    $('#campo-email').toggleClass('hidden', !SORTEIO_DATA.coletar_email);
+                    $('#campo-endereco').toggleClass('hidden', !SORTEIO_DATA.coletar_endereco);
+                    $('#form-checkout-telefone').addClass('hidden');
+                    $('#form-checkout-dados').removeClass('hidden');
+                });
+            });
+
+            // ETAPA 2: dados adicionais (só o que faltava)
+            $('#form-checkout-dados').on('submit', function(e) {
+                e.preventDefault();
+                const tel = $('#checkout-tel').val().replace(/\D/g, '');
+
+                let nome = COMPRADOR_CONHECIDO?.nome_completo || $('#checkout-nome').val();
+                if (!$('#campo-nome').hasClass('hidden')) {
+                    const $erroNome = $('#erro-nome');
+                    if (!nome || nome.trim().split(' ').length < 2) { $erroNome.removeClass('hidden'); return; }
+                    $erroNome.addClass('hidden');
+                }
+
+                const cpf = $('#checkout-cpf').val();
+                if (!$('#campo-cpf').hasClass('hidden') && (!cpf || cpf.replace(/\D/g, '').length !== 11)) { notificar('Por favor, insira um CPF válido.', 'erro'); return; }
+
+                const email = $('#checkout-email').val();
+                if (!$('#campo-email').hasClass('hidden') && !email) { notificar('Por favor, insira seu email.', 'erro'); return; }
+
+                const endereco = $('#checkout-endereco').val();
+                if (!$('#campo-endereco').hasClass('hidden') && !endereco) { notificar('Por favor, insira seu endereço.', 'erro'); return; }
+
+                finalizarCompra(tel, nome, cpf, email, endereco);
+            });
+
+            function finalizarCompra(telefoneLimpo, nome, cpf, email, endereco) {
+                $.ajax({
+                    url: '/api/public/pedidos/iniciar',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        sorteio_id: SORTEIO_DATA.id,
+                        quantidade: quantidadeCotas,
+                        nome_completo: nome || null,
+                        telefone: telefoneLimpo,
+                        cpf: cpf || null,
+                        email: email || null,
+                        endereco: endereco || null,
+                        funil_id: FUNIL_DATA ? FUNIL_DATA.id : null,
+                        link_codigo: LINK_CODIGO
+                    }),
+                    beforeSend: function() {
+                        $('#btn-participar').prop('disabled', true).text('Processando...');
+                        $('#btn-add-cota').prop('disabled', true);
+                    },
+                    success: function(response) {
+                        // Lembra o comprador no navegador pra próxima visita já vir com o telefone pré-preenchido
+                        try {
+                            localStorage.setItem('comprador_salvo', JSON.stringify({ telefone: telefoneLimpo, telefoneFormatado: $('#checkout-tel').val(), nome: nome || '' }));
+                        } catch (e) {}
+
+                        if (typeof fbq === 'function' && response.pixel_data) {
+                            fbq('track', 'InitiateCheckout', {
+                                value: response.pixel_data.value,
+                                currency: 'BRL',
+                                num_items: response.pixel_data.num_items,
+                                content_name: SORTEIO_DATA.nome,
+                                content_category: 'Raffle'
+                            });
+                        }
+                        if (response.payment) {
+                            try {
+                                const token = (response.redirect || '').split('/').pop();
+                                sessionStorage.setItem('latest_payment_for_' + (token || ''), JSON.stringify(response.payment));
+                            } catch (e) { console.warn('sessionStorage write error', e); }
+                        }
+                        window.location.href = response.redirect;
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.error || 'Erro ao iniciar o checkout. Tente novamente.';
+                        notificar(errorMsg, 'erro');
+                        $('#btn-participar').prop('disabled', false).text('Quero participar');
+                        $('#btn-add-cota').prop('disabled', false);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
