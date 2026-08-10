@@ -1275,12 +1275,16 @@ app.post('/api/admin/dashboard/buscar-ganhador', ensureAdminAuth, async (req, re
     if (raffle) {
       const { data: bp } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', raffle).eq('numero_cota', number).maybeSingle();
       if (bp) {
-        let usuario = null;
+        let usuario = null, pedido = null;
         if (bp.usuario_id) {
           const { data: u } = await supabase.from('usuarios').select('*').eq('id', bp.usuario_id).maybeSingle();
           usuario = u || null;
         }
-        return ok(res, { ...bp, cliente: usuario || { nome_completo: bp.nome_completo, telefone: bp.telefone } });
+        if (bp.pedido_id) {
+          const { data: p } = await supabase.from('pedidos').select('*').eq('id', bp.pedido_id).maybeSingle();
+          pedido = p || null;
+        }
+        return ok(res, { ...bp, cliente: usuario || { nome_completo: bp.nome_completo, telefone: bp.telefone }, pedido });
       }
     }
     const { data: cota } = await supabase.from('cotas').select('*').eq('numero_cota', number).maybeSingle();

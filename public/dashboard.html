@@ -78,6 +78,23 @@
     .periodo-btn:hover { color: var(--text); }
     .periodo-btn.active { background: linear-gradient(135deg,var(--accent),var(--accent-2)); color: #fff; }
 
+    /* ---------- CALENDÁRIO DE PERÍODO (um único seletor, clica início e fim) ---------- */
+    .calendario-popover { position: absolute; right: 0; top: 100%; margin-top: 8px; background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; z-index: 50; width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .cal-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .cal-preset-btn { font-size: 0.7rem; padding: 4px 10px; border-radius: 999px; background: var(--hover); color: var(--text); cursor: pointer; }
+    .cal-preset-btn:hover { background: var(--accent); color: #fff; }
+    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem; }
+    .cal-nav { cursor: pointer; padding: 2px 8px; color: var(--text-dim); }
+    .cal-nav:hover { color: var(--text); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 0.75rem; }
+    .cal-dow { color: var(--text-dim); font-weight: 600; padding: 4px 0; }
+    .cal-day { padding: 6px 0; border-radius: 6px; cursor: pointer; color: var(--text); }
+    .cal-day:hover { background: var(--hover); }
+    .cal-day.cal-vazio { cursor: default; }
+    .cal-day.cal-selecionado { background: var(--accent); color: #fff; font-weight: 700; }
+    .cal-day.cal-no-intervalo { background: rgba(139,92,246,0.25); }
+
+
     /* ---------- IDENTIDADE VISUAL DA MARCA ---------- */
     #brand-box { position: relative; overflow: hidden; }
     #sidebar-brand-name { font-family: 'Poppins', sans-serif; }
@@ -172,16 +189,9 @@
         <div id="page-dashboard" class="page-section active">
             <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
                 <h2 class="text-2xl font-bold">Visão Geral</h2>
-                <div class="flex gap-2 flex-wrap items-center">
-                    <div id="periodo-presets" class="flex gap-1 bg-darkCard border border-gray-800 rounded-lg p-1">
-                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="hoje">Hoje</button>
-                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="ontem">Ontem</button>
-                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="7dias">7 dias</button>
-                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold active" data-p="mes">Este mês</button>
-                        <button type="button" class="periodo-btn px-3 py-1.5 rounded text-xs font-semibold" data-p="tudo">Tudo</button>
-                    </div>
-                    <input type="date" id="dash-data-de" class="input-dark text-xs" style="width:140px">
-                    <input type="date" id="dash-data-ate" class="input-dark text-xs" style="width:140px">
+                <div class="date-range-wrapper relative">
+                    <button type="button" class="input-dark text-xs flex items-center gap-2" onclick="abrirCalendario('dash', this)"><i class="bi bi-calendar3"></i> <span id="texto-periodo-dash">Este mês</span></button>
+                    <div id="calendario-dash" class="calendario-popover hidden"></div>
                 </div>
             </div>
 
@@ -231,7 +241,19 @@
                 <select id="select-bilhete-sorteio" class="input-dark text-sm" style="width:260px" onchange="selecionarSorteioBilhete(this.value)"><option value="">Selecione um sorteio...</option></select>
             </div>
 
-            <div id="bilhete-conteudo" class="hidden space-y-6">
+            <div id="bilhete-conteudo" class="hidden">
+                <div class="flex gap-1 border-b border-gray-800 mb-4">
+                    <div class="tab-btn active" data-modo="editar" onclick="mudarModoBilhete('editar', this)">✏️ Editar Bilhetes</div>
+                    <div class="tab-btn" data-modo="visualizar" onclick="mudarModoBilhete('visualizar', this)">👁️ Visualizar Bilhetes</div>
+                </div>
+
+                <div id="bilhete-modo-visualizar" class="hidden">
+                    <p class="text-sm opacity-60 mb-3">Todos os bilhetes premiados desse sorteio — verde já saiu (clique pra chamar no WhatsApp), vermelho ainda disponível.</p>
+                    <input id="input-buscar-bilhete-view" class="input-dark text-sm mb-3" style="max-width:220px" placeholder="Buscar número...">
+                    <div id="grid-bilhetes-premiados-view" class="bg-darkCard rounded-xl border border-gray-800 p-4 flex flex-wrap gap-2 min-h-[80px]"></div>
+                </div>
+
+                <div id="bilhete-modo-editar" class="space-y-6">
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
                     <h4 class="font-semibold text-white mb-2">Adicionar bilhete premiado</h4>
                     <p class="text-xs text-gray-500 mb-2">Escolha um número de cota e o título do prêmio. Quando essa cota for gerada pra algum cliente, ela aparece como premiada.</p>
@@ -281,6 +303,7 @@
                     <button type="button" class="btn-primary" onclick="addAgendamento()">Agendar Liberação</button>
                     <div id="lista-agendamentos" class="max-h-40 overflow-y-auto space-y-2 mt-3"></div>
                 </div>
+                </div>
             </div>
         </div>
 
@@ -293,7 +316,21 @@
             </div>
             <p class="text-sm opacity-60 mb-4">A roleta não expõe o número da cota — só o título, o valor do prêmio e (quando já saiu) o ganhador.</p>
 
-            <div id="roleta-conteudo" class="hidden space-y-6">
+            <div id="roleta-conteudo" class="hidden">
+                <div class="flex gap-1 border-b border-gray-800 mb-4">
+                    <div class="tab-btn active" data-modoR="editar" onclick="mudarModoRoleta('editar', this)">✏️ Editar Roleta</div>
+                    <div class="tab-btn" data-modoR="visualizar" onclick="mudarModoRoleta('visualizar', this)">👁️ Visualizar Roletas</div>
+                </div>
+
+                <div id="roleta-modo-visualizar" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="metric-card"><i class="bi bi-circle metric-icon text-pink-400"></i><p class="text-sm opacity-60">Roletas disponíveis</p><p class="text-2xl font-bold text-pink-400" id="roleta-disponiveis-view">0</p></div>
+                        <div class="metric-card"><i class="bi bi-trophy metric-icon text-green-400"></i><p class="text-sm opacity-60">Já sorteadas</p><p class="text-2xl font-bold text-green-400" id="roleta-sorteadas-view">0</p></div>
+                    </div>
+                    <div id="lista-roleta-resultados-view" class="space-y-3"></div>
+                </div>
+
+                <div id="roleta-modo-editar" class="space-y-6">
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4 flex items-center justify-between">
                     <div>
                         <h4 class="font-semibold text-white">Roleta ativada pra este sorteio?</h4>
@@ -332,6 +369,7 @@
                         <div class="metric-card"><i class="bi bi-trophy metric-icon text-green-400"></i><p class="text-sm opacity-60">Já sorteadas</p><p class="text-2xl font-bold text-green-400" id="roleta-sorteadas">0</p></div>
                     </div>
                     <div id="lista-roleta-resultados" class="space-y-3"></div>
+                </div>
                 </div>
             </div>
         </div>
@@ -422,12 +460,22 @@
         <!-- Tela cheia de revelação do ganhador (efeito "ao vivo") -->
         <div id="tela-ganhador" class="fixed inset-0 z-[100] hidden items-center justify-center" style="background: radial-gradient(circle, rgba(109,40,217,0.35) 0%, rgba(5,6,10,0.97) 70%);">
             <canvas id="confete-canvas" class="fixed inset-0 pointer-events-none"></canvas>
-            <div class="text-center relative z-10 px-6">
+
+            <div id="ganhador-contagem-box" class="text-center relative z-10">
+                <p class="text-gray-300 text-lg mb-4 uppercase tracking-widest">Revelando o ganhador...</p>
+                <div id="ganhador-numero-contagem" class="font-black text-white" style="font-size: 8rem; line-height:1;">5</div>
+            </div>
+
+            <div id="ganhador-resultado-box" class="text-center relative z-10 px-6 hidden">
                 <p class="text-yellow-300 text-xl font-bold tracking-widest uppercase mb-2">🎉 Temos um ganhador! 🎉</p>
                 <h1 id="ganhador-nome-grande" class="text-white font-black leading-tight" style="font-size: clamp(2rem, 7vw, 5rem);">—</h1>
                 <p class="text-gray-300 text-lg mt-4">Telefone: <span id="ganhador-tel-grande" class="font-mono"></span></p>
                 <p class="text-gray-400 mt-1">Cota sorteada: <span id="ganhador-cota-grande" class="font-mono text-2xl text-yellow-300"></span></p>
-                <button onclick="fecharTelaGanhador()" class="mt-8 px-6 py-3 rounded-lg border border-gray-500 text-gray-300 hover:bg-gray-800">Fechar</button>
+                <div id="ganhador-compra-info" class="text-gray-300 mt-3 text-sm"></div>
+                <div class="flex gap-3 justify-center mt-8 flex-wrap">
+                    <a id="ganhador-ver-compra" href="#" target="_blank" class="hidden px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold">Ver compra</a>
+                    <button onclick="fecharTelaGanhador()" class="px-6 py-3 rounded-lg border border-gray-500 text-gray-300 hover:bg-gray-800">Fechar</button>
+                </div>
             </div>
         </div>
 
@@ -646,12 +694,13 @@
 
         <!-- ===================== RELATÓRIOS ===================== -->
         <div id="page-relatorios" class="page-section">
-            <h2 class="text-2xl font-bold text-white mb-6">Relatórios</h2>
-            <form id="form-filtro-relatorio" class="flex flex-col md:flex-row gap-4 items-end mb-6">
-                <div class="w-full md:w-1/3"><label class="text-sm text-gray-400">De</label><input type="date" id="filtro-data-de" class="input-dark mt-1"></div>
-                <div class="w-full md:w-1/3"><label class="text-sm text-gray-400">Até</label><input type="date" id="filtro-data-ate" class="input-dark mt-1"></div>
-                <button class="btn-primary">Filtrar</button>
-            </form>
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+                <h2 class="text-2xl font-bold text-white">Relatórios</h2>
+                <div class="date-range-wrapper relative">
+                    <button type="button" class="input-dark text-xs flex items-center gap-2" onclick="abrirCalendario('rel', this)"><i class="bi bi-calendar3"></i> <span id="texto-periodo-rel">Este mês</span></button>
+                    <div id="calendario-rel" class="calendario-popover hidden"></div>
+                </div>
+            </div>
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 <div class="metric-card"><p class="text-xs opacity-60">Faturamento</p><p class="text-lg font-bold text-green-400" id="rel-faturamento">R$ 0,00</p></div>
                 <div class="metric-card"><p class="text-xs opacity-60">Pedidos</p><p class="text-lg font-bold text-blue-400" id="rel-pedidos">0</p></div>
@@ -1141,19 +1190,101 @@ function calcularPeriodo(preset) {
     return { de: '', ate: '' }; // tudo
 }
 
-$('.periodo-btn').on('click', function() {
-    $('.periodo-btn').removeClass('active');
-    $(this).addClass('active');
-    const p = calcularPeriodo($(this).data('p'));
-    $('#dash-data-de').val(p.de);
-    $('#dash-data-ate').val(p.ate);
-    carregarDashboard();
+// ---------------- CALENDÁRIO DE PERÍODO (componente único, reutilizado em Visão Geral e Relatórios) ----------------
+const PERIODO_ESTADO = {
+    dash: { de: '', ate: '', label: 'Este mês', mesNav: new Date() },
+    rel: { de: '', ate: '', label: 'Este mês', mesNav: new Date() }
+};
+const PERIODO_CALLBACK = { dash: () => carregarDashboard(), rel: () => carregarRelatorios() };
+
+function abrirCalendario(prefixo, btnEl) {
+    const $pop = $(`#calendario-${prefixo}`);
+    const jaAberto = !$pop.hasClass('hidden');
+    $('.calendario-popover').addClass('hidden');
+    if (jaAberto) return;
+    renderCalendarioPopover(prefixo);
+    $pop.removeClass('hidden');
+}
+$(document).on('click', function(e) {
+    if (!$(e.target).closest('.date-range-wrapper').length) $('.calendario-popover').addClass('hidden');
 });
-$('#dash-data-de, #dash-data-ate').on('change', function() { $('.periodo-btn').removeClass('active'); carregarDashboard(); });
+
+function renderCalendarioPopover(prefixo) {
+    const estado = PERIODO_ESTADO[prefixo];
+    const mes = estado.mesNav;
+    const ano = mes.getFullYear(), mesIdx = mes.getMonth();
+    const primeiroDia = new Date(ano, mesIdx, 1);
+    const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
+    const offset = primeiroDia.getDay();
+    const nomesMes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    let dias = '';
+    for (let i = 0; i < offset; i++) dias += '<div class="cal-day cal-vazio"></div>';
+    for (let d = 1; d <= diasNoMes; d++) {
+        const dataStr = `${ano}-${String(mesIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        let classe = 'cal-day';
+        if (dataStr === estado.de || dataStr === estado.ate) classe += ' cal-selecionado';
+        else if (estado.de && estado.ate && dataStr > estado.de && dataStr < estado.ate) classe += ' cal-no-intervalo';
+        dias += `<div class="${classe}" onclick="selecionarDiaCalendario('${prefixo}', '${dataStr}')">${d}</div>`;
+    }
+
+    $(`#calendario-${prefixo}`).html(`
+        <div class="cal-presets">
+            <span class="cal-preset-btn" onclick="aplicarPresetCalendario('${prefixo}','hoje')">Hoje</span>
+            <span class="cal-preset-btn" onclick="aplicarPresetCalendario('${prefixo}','ontem')">Ontem</span>
+            <span class="cal-preset-btn" onclick="aplicarPresetCalendario('${prefixo}','7dias')">7 dias</span>
+            <span class="cal-preset-btn" onclick="aplicarPresetCalendario('${prefixo}','mes')">Este mês</span>
+            <span class="cal-preset-btn" onclick="aplicarPresetCalendario('${prefixo}','tudo')">Tudo</span>
+        </div>
+        <div class="cal-header">
+            <span class="cal-nav" onclick="navegarMesCalendario('${prefixo}', -1)">‹</span>
+            <span>${nomesMes[mesIdx]} ${ano}</span>
+            <span class="cal-nav" onclick="navegarMesCalendario('${prefixo}', 1)">›</span>
+        </div>
+        <div class="cal-grid">
+            <div class="cal-dow">D</div><div class="cal-dow">S</div><div class="cal-dow">T</div><div class="cal-dow">Q</div><div class="cal-dow">Q</div><div class="cal-dow">S</div><div class="cal-dow">S</div>
+            ${dias}
+        </div>
+        <p class="text-xs opacity-60 mt-2 text-center">Clique no dia de início, depois no de fim.</p>
+    `);
+}
+function navegarMesCalendario(prefixo, delta) {
+    const estado = PERIODO_ESTADO[prefixo];
+    estado.mesNav = new Date(estado.mesNav.getFullYear(), estado.mesNav.getMonth() + delta, 1);
+    renderCalendarioPopover(prefixo);
+}
+function selecionarDiaCalendario(prefixo, dataStr) {
+    const estado = PERIODO_ESTADO[prefixo];
+    if (!estado.de || (estado.de && estado.ate)) {
+        estado.de = dataStr; estado.ate = '';
+    } else {
+        if (dataStr < estado.de) { estado.ate = estado.de; estado.de = dataStr; }
+        else { estado.ate = dataStr; }
+    }
+    if (estado.de && estado.ate) {
+        const fmt = s => s.split('-').reverse().slice(0, 2).join('/');
+        estado.label = `${fmt(estado.de)} - ${fmt(estado.ate)}`;
+        $(`#texto-periodo-${prefixo}`).text(estado.label);
+        $('.calendario-popover').addClass('hidden');
+        PERIODO_CALLBACK[prefixo]();
+    } else {
+        renderCalendarioPopover(prefixo);
+    }
+}
+function aplicarPresetCalendario(prefixo, preset) {
+    const p = calcularPeriodo(preset);
+    const estado = PERIODO_ESTADO[prefixo];
+    estado.de = p.de; estado.ate = p.ate;
+    const labels = { hoje: 'Hoje', ontem: 'Ontem', '7dias': 'Últimos 7 dias', mes: 'Este mês', tudo: 'Tudo' };
+    estado.label = labels[preset];
+    $(`#texto-periodo-${prefixo}`).text(estado.label);
+    $('.calendario-popover').addClass('hidden');
+    PERIODO_CALLBACK[prefixo]();
+}
 
 function carregarDashboard() {
-    const de = $('#dash-data-de').val();
-    const ate = $('#dash-data-ate').val();
+    const de = PERIODO_ESTADO.dash.de;
+    const ate = PERIODO_ESTADO.dash.ate;
     const qs = (de ? `&start_date=${de}T00:00:00` : '') + (ate ? `&end_date=${ate}T23:59:59` : '');
 
     fetch(`/api/admin/dashboard/cards?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
@@ -1217,11 +1348,75 @@ function dispararConfete() {
     tick();
 }
 
-function abrirTelaGanhador(nome, telefone, cota) {
-    $('#ganhador-nome-grande').text(nome || 'Ganhador não identificado');
-    $('#ganhador-tel-grande').text(telefone || '—');
-    $('#ganhador-cota-grande').text(cota || '—');
+// Mostra só o primeiro nome por completo, o resto vira asterisco
+function mascararNome(nomeCompleto) {
+    if (!nomeCompleto) return 'Ganhador não identificado';
+    const partes = nomeCompleto.trim().split(/\s+/);
+    if (partes.length === 1) return partes[0];
+    return partes[0] + ' ' + partes.slice(1).map(p => p[0] + '*'.repeat(Math.max(p.length - 1, 1))).join(' ');
+}
+// Formata telefone bonito e mascara o meio: (11) 9****-**34
+function mascararTelefoneFormatado(tel) {
+    const v = String(tel || '').replace(/\D/g, '');
+    if (!v) return '—';
+    const ddd = v.slice(0, 2);
+    const resto = v.slice(2);
+    if (resto.length < 4) return `(${ddd}) ${'*'.repeat(resto.length)}`;
+    const inicio = resto[0];
+    const fim = resto.slice(-2);
+    return `(${ddd}) ${inicio}${'*'.repeat(Math.max(resto.length - 3, 0))}-${'*'.repeat(Math.max(resto.length - 6, 0))}${fim}`;
+}
+
+function tocarTiqueGanhador() {
+    try {
+        const ctx = window.AUDIO_CTX_DASH || (window.AUDIO_CTX_DASH = new (window.AudioContext || window.webkitAudioContext)());
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = 440;
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+}
+function iniciarContagemGanhador(callback) {
     $('#tela-ganhador').removeClass('hidden').css('display', 'flex');
+    $('#ganhador-contagem-box').removeClass('hidden');
+    $('#ganhador-resultado-box').addClass('hidden');
+    let n = 5;
+    $('#ganhador-numero-contagem').text(n);
+    tocarTiqueGanhador();
+    const intervalo = setInterval(() => {
+        n--;
+        if (n <= 0) {
+            clearInterval(intervalo);
+            $('#ganhador-contagem-box').addClass('hidden');
+            callback();
+        } else {
+            $('#ganhador-numero-contagem').text(n);
+            tocarTiqueGanhador();
+        }
+    }, 700);
+}
+
+function abrirTelaGanhador(dados) {
+    const nome = dados.cliente?.nome_completo;
+    const telefone = dados.cliente?.telefone;
+    const cota = dados.numero_cota;
+    const pedido = dados.pedido;
+
+    $('#ganhador-nome-grande').text(mascararNome(nome));
+    $('#ganhador-tel-grande').text(mascararTelefoneFormatado(telefone));
+    $('#ganhador-cota-grande').text(cota || '—');
+
+    if (pedido) {
+        $('#ganhador-compra-info').html(`Comprou <b>${pedido.quantidade_cotas}</b> título(s) · Gastou <b>${formatBR(pedido.valor_total)}</b>`);
+        $('#ganhador-ver-compra').attr('href', `/checkout/${pedido.token}`).removeClass('hidden');
+    } else {
+        $('#ganhador-compra-info').html('');
+        $('#ganhador-ver-compra').addClass('hidden');
+    }
+
+    $('#ganhador-resultado-box').removeClass('hidden');
     dispararConfete();
 }
 function fecharTelaGanhador() { $('#tela-ganhador').addClass('hidden').css('display', ''); }
@@ -1235,9 +1430,7 @@ $('#form-buscar-ganhador').on('submit', function(e) {
     $('#resultado-ganhador').addClass('hidden');
     api('POST', '/api/admin/dashboard/buscar-ganhador', { raffle, number }).then(d => {
         $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Ganhador');
-        const nome = d.cliente?.nome_completo || 'Cliente não identificado';
-        const tel = d.cliente?.telefone || '';
-        abrirTelaGanhador(nome, tel, number);
+        iniciarContagemGanhador(() => abrirTelaGanhador(d));
     }).catch(err => {
         $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Ganhador');
         $('#resultado-ganhador').removeClass('hidden').html(`<p class="text-red-400">${err.error || 'Não encontrado'}</p>`);
@@ -1265,17 +1458,33 @@ function montarQsPeriodo(prefixo, presetSelectId) {
     return (p.de ? `&start_date=${p.de}T00:00:00` : '') + (p.ate ? `&end_date=${p.ate}T23:59:59` : '');
 }
 
+function renderPodio(containerId, resultados, valorFn, corClasse) {
+    const medalhas = ['🥇', '🥈', '🥉'];
+    const top3 = resultados.slice(0, 3);
+    const html = top3.map((r, i) => `
+        <div class="pedido-card" style="border-left: 4px solid ${i === 0 ? '#facc15' : i === 1 ? '#9ca3af' : '#b45309'};">
+            <div class="flex items-center gap-3">
+                <span style="font-size:1.8rem;">${medalhas[i]}</span>
+                <div>
+                    <div class="text-xs opacity-60 font-bold">TOP ${i + 1}</div>
+                    <div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div>
+                    <div class="text-sm opacity-70">${r.usuarios?.telefone || ''}</div>
+                </div>
+            </div>
+            <div class="font-bold text-lg ${corClasse}">${valorFn(r)}</div>
+        </div>
+    `).join('');
+    $(`#${containerId}`).html(html || '<p class="text-gray-400 text-sm">Nenhum resultado.</p>');
+}
+
 $('#form-buscar-top-comprador').on('submit', function(e) {
     e.preventDefault();
     const raffle = $('#select-top-raffle').val();
     const tipo = $('#filtro-top-tipo').val();
     const qs = montarQsPeriodo('top', '#filtro-top-periodo');
-    fetch(`/api/admin/dashboard/top-comprador?raffle=${raffle}&tipo=${tipo}&limit=10${qs}`, { credentials: 'include' })
+    fetch(`/api/admin/dashboard/top-comprador?raffle=${raffle}&tipo=${tipo}&limit=3${qs}`, { credentials: 'include' })
         .then(r => r.json()).then(d => {
-            const html = (d.results || []).map(r => `
-                <div class="pedido-card"><div><div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div><div class="text-gray-400 text-sm">${r.usuarios?.telefone || ''}</div></div><div class="font-bold text-green-400">${formatBR(r.valor_total)}</div></div>
-            `).join('');
-            $('#resultado-top-comprador').html(html || '<p class="text-gray-400 text-sm">Nenhum resultado.</p>');
+            renderPodio('resultado-top-comprador', d.results || [], r => formatBR(r.valor_total), 'text-green-400');
         });
 });
 
@@ -1285,12 +1494,9 @@ $('#form-maior-menor-cota').on('submit', function(e) {
     const raffle = $('#select-cota-raffle').val();
     const tipo = $('#filtro-cota-tipo').val();
     const qs = montarQsPeriodo('cota', '#filtro-cota-periodo');
-    fetch(`/api/admin/dashboard/maior-menor-cota?raffle=${raffle}&tipo=${tipo}&limit=10${qs}`, { credentials: 'include' })
+    fetch(`/api/admin/dashboard/maior-menor-cota?raffle=${raffle}&tipo=${tipo}&limit=3${qs}`, { credentials: 'include' })
         .then(r => r.json()).then(d => {
-            const html = (d.results || []).map(r => `
-                <div class="pedido-card"><div><div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div><div class="text-sm opacity-70">${r.usuarios?.telefone || ''}</div></div><div class="font-bold text-blue-400">${r.total_cotas} cotas</div></div>
-            `).join('');
-            $('#resultado-maior-menor-cota').html(html || '<p class="opacity-60 text-sm">Nenhum resultado.</p>');
+            renderPodio('resultado-maior-menor-cota', d.results || [], r => `${r.total_cotas} cotas`, 'text-blue-400');
         });
 });
 
@@ -1467,6 +1673,28 @@ function renderGridBilhetesAdmin() {
 let BILHETES_ADMIN_CACHE = [];
 $(document).on('input', '#input-buscar-bilhete', renderGridBilhetesAdmin);
 
+function mudarModoBilhete(modo, el) {
+    $('#bilhete-conteudo [data-modo]').removeClass('active');
+    $(el).addClass('active');
+    $('#bilhete-modo-editar').toggleClass('hidden', modo !== 'editar');
+    $('#bilhete-modo-visualizar').toggleClass('hidden', modo !== 'visualizar');
+    if (modo === 'visualizar') renderGridBilhetesView();
+}
+function renderGridBilhetesView() {
+    const filtro = ($('#input-buscar-bilhete-view').val() || '').trim();
+    const lista = filtro ? BILHETES_ADMIN_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_ADMIN_CACHE;
+    $('#grid-bilhetes-premiados-view').html(lista.map(p => {
+        const saiu = p.status === 'reivindicada';
+        const cor = saiu ? 'bg-green-600' : 'bg-red-600';
+        if (saiu && p.usuario?.telefone) {
+            const msg = encodeURIComponent(`Opa ${p.usuario.nome_completo || ''}! Você ganhou um bilhete premiado 🎉 (nº ${p.numero_cota} — ${p.premio_titulo || ''}). Vamos combinar a entrega?`);
+            return `<a href="https://wa.me/${p.usuario.telefone}?text=${msg}" target="_blank" class="chip ${cor} text-white" title="${p.premio_titulo || ''} — ${p.usuario.nome_completo}">🎫 ${p.numero_cota} — ${p.usuario.nome_completo} <i class="bi bi-whatsapp"></i></a>`;
+        }
+        return `<span class="chip ${cor} text-white" title="${p.premio_titulo || ''}">🎫 ${p.numero_cota} — ${saiu ? 'Reivindicado' : 'Disponível'}</span>`;
+    }).join('') || '<p class="opacity-60 text-sm">Nenhum bilhete premiado cadastrado ainda.</p>');
+}
+$(document).on('input', '#input-buscar-bilhete-view', renderGridBilhetesView);
+
 function addPremio() {
     const numero_cota = $('#inp-premio-cota').val();
     const premio_titulo = $('#inp-premio-titulo').val();
@@ -1567,16 +1795,23 @@ function addRoleta() {
 }
 function carregarRoletaResultadosAdmin(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/roleta/resultados`).then(d => {
-        $('#roleta-disponiveis').text(d.disponiveis || 0);
-        $('#roleta-sorteadas').text((d.ganhadores || []).length);
+        $('#roleta-disponiveis, #roleta-disponiveis-view').text(d.disponiveis || 0);
+        $('#roleta-sorteadas, #roleta-sorteadas-view').text((d.ganhadores || []).length);
         const ganhadores = d.ganhadores || [];
-        $('#lista-roleta-resultados').html(ganhadores.map(g => {
+        const html = ganhadores.map(g => {
             const tel = g.usuario?.telefone;
             const nome = g.usuario?.nome_completo || 'Ganhador não identificado';
             const whats = tel ? `<a href="https://wa.me/${tel}?text=${encodeURIComponent(`Olá ${nome}! Você ganhou na roleta: ${g.premio_titulo || ''}! 🎉`)}" target="_blank" class="btn-primary text-xs"><i class="bi bi-whatsapp"></i> Chamar</a>` : '';
             return `<div class="pedido-card"><div><div class="font-semibold">${g.premio_titulo || 'Prêmio'}</div><div class="text-sm opacity-70">${nome} ${tel ? '· ' + tel : ''}</div>${g.valor_premio ? `<div class="text-yellow-400 text-sm font-semibold mt-1">${g.valor_premio}</div>` : ''}</div>${whats}</div>`;
-        }).join('') || '<p class="opacity-60 text-sm">Nenhuma roleta sorteada ainda.</p>');
+        }).join('') || '<p class="opacity-60 text-sm">Nenhuma roleta sorteada ainda.</p>';
+        $('#lista-roleta-resultados, #lista-roleta-resultados-view').html(html);
     });
+}
+function mudarModoRoleta(modo, el) {
+    $('#roleta-conteudo [data-modoR]').removeClass('active');
+    $(el).addClass('active');
+    $('#roleta-modo-editar').toggleClass('hidden', modo !== 'editar');
+    $('#roleta-modo-visualizar').toggleClass('hidden', modo !== 'visualizar');
 }
 
 // ---- Faixas de giros da roleta (tiers) ----
@@ -2074,8 +2309,8 @@ function abrirModalCliente(id) {
 
 // ---------------- RELATÓRIOS ----------------
 function carregarRelatorios() {
-    const from = $('#filtro-data-de').val();
-    const to = $('#filtro-data-ate').val();
+    const from = PERIODO_ESTADO.rel.de;
+    const to = PERIODO_ESTADO.rel.ate;
     let url = '/api/admin/relatorios';
     const params = [];
     if (from) params.push(`from=${from}`);
@@ -2104,8 +2339,8 @@ function carregarRelatorios() {
 
 // ---------------- DESPESAS ----------------
 function carregarDespesas() {
-    const from = $('#filtro-data-de').val();
-    const to = $('#filtro-data-ate').val();
+    const from = PERIODO_ESTADO.rel.de;
+    const to = PERIODO_ESTADO.rel.ate;
     let url = '/api/admin/despesas';
     const params = [];
     if (from) params.push(`from=${from}`);
@@ -2135,7 +2370,7 @@ function addDespesa() {
 function removerDespesa(id) {
     confirmar('Excluir despesa', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/despesas/${id}`).then(() => carregarRelatorios()); });
 }
-$('#form-filtro-relatorio').on('submit', function(e) { e.preventDefault(); carregarRelatorios(); });
+
 
 // ---------------- GATEWAY (Mercado Pago / Pay2M / Paggue) ----------------
 function mudarGatewayTab(gw, el) {
@@ -2361,7 +2596,8 @@ $(document).ready(function() {
             aplicarIdentidade(cfg.SYSTEM_NAME || 'Máquina Milionária', cfg.SYSTEM_SUB || 'painel administrativo');
         });
         const p0 = calcularPeriodo('mes');
-        $('#dash-data-de').val(p0.de); $('#dash-data-ate').val(p0.ate);
+        PERIODO_ESTADO.dash.de = p0.de; PERIODO_ESTADO.dash.ate = p0.ate;
+        PERIODO_ESTADO.rel.de = p0.de; PERIODO_ESTADO.rel.ate = p0.ate;
         carregarSorteios();
         carregarDashboard();
         carregarNotificacoes(true);
