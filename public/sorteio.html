@@ -11,10 +11,11 @@
 
     <style>
         html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
-        .header-bar { background-color: #1a1a1a; padding: 1rem; }
+        .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
+        #logo-box img { max-height: 40px; max-width: 280px; }
         .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
         .title-bar { background-color: #1a1a1a; color: #fff; }
-        .btn-meus-titulos { color: #fff; font-weight: 600; }
+        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 600; padding: 0.9rem 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .price-bar { color: #a0aec0; }
         .price-bar strong { color: #f7b731; font-size: 1.125rem; margin-left: 8px; }
         .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
@@ -51,8 +52,9 @@
         .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
         .modal { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
-        .tag-pulse { background-color: #22C55E; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 9999px; animation: pulse-opacity 1.5s infinite; }
-        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } }
+        .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.75rem; font-weight: 500; height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; display: inline-block; animation: blink 2s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px; margin-bottom: 0.5rem; box-sizing: border-box; max-width: 100%; overflow: hidden; }
         .combo-pulse { animation: pulse-opacity 1.8s infinite; }
         .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
@@ -84,11 +86,8 @@
 
     <header class="header-bar shadow-lg sticky top-0 z-50 relative">
         <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
-            <div id="logo-box" class="text-2xl font-bold text-white">LOGO</div>
-            <div class="flex items-center gap-4">
-                <a href="/inicio" class="text-gray-300 hover:text-white"><i class="bi bi-arrow-left"></i> Voltar</a>
-                <button id="btn-menu" class="text-gray-300 hover:text-white text-xl"><i class="bi bi-list"></i></button>
-            </div>
+            <a href="/" id="logo-link"><div id="logo-box" class="text-2xl font-bold text-white">LOGO</div></a>
+            <button id="btn-menu" class="text-gray-300 hover:text-white text-xl"><i class="bi bi-list"></i></button>
         </nav>
         <div id="menu-dropdown" class="menu-dropdown hidden">
             <button id="menu-meus-titulos"><i class="bi bi-ticket-detailed"></i> Meus Títulos</button>
@@ -103,33 +102,35 @@
                 <div class="carrossel-slide"><img id="sorteio-img" src="" alt="Prêmio"></div>
             </div>
             <div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent" style="pointer-events:none;">
-                <span id="sorteio-tag" class="tag-pulse">Adquira já!</span>
+                <span id="sorteio-tag" class="tag-ending">Corre que está acabando!</span>
                 <h1 id="sorteio-nome" class="text-3xl font-bold text-white mt-2">Carregando...</h1>
                 <p id="sorteio-desc" class="text-gray-200"></p>
             </div>
             <div id="redes-sociais-flutuantes" class="absolute flex flex-col gap-2" style="right:10px; top:16px;"></div>
         </section>
 
+        <button id="btn-meus-numeros" class="btn-meus-titulos-full">
+            <i class="bi bi-ticket-detailed"></i> Meus títulos
+        </button>
+
         <div class="title-bar flex justify-between items-center p-4">
-            <button id="btn-meus-numeros" class="btn-meus-titulos text-lg">
-                <i class="bi bi-ticket-detailed"></i> Meus Títulos
-            </button>
+            <div></div>
             <div class="price-bar text-right">
                 Por apenas
                 <strong id="preco-cota">R$ 0,00</strong>
             </div>
         </div>
 
-        <div id="banner-chance-dobro" class="mx-4 mt-4 hidden" style="background:linear-gradient(135deg,#facc15,#f59e0b); border-radius:14px; padding:1rem; color:#1a1a1a;">
+        <div id="banner-chance-dobro" class="mx-4 mt-4 hidden combo-roleta">
             <div class="flex items-center gap-2 mb-1">
-                <span style="font-size:1.5rem;">⚡</span>
-                <h3 id="chance-dobro-titulo" class="font-black text-lg leading-tight">Chance em Dobro!</h3>
+                <span style="font-size:1.3rem;">🔥</span>
+                <h3 id="chance-dobro-titulo" class="font-bold text-base leading-tight text-white">Chance em Dobro!</h3>
             </div>
-            <p class="text-sm font-semibold mb-2">Compre agora e leve o DOBRO de títulos pelo mesmo preço!</p>
-            <div style="background:rgba(0,0,0,0.15); border-radius:999px; height:10px; overflow:hidden; margin-bottom:6px;">
-                <div id="chance-dobro-barra" style="height:100%; background:#1a1a1a; width:0%; transition:width 1s linear;"></div>
+            <p class="text-xs text-green-100 mb-2">Compre agora e leve o DOBRO de títulos pelo mesmo preço!</p>
+            <div style="background:rgba(0,0,0,0.2); border-radius:999px; height:8px; overflow:hidden; margin-bottom:6px;">
+                <div id="chance-dobro-barra" style="height:100%; background:#fff; width:0%; transition:width 1s linear;"></div>
             </div>
-            <p class="text-xs font-bold text-center">Acaba em <span id="chance-dobro-contagem">--:--:--</span></p>
+            <p class="text-xs font-bold text-center text-white">Acaba em <span id="chance-dobro-contagem">--:--:--</span></p>
         </div>
 
         <section class="mt-4">
@@ -500,12 +501,12 @@
                 $('#secao-roleta-tiers').removeClass('hidden');
                 $('#lista-roleta-tiers').html(roleta_tiers.map(t => `
                     <div class="combo-roleta combo-pulse">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:0.5rem;">
-                            <div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:0.5rem; flex-wrap:wrap;">
+                            <div style="min-width:0;">
                                 <div class="text-xs text-green-100">A cada</div>
                                 <div class="text-base font-bold text-white">${t.minimo_cotas} títulos</div>
                             </div>
-                            <div class="text-sm font-bold text-white text-right">Receba ${t.quantidade_giros} Roletas 🎯</div>
+                            <div class="text-sm font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
                         </div>
                         <div class="text-[0.65rem] text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
                     </div>
@@ -532,7 +533,7 @@
                 $('#secao-roleta-resultados').removeClass('hidden');
                 $('#contador-roleta').text(`${roleta_resultados.ganhas}/${roleta_resultados.total}`);
                 renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roleta_resultados.lista || [], 5, v => `
-                    <div class="premio-item ${v.reivindicada ? 'reivindicado' : ''}">
+                    <div class="premio-item ${v.reivindicada ? '' : 'disponivel'}">
                         <span class="premio-nome" style="text-align:left; flex-grow:2;">${v.valor_premio || v.premio_titulo || 'Prêmio'}</span>
                         ${v.reivindicada
                             ? `<span class="premio-status">${v.ganhador_nome ? v.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
