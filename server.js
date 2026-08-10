@@ -1338,29 +1338,32 @@ app.get('/api/admin/dashboard/top-comprador', ensureAdminAuth, async (req, res) 
 // Ranking por QUANTIDADE de cotas compradas (não por valor em R$) — "Maior/Menor Cota"
 app.get('/api/admin/dashboard/maior-menor-cota', ensureAdminAuth, async (req, res) => {
   try {
-    const { limit = 10, raffle, start_date, end_date, tipo } = req.query;
-    let q = supabase.from('pedidos').select('*').eq('status', 'pago');
+    const { limit = 3, raffle, start_date, end_date, tipo } = req.query;
+    let q = supabase.from('cotas').select('numero_cota, user_id, created_at');
     if (raffle) q = q.eq('sorteio_id', raffle);
     if (start_date) q = q.gte('created_at', start_date);
     if (end_date) q = q.lte('created_at', end_date);
-    const { data: pedidos } = await q;
+    const { data: cotas } = await q;
 
-    const map = new Map();
-    (pedidos || []).forEach(p => {
-      const uid = p.user_id;
-      if (!uid) return;
-      const cur = map.get(uid) || { user_id: uid, total_cotas: 0, valor_total: 0 };
-      cur.total_cotas += Number(p.quantidade_cotas || 0);
-      cur.valor_total += Number(p.valor_total || 0);
-      map.set(uid, cur);
+    // Pra cada cliente, acha a cota MAIS ALTA (ou MAIS BAIXA) que ele adquiriu no período — não é
+    // sobre quantidade comprada, é sobre o número real da cota (ex: comprou a 0000011, essa é a "dele").
+    const porUsuario = new Map();
+    (cotas || []).forEach(c => {
+      if (!c.user_id) return;
+      const num = Number(c.numero_cota);
+      const atual = porUsuario.get(c.user_id);
+      if (!atual || (tipo === 'menor' ? num < atual.extremo : num > atual.extremo)) {
+        porUsuario.set(c.user_id, { user_id: c.user_id, extremo: num, numero_cota: c.numero_cota });
+      }
     });
 
-    const arr = Array.from(map.values());
-    const userIds = arr.map(a => a.user_id);
+    const arr = Array.from(porUsuario.values()).sort((a, b) => tipo === 'menor' ? a.extremo - b.extremo : b.extremo - a.extremo);
+    const top = arr.slice(0, Number(limit));
+    const userIds = top.map(a => a.user_id);
     const { data: users } = userIds.length ? await supabase.from('usuarios').select('*').in('id', userIds) : { data: [] };
     const userMap = (users || []).reduce((acc, u) => (acc[u.id] = u, acc), {});
-    const results = arr.map(r => ({ ...r, usuarios: userMap[r.user_id] || null })).sort((a, b) => tipo === 'menor' ? a.total_cotas - b.total_cotas : b.total_cotas - a.total_cotas);
-    return ok(res, { results: results.slice(0, Number(limit)) });
+    const results = top.map(r => ({ numero_cota: r.numero_cota, usuarios: userMap[r.user_id] || null }));
+    return ok(res, { results });
   } catch (err) { return fail(res, 'Erro maior/menor cota'); }
 });
 

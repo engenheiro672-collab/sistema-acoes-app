@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title id="page-title">Sorteio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
 
     <style>
-        body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; }
+        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
         .header-bar { background-color: #1a1a1a; padding: 1rem; }
         .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
         .title-bar { background-color: #1a1a1a; color: #fff; }
@@ -457,10 +457,6 @@
             TOTAL = Number(sorteio.total_cotas || 100);
             quantidadeCotas = MIN_VISIBLE;
 
-            renderBotoesCota(sorteio.botoes_rapidos);
-            iniciarChanceDobro(data.chance_dobro_ativa);
-            renderRedesSociaisFlutuantes(data.redes_sociais);
-
             if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);
 
@@ -470,6 +466,11 @@
             $('#sorteio-desc').text(sorteio.subtitulo || 'Participe e concorra!');
             $('#preco-cota').text(PRECO ? formatarMoeda(PRECO) : 'R$ 0,00');
             $('#input-qtd').attr('min', MIN_QTY).attr('max', MAX_QTY);
+
+            // Essas três são "extras" — se alguma falhar, não pode derrubar o resto da página
+            try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
+            try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
+            try { renderRedesSociaisFlutuantes(data.redes_sociais); } catch (e) { console.error('renderRedesSociaisFlutuantes', e); }
 
             // Faixas de roleta (ex: "A cada 300 títulos, receba 4 roletas")
             if (sorteio.roleta_ativada && roleta_tiers && roleta_tiers.length > 0) {
@@ -536,7 +537,13 @@
                 ? `/api/public/sorteio/${SORTEIO_SLUG}/funil/${FUNIL_SLUG}`
                 : `/api/public/sorteio/${SORTEIO_SLUG}`;
             $.get(url)
-                .done(function(resp) { renderPagina(resp); })
+                .done(function(resp) {
+                    try { renderPagina(resp); }
+                    catch (e) {
+                        console.error('Erro ao renderizar página do sorteio', e);
+                        notificar('Ocorreu um erro ao carregar a página. Tente recarregar.', 'erro');
+                    }
+                })
                 .fail(function() {
                     $('#sorteio-nome').text('Sorteio não encontrado');
                     $('#sorteio-desc').text('Verifique o link e tente novamente.');

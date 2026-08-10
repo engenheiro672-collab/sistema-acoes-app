@@ -481,6 +481,8 @@
 
         <!-- ===================== SORTEIOS (lista) ===================== -->
         <div id="page-sorteios" class="page-section">
+            <div id="menu-acoes-global" class="hidden fixed bg-[var(--card-2)] border border-[var(--border)] rounded-lg shadow-lg text-sm" style="min-width:230px; z-index:200;"></div>
+
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-white">Sorteios</h2>
                 <button class="btn-primary" onclick="abrirFormSorteio(null)"><i class="bi bi-plus-lg"></i> Novo Sorteio</button>
@@ -797,7 +799,6 @@
                                 <label class="text-xs text-gray-400">Arquivo HTML deste funil (página inicial)</label>
                                 <select id="funil-arquivo-html" class="input-dark mt-1">
                                     <option value="sorteio.html">sorteio.html (padrão)</option>
-                                    <option value="funil1.html">FUNIL 01</option>
                                 </select>
                             </div>
                             <div>
@@ -1152,6 +1153,8 @@ function navTo(page, el) {
     if (el) $(el).addClass('active');
     else $('#nav-' + page).addClass('active');
     fecharMenuMobile();
+    document.querySelector('main')?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
 
     if (page === 'dashboard') { carregarDashboard(); }
     if (page === 'sorteios') { carregarSorteios(); }
@@ -1469,7 +1472,7 @@ function renderPodio(containerId, resultados, valorFn, corClasse) {
                 <div>
                     <div class="text-xs opacity-60 font-bold">TOP ${i + 1}</div>
                     <div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div>
-                    <div class="text-sm opacity-70">${r.usuarios?.telefone || ''}</div>
+                    <div class="text-sm opacity-70">${mascararNumero(r.usuarios?.telefone)}</div>
                 </div>
             </div>
             <div class="font-bold text-lg ${corClasse}">${valorFn(r)}</div>
@@ -1489,7 +1492,7 @@ $('#form-buscar-top-comprador').on('submit', function(e) {
         });
 });
 
-// ---------------- MAIOR/MENOR COTA (quantidade, aba própria) ----------------
+// ---------------- MAIOR/MENOR COTA (número real da cota, aba própria) ----------------
 $('#form-maior-menor-cota').on('submit', function(e) {
     e.preventDefault();
     const raffle = $('#select-cota-raffle').val();
@@ -1497,7 +1500,7 @@ $('#form-maior-menor-cota').on('submit', function(e) {
     const qs = montarQsPeriodo('cota', '#filtro-cota-periodo');
     fetch(`/api/admin/dashboard/maior-menor-cota?raffle=${raffle}&tipo=${tipo}&limit=3${qs}`, { credentials: 'include' })
         .then(r => r.json()).then(d => {
-            renderPodio('resultado-maior-menor-cota', d.results || [], r => `${r.total_cotas} cotas`, 'text-blue-400');
+            renderPodio('resultado-maior-menor-cota', d.results || [], r => `Cota ${r.numero_cota}`, 'text-blue-400');
         });
 });
 
@@ -1522,25 +1525,34 @@ function carregarSorteios() {
                 </td>
                 <td class="p-4 relative">
                     <button class="text-purple-400 hover:text-purple-300 mr-3" onclick="abrirFormSorteio('${s.id}')"><i class="bi bi-pencil"></i> Editar</button>
-                    <button class="text-gray-300 hover:text-white mr-3" onclick="toggleMenuAcoes('${s.id}', event)"><i class="bi bi-three-dots-vertical"></i></button>
+                    <button class="text-gray-300 hover:text-white mr-3" onclick="toggleMenuAcoes('${s.id}', '${s.slug}', this, event)"><i class="bi bi-three-dots-vertical"></i></button>
                     <button class="text-red-400 hover:text-red-300" onclick="excluirSorteio('${s.id}')"><i class="bi bi-trash"></i></button>
-                    <div id="menu-acoes-${s.id}" class="hidden absolute right-4 top-full mt-1 bg-[var(--card-2)] border border-[var(--border)] rounded-lg shadow-lg z-20 text-sm" style="min-width:220px;">
-                        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="navigator.clipboard.writeText('${window.location.origin}/sorteio/${s.slug}'); notificar('Link oficial copiado!','sucesso'); $('#menu-acoes-${s.id}').addClass('hidden');">🔗 Copiar link oficial do sorteio</a>
-                        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${s.id}/export?filtro=compradores'">📋 Baixar lista de compradores</a>
-                        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${s.id}/export?filtro=expirados'">⏱️ Baixar pedidos expirados</a>
-                    </div>
                 </td>
             </tr>
         `;}).join('');
         $('#tabela-sorteios').html(rows || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum sorteio cadastrado.</td></tr>');
     });
 }
-function toggleMenuAcoes(id, e) {
+function toggleMenuAcoes(id, slug, btnEl, e) {
     e.stopPropagation();
-    $('[id^="menu-acoes-"]').not(`#menu-acoes-${id}`).addClass('hidden');
-    $(`#menu-acoes-${id}`).toggleClass('hidden');
+    const $menu = $('#menu-acoes-global');
+    const jaAbertoParaEsseId = $menu.data('id') === id && !$menu.hasClass('hidden');
+    $menu.addClass('hidden');
+    if (jaAbertoParaEsseId) return;
+
+    $menu.data('id', id).html(`
+        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="navigator.clipboard.writeText('${window.location.origin}/sorteio/${slug}'); notificar('Link oficial copiado!','sucesso'); $('#menu-acoes-global').addClass('hidden');">🔗 Copiar link oficial do sorteio</a>
+        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${id}/export?filtro=compradores'">📋 Baixar lista de compradores</a>
+        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${id}/export?filtro=expirados'">⏱️ Baixar pedidos expirados</a>
+    `);
+
+    const rect = btnEl.getBoundingClientRect();
+    const menuWidth = 230;
+    let left = rect.right - menuWidth;
+    if (left < 8) left = 8;
+    $menu.css({ top: (rect.bottom + 4) + 'px', left: left + 'px' }).removeClass('hidden');
 }
-$(document).on('click', function() { $('[id^="menu-acoes-"]').addClass('hidden'); });
+$(document).on('click', function() { $('#menu-acoes-global').addClass('hidden'); });
 
 function excluirSorteio(id) {
     confirmar('Excluir sorteio', 'Isso vai apagar o sorteio e todos os dados relacionados (cotas, funis, prêmios). Não pode ser desfeito.').then(yes => {
