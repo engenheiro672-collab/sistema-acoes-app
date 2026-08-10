@@ -892,9 +892,9 @@ app.post('/api/public/pedidos/iniciar', async (req, res) => {
 
     if (sorteio.minimo_cotas_compra && quantidade < sorteio.minimo_cotas_compra) return res.status(400).json({ error: `Mínimo: ${sorteio.minimo_cotas_compra}` });
     if (sorteio.maximo_cotas_compra && quantidade > sorteio.maximo_cotas_compra) return res.status(400).json({ error: `Máximo: ${sorteio.maximo_cotas_compra}` });
-    if (sorteio.coletar_cpf && !cpfLimpo) return res.status(400).json({ error: 'CPF é obrigatório para este sorteio' });
-    if (sorteio.coletar_email && !email) return res.status(400).json({ error: 'Email é obrigatório para este sorteio' });
-    if (sorteio.coletar_endereco && !endereco) return res.status(400).json({ error: 'Endereço é obrigatório para este sorteio' });
+    if (sorteio.coletar_cpf && !usuario.cpf) return res.status(400).json({ error: 'CPF é obrigatório para este sorteio' });
+    if (sorteio.coletar_email && !usuario.email) return res.status(400).json({ error: 'Email é obrigatório para este sorteio' });
+    if (sorteio.coletar_endereco && !usuario.endereco) return res.status(400).json({ error: 'Endereço é obrigatório para este sorteio' });
 
     const valor_total = Number(sorteio.preco_cota) * Number(quantidade);
     const token = uuidv4();
