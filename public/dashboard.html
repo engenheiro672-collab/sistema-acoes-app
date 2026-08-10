@@ -37,7 +37,13 @@
     .tab-content.block { display: block; }
     .tab-btn { padding: 8px 16px; border-radius: 8px 8px 0 0; color: var(--text-dim); cursor: pointer; font-weight: 600; }
     .tab-btn.active { background-color: var(--card); color: var(--text); border-bottom: 2px solid var(--accent); }
-    .img-preview-box { width: 100%; height: 180px; border: 2px dashed var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-size: cover; background-position: center; color: var(--text-dim); overflow: hidden; }
+    .img-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden; background-size: cover; background-position: center; background-color: var(--card-2); border: 2px solid var(--border); }
+    .img-thumb.principal { border-color: #facc15; }
+    .img-thumb .img-thumb-actions { position: absolute; inset: 0; background: rgba(0,0,0,0.45); opacity: 0; transition: opacity .15s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+    .img-thumb:hover .img-thumb-actions { opacity: 1; }
+    .img-thumb .img-thumb-actions button { background: rgba(255,255,255,0.15); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem; color: #fff; }
+    .img-thumb .img-thumb-actions button:hover { background: rgba(255,255,255,0.3); }
+    .img-thumb .estrela-principal { position: absolute; top: 4px; left: 4px; color: #facc15; font-size: 1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
     .modal-box { background-color: var(--card-2); border-radius: 12px; padding: 24px; max-width: 480px; width: 92%; max-height: 85vh; overflow-y: auto; }
     .pedido-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .funil-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
@@ -118,6 +124,12 @@
     html.light .divide-gray-700 > * + * { border-color: var(--border) !important; }
     html.light .bg-black, html.light .bg-opacity-60, html.light .bg-opacity-75 { background-color: rgba(0,0,0,0.35) !important; }
     html.light .hover\:bg-gray-700:hover { background-color: var(--hover) !important; }
+
+    /* A tela de revelação do ganhador SEMPRE tem fundo escuro (é uma "cena" própria, não segue o tema
+       claro/escuro do painel) — então o texto dela nunca pode virar escuro mesmo com o modo claro ativo. */
+    html.light #tela-ganhador .text-white { color: #ffffff !important; }
+    html.light #tela-ganhador .text-gray-300 { color: #d1d5db !important; }
+    html.light #tela-ganhador .text-gray-400 { color: #9ca3af !important; }
 </style>
 
 </head>
@@ -149,8 +161,9 @@
     <aside id="sidebar" class="w-64 bg-darkCard border-r border-gray-800 flex-shrink-0 flex flex-col fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0 transition-transform duration-200">
         <div class="p-4 border-b border-gray-800 flex justify-between items-start" id="brand-box">
             <div>
-                <h1 class="text-lg font-bold leading-tight" id="sidebar-brand-name">Carregando...</h1>
-                <p class="text-xs opacity-60" id="sidebar-brand-sub">painel administrativo</p>
+                <img id="sidebar-brand-logo" src="" alt="Logo" class="hidden" style="max-height:36px; max-width:180px; object-fit:contain;">
+                <h1 class="text-lg font-bold leading-tight hidden" id="sidebar-brand-name">Carregando...</h1>
+                <p class="text-xs opacity-60 mt-1" id="sidebar-brand-sub">painel administrativo</p>
             </div>
             <div class="flex items-center gap-1 relative">
                 <button id="btn-fechar-menu-mobile" class="md:hidden text-lg opacity-70 hover:opacity-100 mr-1"><i class="bi bi-x-lg"></i></button>
@@ -223,12 +236,13 @@
         <!-- ===================== BUSCAR GANHADOR (aba própria) ===================== -->
         <div id="page-buscar-ganhador" class="page-section">
             <h2 class="text-2xl font-bold mb-2">🏆 Buscar Ganhador</h2>
-            <p class="text-sm opacity-60 mb-6">Digite o número sorteado e clique em buscar — a tela do ganhador abre em destaque, ótimo pra mostrar ao vivo numa live.</p>
+            <p class="text-sm opacity-60 mb-6">Preencha os dados e clique em buscar — a tela do ganhador abre em destaque, ótimo pra mostrar ao vivo numa live.</p>
             <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-lg">
                 <form id="form-buscar-ganhador">
                     <select name="raffle" id="select-buscar-ganhador" class="select-sorteio-dash input-dark mb-3"><option value="">Carregando...</option></select>
+                    <input name="concurso" id="input-concurso-loteria" class="input-dark mb-3" placeholder="Concurso da Loteria Federal (opcional)">
                     <input name="number" id="input-buscar-ganhador" class="input-dark mb-3" placeholder="Número Sorteado (Ex: 0123456)" required>
-                    <button class="btn-primary w-full" id="btn-buscar-ganhador"><i class="bi bi-search"></i> Buscar Ganhador</button>
+                    <button class="btn-primary w-full text-lg py-3" id="btn-buscar-ganhador"><i class="bi bi-search"></i> Buscar Ganhador</button>
                 </form>
                 <div id="resultado-ganhador" class="mt-3 p-3 rounded bg-gray-800 text-center hidden"></div>
             </div>
@@ -460,6 +474,7 @@
         <!-- Tela cheia de revelação do ganhador (efeito "ao vivo") -->
         <div id="tela-ganhador" class="fixed inset-0 z-[100] hidden items-center justify-center" style="background: radial-gradient(circle, rgba(109,40,217,0.35) 0%, rgba(5,6,10,0.97) 70%);">
             <canvas id="confete-canvas" class="fixed inset-0 pointer-events-none"></canvas>
+            <button onclick="fecharTelaGanhador()" class="fixed top-4 left-4 z-20 text-gray-300 hover:text-white flex items-center gap-2 px-3 py-2 rounded-lg" style="background:rgba(255,255,255,0.08);"><i class="bi bi-arrow-left"></i> Voltar</button>
 
             <div id="ganhador-contagem-box" class="text-center relative z-10">
                 <p class="text-gray-300 text-lg mb-4 uppercase tracking-widest">Revelando o ganhador...</p>
@@ -467,13 +482,15 @@
             </div>
 
             <div id="ganhador-resultado-box" class="text-center relative z-10 px-6 hidden">
-                <p class="text-yellow-300 text-xl font-bold tracking-widest uppercase mb-2">🎉 Temos um ganhador! 🎉</p>
-                <h1 id="ganhador-nome-grande" class="text-white font-black leading-tight" style="font-size: clamp(2rem, 7vw, 5rem);">—</h1>
-                <p class="text-gray-300 text-lg mt-4">Telefone: <span id="ganhador-tel-grande" class="font-mono"></span></p>
+                <p id="ganhador-concurso-info" class="text-gray-400 text-sm mb-1"></p>
+                <p class="text-yellow-300 font-black uppercase tracking-[0.3em]" style="font-size: clamp(1.5rem, 4vw, 2.5rem); font-family: 'Poppins', sans-serif;">🏆 Ganhador</p>
+                <h1 id="ganhador-nome-grande" class="text-white leading-tight mt-2" style="font-size: clamp(2.2rem, 8vw, 5.5rem); font-family: 'Poppins', sans-serif; font-weight: 800; text-shadow: 0 4px 24px rgba(139,92,246,0.5);">—</h1>
+                <p class="text-gray-300 text-lg mt-5">Telefone: <span id="ganhador-tel-grande" class="font-mono"></span></p>
                 <p class="text-gray-400 mt-1">Cota sorteada: <span id="ganhador-cota-grande" class="font-mono text-2xl text-yellow-300"></span></p>
                 <div id="ganhador-compra-info" class="text-gray-300 mt-3 text-sm"></div>
                 <div class="flex gap-3 justify-center mt-8 flex-wrap">
-                    <a id="ganhador-ver-compra" href="#" target="_blank" class="hidden px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold">Ver compra</a>
+                    <a id="ganhador-ver-compra" href="#" target="_blank" class="hidden px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold"><i class="bi bi-receipt"></i> Ver compra</a>
+                    <a id="ganhador-whatsapp" href="#" target="_blank" class="hidden px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold"><i class="bi bi-whatsapp"></i> Chamar no WhatsApp</a>
                     <button onclick="fecharTelaGanhador()" class="px-6 py-3 rounded-lg border border-gray-500 text-gray-300 hover:bg-gray-800">Fechar</button>
                 </div>
             </div>
@@ -516,6 +533,7 @@
                 <div id="tab-geral" class="tab-content block space-y-4">
                     <div><label class="text-sm text-gray-400">Nome do Sorteio</label><input name="nome" id="inp-nome" class="input-dark mt-1" required></div>
                     <div><label class="text-sm text-gray-400">Descrição</label><textarea name="descricao" id="inp-descricao" class="input-dark mt-1" rows="3"></textarea></div>
+                    <div><label class="text-sm text-gray-400">Regulamento (aparece colapsado, abaixo dos botões de compra no site)</label><textarea name="regulamento" id="inp-regulamento" class="input-dark mt-1" rows="6" placeholder="Ex: Este sorteio é válido para maiores de 18 anos..."></textarea></div>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-sm text-gray-400">Preço por cota</label><input name="preco_cota_display" id="inp-preco-display" class="input-dark mt-1" placeholder="R$ 0,00" oninput="mascaraMoeda(this)"><input type="hidden" name="preco_cota" id="inp-preco"></div>
                         <div><label class="text-sm text-gray-400">Total de Cotas</label>
@@ -592,14 +610,16 @@
                 </div>
 
                 <div id="tab-imagens" class="tab-content space-y-3">
-                    <label class="text-sm text-gray-400">Fotos do sorteio — escolha 1 foto (fica única) ou várias (vira carrossel automático no site)</label>
-                    <div class="img-preview-box" id="img-preview-box" onclick="document.getElementById('foto-input').click()">
-                        <div id="img-placeholder"><i class="bi bi-camera text-3xl"></i><br><span class="text-xs">Clique aqui — pode selecionar várias fotos</span></div>
-                    </div>
-                    <input id="foto-input" name="foto_principal" type="file" class="hidden" accept="image/*" multiple onchange="previewImage(this)">
+                    <label class="text-sm text-gray-400">Fotos do sorteio — a primeira (com a estrela ⭐) é a que aparece em destaque; as demais viram carrossel automático no site.</label>
+
+                    <div id="grid-imagens-sorteio" class="grid grid-cols-3 md:grid-cols-4 gap-3"></div>
+
+                    <label for="foto-input" class="flex items-center justify-center gap-2 border-2 border-dashed border-gray-700 rounded-lg py-4 cursor-pointer text-gray-400 hover:border-gray-500 hover:text-gray-300">
+                        <i class="bi bi-camera text-xl"></i> Adicionar fotos (pode selecionar uma ou várias)
+                    </label>
+                    <input id="foto-input" name="foto_principal" type="file" class="hidden" accept="image/*" multiple onchange="adicionarNovasFotos(this)">
                     <input type="hidden" name="foto_url" id="inp-foto-url-atual">
                     <input type="hidden" name="fotos_galeria" id="inp-fotos-galeria-atual">
-                    <div id="preview-extra-imgs" class="flex gap-2 flex-wrap"></div>
                 </div>
 
                 <div id="tab-config" class="tab-content space-y-6">
@@ -738,13 +758,19 @@
             </div>
 
             <div id="linktab-comparativo" class="linktab-content">
-                <div class="flex gap-3 mb-4">
+                <div class="flex gap-3 mb-4 flex-wrap items-center">
                     <select id="filtro-links-sorteio" class="input-dark max-w-xs"><option value="todos">Todos os sorteios</option></select>
+                    <div class="date-range-wrapper relative">
+                        <button type="button" class="input-dark text-xs flex items-center gap-2" onclick="abrirCalendario('links', this)"><i class="bi bi-calendar3"></i> <span id="texto-periodo-links">Tudo</span></button>
+                        <div id="calendario-links" class="calendario-popover hidden"></div>
+                    </div>
                     <button class="btn-primary" onclick="carregarComparativoLinks()"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+                    <button class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm" id="btn-comparar-links" onclick="compararLinksSelecionados()" disabled>⚖️ Comparar selecionados (<span id="qtd-selecionados">0</span>/2)</button>
                 </div>
                 <div class="bg-darkCard rounded-xl border border-gray-800 overflow-x-auto">
                     <table class="w-full text-sm table-clean">
                         <thead><tr class="text-left border-b border-gray-800">
+                            <th class="p-3"><i class="bi bi-check2-square"></i></th>
                             <th class="p-3">Link</th><th class="p-3">Sorteio</th><th class="p-3">Canal</th>
                             <th class="p-3 sortable-th" data-campo="cliques">Acessos <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="pedidos_pagos">Pedidos <span class="sort-arrow"></span></th>
@@ -754,8 +780,31 @@
                             <th class="p-3 sortable-th" data-campo="conversao">Conversão <span class="sort-arrow"></span></th>
                             <th class="p-3">Ação</th>
                         </tr></thead>
-                        <tbody id="tabela-links-comparativo"><tr><td colspan="10" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
+                        <tbody id="tabela-links-comparativo"><tr><td colspan="11" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
                     </table>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Clique em qualquer linha pra ver o detalhe completo com gráfico. Marque duas caixinhas pra comparar lado a lado.</p>
+            </div>
+
+            <!-- Modal de detalhe de um link -->
+            <div id="modal-detalhe-link" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
+                <div class="modal-box" style="max-width:640px;">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-white" id="detalhe-link-titulo">Link</h3>
+                        <button onclick="$('#modal-detalhe-link').addClass('hidden').css('display','')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    </div>
+                    <div id="detalhe-link-corpo"></div>
+                </div>
+            </div>
+
+            <!-- Modal de comparação entre 2 links -->
+            <div id="modal-comparar-links" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
+                <div class="modal-box" style="max-width:700px;">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-white">Comparativo</h3>
+                        <button onclick="$('#modal-comparar-links').addClass('hidden').css('display','')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    </div>
+                    <div id="comparar-links-corpo" class="grid grid-cols-2 gap-4"></div>
                 </div>
             </div>
 
@@ -1197,9 +1246,10 @@ function calcularPeriodo(preset) {
 // ---------------- CALENDÁRIO DE PERÍODO (componente único, reutilizado em Visão Geral e Relatórios) ----------------
 const PERIODO_ESTADO = {
     dash: { de: '', ate: '', label: 'Este mês', mesNav: new Date() },
-    rel: { de: '', ate: '', label: 'Este mês', mesNav: new Date() }
+    rel: { de: '', ate: '', label: 'Este mês', mesNav: new Date() },
+    links: { de: '', ate: '', label: 'Tudo', mesNav: new Date() }
 };
-const PERIODO_CALLBACK = { dash: () => carregarDashboard(), rel: () => carregarRelatorios() };
+const PERIODO_CALLBACK = { dash: () => carregarDashboard(), rel: () => carregarRelatorios(), links: () => carregarComparativoLinks() };
 
 function abrirCalendario(prefixo, btnEl) {
     const $pop = $(`#calendario-${prefixo}`);
@@ -1402,13 +1452,14 @@ function iniciarContagemGanhador(callback) {
     }, 700);
 }
 
-function abrirTelaGanhador(dados) {
+function abrirTelaGanhador(dados, concurso) {
     const nome = dados.cliente?.nome_completo;
     const telefone = dados.cliente?.telefone;
     const cota = dados.numero_cota;
     const pedido = dados.pedido;
 
-    $('#ganhador-nome-grande').text(mascararNome(nome));
+    $('#ganhador-concurso-info').text(concurso ? `Concurso da Loteria Federal: ${concurso}` : '');
+    $('#ganhador-nome-grande').text(nome || 'Ganhador não identificado');
     $('#ganhador-tel-grande').text(mascararTelefoneFormatado(telefone));
     $('#ganhador-cota-grande').text(cota || '—');
 
@@ -1420,6 +1471,13 @@ function abrirTelaGanhador(dados) {
         $('#ganhador-ver-compra').addClass('hidden');
     }
 
+    if (telefone) {
+        const msg = encodeURIComponent(`Olá ${nome || ''}! Parabéns, você é o(a) ganhador(a) 🎉🏆`);
+        $('#ganhador-whatsapp').attr('href', `https://wa.me/${telefone}?text=${msg}`).removeClass('hidden');
+    } else {
+        $('#ganhador-whatsapp').addClass('hidden');
+    }
+
     $('#ganhador-resultado-box').removeClass('hidden');
     dispararConfete();
 }
@@ -1429,12 +1487,13 @@ $('#form-buscar-ganhador').on('submit', function(e) {
     e.preventDefault();
     const raffle = $('#select-buscar-ganhador').val();
     const number = $('#input-buscar-ganhador').val();
+    const concurso = $('#input-concurso-loteria').val();
     const $btn = $('#btn-buscar-ganhador');
     $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Buscando...');
     $('#resultado-ganhador').addClass('hidden');
     api('POST', '/api/admin/dashboard/buscar-ganhador', { raffle, number }).then(d => {
         $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Ganhador');
-        iniciarContagemGanhador(() => abrirTelaGanhador(d));
+        iniciarContagemGanhador(() => abrirTelaGanhador(d, concurso));
     }).catch(err => {
         $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Buscar Ganhador');
         $('#resultado-ganhador').removeClass('hidden').html(`<p class="text-red-400">${err.error || 'Não encontrado'}</p>`);
@@ -1564,11 +1623,8 @@ function excluirSorteio(id) {
 function limparFormSorteio() {
     $('#form-criar-sorteio')[0].reset();
     $('#input-sorteio-id').val('');
-    $('#img-placeholder').show();
-    $('#img-preview-box').css('background-image', '');
-    $('#inp-foto-url-atual').val('');
-    $('#inp-fotos-galeria-atual').val('');
-    $('#preview-extra-imgs').empty();
+    IMAGENS_SORTEIO = [];
+    renderGridImagens();
     setMascaraMoedaValor(0);
     setTotalCotasValor('1000000');
     setBotoesRapidos('');
@@ -1595,6 +1651,7 @@ function abrirFormSorteio(id) {
         $('#input-sorteio-id').val(s.id);
         $('#inp-nome').val(s.nome);
         $('#inp-descricao').val(s.descricao);
+        $('#inp-regulamento').val(s.regulamento);
         setMascaraMoedaValor(s.preco_cota);
         setTotalCotasValor(s.total_cotas);
         $('#inp-min').val(s.minimo_cotas_compra);
@@ -1616,32 +1673,67 @@ function abrirFormSorteio(id) {
         $('#inp-pixel-google').val(s.pixel_google_override);
         $('#inp-pixel-tiktok').val(s.pixel_tiktok_override);
         $('#inp-pixel-gtm').val(s.pixel_gtm_override);
-        if (s.foto_url) { $('#img-preview-box').css('background-image', `url(${s.foto_url})`); $('#img-placeholder').hide(); }
-        $('#inp-foto-url-atual').val(s.foto_url || '');
-        $('#inp-fotos-galeria-atual').val(JSON.stringify(s.fotos_galeria || []));
+        IMAGENS_SORTEIO = [s.foto_url, ...(s.fotos_galeria || [])].filter(Boolean).map(url => ({ url, isNova: false }));
+        renderGridImagens();
     });
 }
 
-function previewImage(input) {
-    if (!input.files || input.files.length === 0) return;
-    const files = Array.from(input.files);
-    const reader0 = new FileReader();
-    reader0.onload = e => { $('#img-preview-box').css('background-image', `url(${e.target.result})`); $('#img-placeholder').hide(); };
-    reader0.readAsDataURL(files[0]);
+// ---------------- GERENCIADOR DE IMAGENS DO SORTEIO ----------------
+// IMAGENS_SORTEIO = array de { url, isNova, file } — a posição 0 é sempre a "principal"
+let IMAGENS_SORTEIO = [];
 
-    $('#preview-extra-imgs').empty();
-    if (files.length > 1) {
-        files.slice(1).forEach(f => {
-            const reader = new FileReader();
-            reader.onload = e => { $('#preview-extra-imgs').append(`<img src="${e.target.result}" class="w-16 h-16 object-cover rounded border border-gray-700">`); };
-            reader.readAsDataURL(f);
-        });
-        $('#preview-extra-imgs').prepend(`<p class="text-xs text-gray-400 w-full">+${files.length - 1} foto(s) extra — vai virar carrossel:</p>`);
-    }
+function renderGridImagens() {
+    $('#grid-imagens-sorteio').html(IMAGENS_SORTEIO.map((img, i) => `
+        <div class="img-thumb ${i === 0 ? 'principal' : ''}" style="background-image:url('${img.url}')">
+            ${i === 0 ? '<span class="estrela-principal">⭐</span>' : ''}
+            <div class="img-thumb-actions">
+                ${i !== 0 ? `<button type="button" onclick="definirImagemPrincipal(${i})">⭐ Tornar principal</button>` : ''}
+                <button type="button" onclick="removerImagemSorteio(${i})">🗑️ Excluir</button>
+            </div>
+        </div>
+    `).join('') || '<p class="text-xs text-gray-500 col-span-full">Nenhuma foto ainda.</p>');
+
+    // Sincroniza os campos ocultos que vão no formulário (só imagens JÁ salvas, sem as novas ainda não enviadas)
+    const salvas = IMAGENS_SORTEIO.filter(img => !img.isNova);
+    $('#inp-foto-url-atual').val(salvas[0]?.url || '');
+    $('#inp-fotos-galeria-atual').val(JSON.stringify(salvas.slice(1).map(img => img.url)));
+}
+
+function adicionarNovasFotos(input) {
+    if (!input.files || input.files.length === 0) return;
+    Array.from(input.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            IMAGENS_SORTEIO.push({ url: e.target.result, isNova: true, file });
+            renderGridImagens();
+        };
+        reader.readAsDataURL(file);
+    });
+    input.value = ''; // permite selecionar o mesmo arquivo de novo se precisar
+}
+
+function removerImagemSorteio(index) {
+    IMAGENS_SORTEIO.splice(index, 1);
+    renderGridImagens();
+}
+
+function definirImagemPrincipal(index) {
+    const [img] = IMAGENS_SORTEIO.splice(index, 1);
+    IMAGENS_SORTEIO.unshift(img);
+    renderGridImagens();
+}
+
+// Antes de enviar o formulário, troca o input de arquivo pra conter só os arquivos NOVOS
+// (as imagens já salvas viajam pelos campos ocultos foto_url / fotos_galeria)
+function prepararArquivosParaEnvio() {
+    const dt = new DataTransfer();
+    IMAGENS_SORTEIO.filter(img => img.isNova && img.file).forEach(img => dt.items.add(img.file));
+    document.getElementById('foto-input').files = dt.files;
 }
 
 $('#form-criar-sorteio').on('submit', function(e) {
     e.preventDefault();
+    prepararArquivosParaEnvio();
     const fd = new FormData(this);
     showOverlay();
     fetch('/api/admin/sorteios', { method: 'POST', body: fd, credentials: 'include' })
@@ -2064,10 +2156,17 @@ function mudarLinkTab(tab, el) {
 let LINKS_COMPARATIVO_CACHE = [];
 let ORDENACAO_ATUAL = { campo: null, direcao: null }; // direcao: 'asc' | 'desc' | null
 
+let LINKS_SELECIONADOS = new Set();
+
 function carregarComparativoLinks() {
     const sorteioId = $('#filtro-links-sorteio').val() || 'todos';
-    fetch(`/api/admin/links/comparativo?sorteio_id=${sorteioId}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+    const params = [`sorteio_id=${sorteioId}`];
+    if (PERIODO_ESTADO.links.de) params.push(`start_date=${PERIODO_ESTADO.links.de}T00:00:00`);
+    if (PERIODO_ESTADO.links.ate) params.push(`end_date=${PERIODO_ESTADO.links.ate}T23:59:59`);
+    fetch(`/api/admin/links/comparativo?${params.join('&')}`, { credentials: 'include' }).then(r => r.json()).then(d => {
         LINKS_COMPARATIVO_CACHE = d.links || [];
+        LINKS_SELECIONADOS.clear();
+        atualizarBotaoComparar();
         renderTabelaComparativo();
     });
 }
@@ -2080,9 +2179,10 @@ function renderTabelaComparativo() {
             return ORDENACAO_ATUAL.direcao === 'asc' ? va - vb : vb - va;
         });
     }
-    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="10" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
+    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
     $('#tabela-links-comparativo').html(links.map(l => `
-        <tr class="link-row border-b border-gray-800/60">
+        <tr class="link-row border-b border-gray-800/60" style="cursor:pointer" onclick="abrirDetalheLink('${l.id}')">
+            <td class="p-3" onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleSelecaoLink('${l.id}', this.checked)" ${LINKS_SELECIONADOS.has(l.id) ? 'checked' : ''}></td>
             <td class="p-3 text-white">${l.nome}</td>
             <td class="p-3 text-gray-400">${l.sorteios?.nome || ''}</td>
             <td class="p-3"><span class="badge badge-outro">${canalLabel(l.canal)}</span></td>
@@ -2092,10 +2192,86 @@ function renderTabelaComparativo() {
             <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
             <td class="p-3">${formatBR(l.ticket_medio)}</td>
             <td class="p-3">${(l.conversao || 0).toFixed(1)}%</td>
-            <td class="p-3">${l.url ? `<button class="text-purple-300 hover:text-purple-200 text-xs" onclick="navigator.clipboard.writeText('${l.url}'); notificar('Link copiado!','sucesso')"><i class="bi bi-clipboard"></i> Copiar</button>` : '<span class="text-gray-600 text-xs">—</span>'}</td>
+            <td class="p-3" onclick="event.stopPropagation()">${l.url ? `<button class="text-purple-300 hover:text-purple-200 text-xs" onclick="navigator.clipboard.writeText('${l.url}'); notificar('Link copiado!','sucesso')"><i class="bi bi-clipboard"></i> Copiar</button>` : '<span class="text-gray-600 text-xs">—</span>'}</td>
         </tr>
     `).join(''));
 }
+function toggleSelecaoLink(id, marcado) {
+    if (marcado) {
+        if (LINKS_SELECIONADOS.size >= 2) { notificar('Só dá pra comparar 2 links por vez.', 'aviso'); renderTabelaComparativo(); return; }
+        LINKS_SELECIONADOS.add(id);
+    } else {
+        LINKS_SELECIONADOS.delete(id);
+    }
+    atualizarBotaoComparar();
+}
+function atualizarBotaoComparar() {
+    $('#qtd-selecionados').text(LINKS_SELECIONADOS.size);
+    $('#btn-comparar-links').prop('disabled', LINKS_SELECIONADOS.size !== 2);
+}
+
+function abrirDetalheLink(id) {
+    const params = [];
+    if (PERIODO_ESTADO.links.de) params.push(`start_date=${PERIODO_ESTADO.links.de}T00:00:00`);
+    if (PERIODO_ESTADO.links.ate) params.push(`end_date=${PERIODO_ESTADO.links.ate}T23:59:59`);
+    fetch(`/api/admin/links/${id}/detalhe?${params.join('&')}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+        $('#detalhe-link-titulo').text(d.link?.nome || 'Link');
+        $('#detalhe-link-corpo').html(`
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                <div class="metric-card"><p class="text-xs opacity-60">Acessos</p><p class="text-xl font-bold text-pink-400">${d.acessos}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Pedidos pagos</p><p class="text-xl font-bold text-blue-400">${d.pedidos_pagos}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Faturamento</p><p class="text-xl font-bold text-green-400">${formatBR(d.faturamento)}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Pendente</p><p class="text-xl font-bold text-yellow-400">${formatBR(d.pendente)}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Expiradas</p><p class="text-xl font-bold text-red-400">${d.expirados}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Conversão</p><p class="text-xl font-bold text-purple-400">${(d.conversao || 0).toFixed(1)}%</p></div>
+            </div>
+            <canvas id="grafico-detalhe-link" height="120"></canvas>
+        `);
+        $('#modal-detalhe-link').removeClass('hidden').css('display', 'flex');
+        const ctx = document.getElementById('grafico-detalhe-link');
+        if (window.CHART_DETALHE_LINK) window.CHART_DETALHE_LINK.destroy();
+        window.CHART_DETALHE_LINK = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: (d.serie || []).map(s => new Date(s.dia + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
+                datasets: [
+                    { label: 'Acessos', data: (d.serie || []).map(s => s.acessos), borderColor: '#ec4899', tension: 0.4, yAxisID: 'y' },
+                    { label: 'Faturamento', data: (d.serie || []).map(s => s.faturamento), borderColor: '#22c55e', tension: 0.4, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                plugins: { legend: { labels: { color: '#e6edf3' } } },
+                scales: {
+                    x: { ticks: { color: '#9ca3af' } },
+                    y: { position: 'left', ticks: { color: '#9ca3af' } },
+                    y1: { position: 'right', ticks: { color: '#9ca3af' }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    });
+}
+
+function compararLinksSelecionados() {
+    const ids = Array.from(LINKS_SELECIONADOS);
+    if (ids.length !== 2) return;
+    const linksInfo = ids.map(id => LINKS_COMPARATIVO_CACHE.find(l => l.id === id));
+    $('#comparar-links-corpo').html(linksInfo.map(l => `
+        <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+            <h4 class="font-semibold text-white mb-3">${l.nome}</h4>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="opacity-60">Canal</span><span>${canalLabel(l.canal)}</span></div>
+                <div class="flex justify-between"><span class="opacity-60">Acessos</span><span class="font-bold">${l.cliques || 0}</span></div>
+                <div class="flex justify-between"><span class="opacity-60">Pedidos pagos</span><span class="font-bold">${l.pedidos_pagos || 0}</span></div>
+                <div class="flex justify-between"><span class="opacity-60">Faturamento</span><span class="font-bold text-green-400">${formatBR(l.faturamento)}</span></div>
+                <div class="flex justify-between"><span class="opacity-60">Pendente</span><span class="font-bold text-yellow-400">${formatBR(l.pendente)}</span></div>
+                <div class="flex justify-between"><span class="opacity-60">Ticket médio</span><span class="font-bold">${formatBR(l.ticket_medio)}</span></div>
+                <div class="flex justify-between"><span class="opacity-60">Conversão</span><span class="font-bold text-purple-400">${(l.conversao || 0).toFixed(1)}%</span></div>
+            </div>
+        </div>
+    `).join(''));
+    $('#modal-comparar-links').removeClass('hidden').css('display', 'flex');
+}
+
 $(document).on('click', '.sortable-th', function() {
     const campo = $(this).data('campo');
     if (ORDENACAO_ATUAL.campo !== campo) { ORDENACAO_ATUAL = { campo, direcao: 'desc' }; }
@@ -2341,10 +2517,32 @@ function carregarRelatorios() {
 
         const ctx = document.getElementById('grafico-vendas');
         if (VENDAS_CHART_REL) VENDAS_CHART_REL.destroy();
+        const ctx2d = ctx.getContext('2d');
+        const gradFat = ctx2d.createLinearGradient(0, 0, 0, 300); gradFat.addColorStop(0, 'rgba(34,197,94,0.35)'); gradFat.addColorStop(1, 'rgba(34,197,94,0)');
+        const gradLiq = ctx2d.createLinearGradient(0, 0, 0, 300); gradLiq.addColorStop(0, 'rgba(139,92,246,0.35)'); gradLiq.addColorStop(1, 'rgba(139,92,246,0)');
+        const gradDesp = ctx2d.createLinearGradient(0, 0, 0, 300); gradDesp.addColorStop(0, 'rgba(248,113,113,0.30)'); gradDesp.addColorStop(1, 'rgba(248,113,113,0)');
+
         VENDAS_CHART_REL = new Chart(ctx, {
-            type: 'bar',
-            data: { labels: (d.series || []).map(s => s.dia), datasets: [{ label: 'Faturamento', data: (d.series || []).map(s => s.faturamento), backgroundColor: '#8b5cf6' }] },
-            options: { plugins: { legend: { labels: { color: '#e6edf3' } } }, scales: { x: { ticks: { color: '#9ca3af' } }, y: { ticks: { color: '#9ca3af' } } } }
+            type: 'line',
+            data: {
+                labels: (d.series || []).map(s => new Date(s.dia + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
+                datasets: [
+                    { label: 'Faturamento total', data: (d.series || []).map(s => s.faturamento), borderColor: '#22c55e', backgroundColor: gradFat, fill: true, tension: 0.4, borderWidth: 3, pointRadius: 3, pointBackgroundColor: '#22c55e' },
+                    { label: 'Faturamento líquido', data: (d.series || []).map(s => s.liquido), borderColor: '#8b5cf6', backgroundColor: gradLiq, fill: true, tension: 0.4, borderWidth: 3, pointRadius: 3, pointBackgroundColor: '#8b5cf6' },
+                    { label: 'Despesas', data: (d.series || []).map(s => s.despesas), borderColor: '#f87171', backgroundColor: gradDesp, fill: true, tension: 0.4, borderWidth: 2, borderDash: [5, 4], pointRadius: 2, pointBackgroundColor: '#f87171' }
+                ]
+            },
+            options: {
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#e6edf3', usePointStyle: true, padding: 16 } },
+                    tooltip: { backgroundColor: '#1a1f2b', titleColor: '#fff', bodyColor: '#e6edf3', borderColor: '#333', borderWidth: 1, padding: 10, callbacks: { label: c => `${c.dataset.label}: ${formatBR(c.parsed.y)}` } }
+                },
+                scales: {
+                    x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#9ca3af', callback: v => 'R$ ' + v }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
         });
     });
     carregarDespesas();
@@ -2500,16 +2698,23 @@ $('#form-identidade').on('submit', function(e) {
         notificar('Nome do sistema atualizado!', 'sucesso');
     });
 });
-function aplicarIdentidade(nome, sub) {
+function aplicarIdentidade(nome, sub, logoUrl) {
     const texto = nome || 'Meu Painel';
-    const palavras = texto.trim().split(/\s+/);
-    if (palavras.length > 1) {
-        const meio = Math.ceil(palavras.length / 2);
-        const parte1 = palavras.slice(0, meio).join(' ');
-        const parte2 = palavras.slice(meio).join(' ');
-        $('#sidebar-brand-name').html(`<span class="brand-word-1">${parte1}</span> <span class="brand-word-2">${parte2}</span>`);
+    if (logoUrl) {
+        $('#sidebar-brand-logo').attr('src', logoUrl).removeClass('hidden');
+        $('#sidebar-brand-name').addClass('hidden');
     } else {
-        $('#sidebar-brand-name').html(`<span class="brand-word-2">${texto}</span>`);
+        $('#sidebar-brand-logo').addClass('hidden');
+        $('#sidebar-brand-name').removeClass('hidden');
+        const palavras = texto.trim().split(/\s+/);
+        if (palavras.length > 1) {
+            const meio = Math.ceil(palavras.length / 2);
+            const parte1 = palavras.slice(0, meio).join(' ');
+            const parte2 = palavras.slice(meio).join(' ');
+            $('#sidebar-brand-name').html(`<span class="brand-word-1">${parte1}</span> <span class="brand-word-2">${parte2}</span>`);
+        } else {
+            $('#sidebar-brand-name').html(`<span class="brand-word-2">${texto}</span>`);
+        }
     }
     $('#sidebar-brand-sub').text(sub || 'painel administrativo');
     $('#mobile-brand-name').text(texto);
@@ -2606,7 +2811,7 @@ $(document).ready(function() {
 
     checkSession().then(() => {
         api('GET', '/api/admin/configuracoes').then(cfg => {
-            aplicarIdentidade(cfg.SYSTEM_NAME || 'Máquina Milionária', cfg.SYSTEM_SUB || 'painel administrativo');
+            aplicarIdentidade(cfg.SYSTEM_NAME || 'Máquina Milionária', cfg.SYSTEM_SUB || 'painel administrativo', cfg.LOGO_URL);
         });
         const p0 = calcularPeriodo('mes');
         PERIODO_ESTADO.dash.de = p0.de; PERIODO_ESTADO.dash.ate = p0.ate;

@@ -1128,19 +1128,30 @@ app.delete('/api/admin/links/:id', ensureAdminAuth, async (req, res) => {
 // Comparativo geral de links (todos os sorteios, ou filtrado por ?sorteio_id=)
 app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
   try {
-    const { sorteio_id } = req.query;
+    const { sorteio_id, start_date, end_date } = req.query;
     let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug)');
     if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
     const { data: links } = await q.order('cliques', { ascending: false });
 
     const resultados = [];
     for (const link of (links || [])) {
-      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status').eq('link_id', link.id);
+      let acessosQ = supabase.from('acessos_log').select('*', { head: true, count: 'exact' }).eq('link_id', link.id);
+      let pedidosQ = supabase.from('pedidos').select('valor_total, status').eq('link_id', link.id);
+      if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
+      if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
+
+      const filtrandoPeriodo = !!(start_date || end_date);
+      const { count: acessosPeriodo } = await acessosQ;
+      const { data: pedidos } = await pedidosQ;
+
+      const cliques = filtrandoPeriodo ? (acessosPeriodo || 0) : (link.cliques || 0);
       const pagos = (pedidos || []).filter(p => p.status === 'pago');
+      const nowISO = new Date().toISOString();
+      const expirados = (pedidos || []).filter(p => p.status === 'aguardando' && p.expira_em && p.expira_em < nowISO).length;
       const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const pendente = (pedidos || []).filter(p => p.status === 'aguardando').reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
-      const conversao = link.cliques > 0 ? (pagos.length / link.cliques) * 100 : 0;
+      const conversao = cliques > 0 ? (pagos.length / cliques) * 100 : 0;
       // Link oficial (auto-direto do sorteio, sem funil) tem URL limpa; links criados manualmente usam ?lk=
       let url = null;
       const slug = link.sorteios?.slug;
@@ -1148,10 +1159,54 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
         if (link.codigo === 'auto-direto') url = `${req.protocol}://${req.get('host')}/sorteio/${slug}`;
         else if (!link.codigo.startsWith('auto-')) url = `${req.protocol}://${req.get('host')}/sorteio/${slug}?lk=${link.codigo}`;
       }
-      resultados.push({ ...link, url, pedidos_pagos: pagos.length, faturamento, pendente, ticket_medio, conversao });
+      resultados.push({ ...link, url, cliques, pedidos_pagos: pagos.length, expirados, faturamento, pendente, ticket_medio, conversao });
     }
     return ok(res, { links: resultados });
   } catch (e) { console.error('GET comparativo', e); return fail(res); }
+});
+
+// Detalhe de um link específico: métricas + série diária de acessos/faturamento (pra gráfico)
+app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const { data: link } = await supabase.from('links_rastreamento').select('*, sorteios(nome, slug)').eq('id', req.params.id).maybeSingle();
+    if (!link) return fail(res, 'Link não encontrado', 404);
+
+    let acessosQ = supabase.from('acessos_log').select('created_at').eq('link_id', link.id);
+    let pedidosQ = supabase.from('pedidos').select('valor_total, status, created_at, expira_em').eq('link_id', link.id);
+    if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
+    if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
+    const { data: acessos } = await acessosQ;
+    const { data: pedidos } = await pedidosQ;
+
+    const porDia = {};
+    (acessos || []).forEach(a => {
+      const k = (a.created_at || '').slice(0, 10);
+      if (!porDia[k]) porDia[k] = { dia: k, acessos: 0, faturamento: 0 };
+      porDia[k].acessos++;
+    });
+    const nowISO = new Date().toISOString();
+    const pagos = (pedidos || []).filter(p => p.status === 'pago');
+    const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISO));
+    const expirados = (pedidos || []).filter(p => p.status === 'aguardando' && p.expira_em && p.expira_em < nowISO);
+    pagos.forEach(p => {
+      const k = (p.created_at || '').slice(0, 10);
+      if (!porDia[k]) porDia[k] = { dia: k, acessos: 0, faturamento: 0 };
+      porDia[k].faturamento += Number(p.valor_total || 0);
+    });
+    const serie = Object.values(porDia).sort((a, b) => a.dia.localeCompare(b.dia));
+
+    const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
+    const pendente = pendentes.reduce((s, p) => s + Number(p.valor_total || 0), 0);
+    const totalAcessos = (acessos || []).length || link.cliques || 0;
+
+    return ok(res, {
+      link, serie,
+      acessos: totalAcessos, pedidos_pagos: pagos.length, pendentes: pendentes.length, expirados: expirados.length,
+      faturamento, pendente, ticket_medio: pagos.length > 0 ? faturamento / pagos.length : 0,
+      conversao: totalAcessos > 0 ? (pagos.length / totalAcessos) * 100 : 0
+    });
+  } catch (e) { console.error('GET link detalhe', e); return fail(res); }
 });
 
 // ==================================================================
@@ -1571,8 +1626,9 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
     })()) : [];
 
     // Com o input aceitando múltiplos arquivos, todos chegam com o mesmo fieldname ("foto_principal").
-    // O primeiro vira a foto principal; os demais entram na galeria (carrossel automático).
-    let primeiraFotoDefinida = false;
+    // Se já existe uma foto principal mantida (kept via campo oculto), os novos uploads só entram na
+    // galeria — nunca substituem a principal sem o usuário pedir isso explicitamente.
+    let primeiraFotoDefinida = !!foto_url;
     for (const file of files) {
       const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
       const dest = `${isEditing ? body.sorteio_id : 'new'}/${Date.now()}-${safeName}`;
@@ -1580,7 +1636,7 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       if (!error) {
         const { data: pub } = supabase.storage.from('sorteios').getPublicUrl(dest);
         const publicURL = pub?.publicUrl;
-        if (file.fieldname === 'foto_principal' && !primeiraFotoDefinida) {
+        if (!primeiraFotoDefinida) {
           foto_url = publicURL;
           primeiraFotoDefinida = true;
         } else {
@@ -1592,6 +1648,7 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
     const payload = {
       nome: body.nome,
       descricao: body.descricao,
+      regulamento: body.regulamento || null,
       preco_cota: parseFloat(body.preco_cota) || 0,
       total_cotas: parseInt(normalizeNumber(body.total_cotas)),
       tempo_pagamento: parseInt(normalizeNumber(body.tempo_pagamento)),
@@ -1700,7 +1757,18 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
     const lucro_liquido = total_faturado - total_despesas;
     const roi = total_despesas > 0 ? (lucro_liquido / total_despesas) * 100 : null;
 
-    res.json({ from: String(req.query.from || ''), to: String(req.query.to || ''), series, total_pedidos, total_faturado, total_clientes, total_despesas, lucro_liquido, roi });
+    // Junta despesas por dia na mesma série, pra alimentar o gráfico com faturamento/líquido/despesa lado a lado
+    (despesas || []).forEach(d => {
+      const k = (d.data || '').slice(0, 10);
+      if (!map[k]) map[k] = { dia: k, pedidos: 0, faturamento: 0 };
+      map[k].despesas = (map[k].despesas || 0) + Number(d.valor || 0);
+    });
+    const seriesCompleta = Object.values(map).sort((a, b) => a.dia.localeCompare(b.dia)).map(r => ({
+      dia: r.dia, pedidos: r.pedidos, faturamento: r.faturamento,
+      despesas: r.despesas || 0, liquido: r.faturamento - (r.despesas || 0)
+    }));
+
+    res.json({ from: String(req.query.from || ''), to: String(req.query.to || ''), series: seriesCompleta, total_pedidos, total_faturado, total_clientes, total_despesas, lucro_liquido, roi });
   } catch (err) { res.status(500).json({ error: 'Erro ao gerar relatório' }); }
 });
 

@@ -150,6 +150,14 @@
             <p id="erro-limite" class="text-center text-red-400 text-sm mt-2 hidden">
                 A compra mínima é de <strong id="erro-min">1</strong> cota e a máxima é de <strong id="erro-max">1000000</strong> cotas.
             </p>
+
+            <div id="secao-regulamento" class="mx-4 mt-4 hidden">
+                <button id="btn-toggle-regulamento" type="button" class="w-full flex justify-between items-center bg-[#2a303c] rounded-lg px-4 py-3 text-left">
+                    <span class="font-semibold text-white"><i class="bi bi-file-earmark-text"></i> Regulamento</span>
+                    <i id="icone-regulamento" class="bi bi-chevron-down text-gray-400"></i>
+                </button>
+                <div id="corpo-regulamento" class="hidden bg-[#20242e] border border-[#2a303c] rounded-b-lg px-4 py-3 text-sm text-gray-300 whitespace-pre-line"></div>
+            </div>
         </section>
 
         <section id="secao-roleta-tiers" class="mt-6 px-1 hidden">
@@ -356,15 +364,20 @@
                 <div class="carrossel-dots">${imagens.map((_, i) => `<span class="carrossel-dot ${i === 0 ? 'active' : ''}" data-i="${i}"></span>`).join('')}</div>
             `);
             let atual = 0;
+            let autoplay;
+            function reiniciarAutoplay() {
+                clearInterval(autoplay);
+                autoplay = setInterval(() => irPara(atual + 1), 3000);
+            }
             function irPara(i) {
                 atual = (i + imagens.length) % imagens.length;
                 $track.css('transform', `translateX(-${atual * 100}%)`);
                 $('.carrossel-dot').removeClass('active').eq(atual).addClass('active');
             }
-            $('#carrossel-box .prev').on('click', () => irPara(atual - 1));
-            $('#carrossel-box .next').on('click', () => irPara(atual + 1));
-            $('#carrossel-box').on('click', '.carrossel-dot', function() { irPara(Number($(this).data('i'))); });
-            let autoplay = setInterval(() => irPara(atual + 1), 5000);
+            $('#carrossel-box .prev').on('click', () => { irPara(atual - 1); reiniciarAutoplay(); });
+            $('#carrossel-box .next').on('click', () => { irPara(atual + 1); reiniciarAutoplay(); });
+            $('#carrossel-box').on('click', '.carrossel-dot', function() { irPara(Number($(this).data('i'))); reiniciarAutoplay(); });
+            reiniciarAutoplay();
         }
 
         // Renderiza uma lista com "Mostrar Mais" progressivo (5 em 5), reaproveitado pra bilhetes e roleta
@@ -467,6 +480,13 @@
             $('#preco-cota').text(PRECO ? formatarMoeda(PRECO) : 'R$ 0,00');
             $('#input-qtd').attr('min', MIN_QTY).attr('max', MAX_QTY);
 
+            if (sorteio.regulamento && sorteio.regulamento.trim()) {
+                $('#secao-regulamento').removeClass('hidden');
+                $('#corpo-regulamento').text(sorteio.regulamento);
+            } else {
+                $('#secao-regulamento').addClass('hidden');
+            }
+
             // Essas três são "extras" — se alguma falhar, não pode derrubar o resto da página
             try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
             try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
@@ -564,6 +584,11 @@
             $('#checkout-tel').mask(SPMaskBehavior, spOptions);
             $('#phone-input-modal').mask(SPMaskBehavior, spOptions);
             $('#checkout-cpf').mask('000.000.000-00');
+
+            $('#btn-toggle-regulamento').on('click', function() {
+                $('#corpo-regulamento').slideToggle(200);
+                $('#icone-regulamento').toggleClass('bi-chevron-down bi-chevron-up');
+            });
 
             $('#cota-grid').on('click', '.btn-add-cota', function() {
                 const qtd = $(this).data('qtd');
