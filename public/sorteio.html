@@ -20,13 +20,13 @@
         .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
         @media (max-width: 480px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; padding: 0.75rem; } .cota-num { font-size: 1.6rem !important; } .cota-label { font-size: 0.7rem !important; } }
         .cota-num { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cota-btn { background-color: #000; border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: 2px solid transparent; position: relative; }
+        .cota-btn { background-color: #000; border-radius: 4px; padding: 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: none; position: relative; }
         .cota-btn:hover { background-color: #111; }
-        .cota-btn.popular { background-color: #D9F7E6; border: 2px solid #16A34A; }
-        .cota-btn.popular .cota-num { color: #15803D; }
-        .cota-btn.popular .cota-label { color: #15803D; }
-        .cota-btn.selecionado { border: 2px solid #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.35); }
-        .cota-badge { font-size: 0.7rem; font-weight: 600; background-color: #22C55E; color: #ffffff; padding: 2px 10px; border-radius: 12px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
+        .cota-btn.popular { background-color: #c8facd; }
+        .cota-btn.popular .cota-num { color: rgba(0,0,0,.87); }
+        .cota-btn.popular .cota-label { color: rgba(0,0,0,.87); }
+        .cota-btn.selecionado { box-shadow: 0 0 0 2px #1a8754; }
+        .cota-badge { font-size: 0.875em; font-weight: 400; background-color: #1a8754; color: #ffffff; padding: 0 7px; border-radius: 5px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
         .cota-num { font-size: 2.25rem; font-weight: 700; color: #fff; }
         .cota-label { font-size: 1rem; font-weight: 500; color: #a0aec0; }
         .purchase-grid { display: grid; grid-template-columns: 2fr 3fr; gap: 0.6rem; padding: 0 1rem 1rem 1rem; align-items: stretch; }
@@ -35,27 +35,25 @@
         .manual-selector input { width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600; color: #fff; background: none; border: none; outline: none; min-width: 0; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .btn-participar { background-color: #3C8C4A; color: #fff; width: 100%; height: 100%; border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; box-shadow: 0 2px 8px rgba(60,140,74,0.35); }
+        .btn-participar { background-color: #1a8754; color: #fff; width: 100%; height: 100%; border-radius: 8px; padding: 3px 12px; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; }
         .btn-participar i { font-size: 1.4rem; flex-shrink: 0; }
         .btn-participar-price { font-size: 1.15rem; font-weight: 700; display: block; }
         .btn-participar i { font-size: 1.2rem; margin-right: 0.25rem; }
         .btn-participar span:nth-child(2) { flex: 1; text-align: left; }
         .btn-participar-price { font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
         .titulos-premiados { padding: 1.5rem 1rem; }
-        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; border-radius: 14px; background-color: #12141c; border: 1px solid #1f2937; }
-        .premio-item.reivindicado { background: #3fa85c; border-color: #3fa85c; }
-        .premio-cota { font-weight: 700; font-size: 0.9rem; color: #e5e7eb; background-color: #4b5563; padding: 0.4rem 0.9rem; border-radius: 999px; min-width: 80px; text-align: center; }
-        .premio-item.reivindicado .premio-cota { color: #14532d; background-color: #ffffff; }
-        .premio-nome { font-weight: 600; color: #e5e7eb; flex-grow: 1; text-align: center; font-size: 0.9rem; }
-        .premio-item.reivindicado .premio-nome { color: #ffffff; }
-        .premio-status { font-weight: 600; color: #9ca3af; font-size: 0.9rem; white-space: nowrap; }
-        .premio-item.reivindicado .premio-status { color: #fff; font-weight: 700; }
+        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; margin-bottom: 6px; border-radius: 8px; background-color: #1a8754; box-shadow: rgba(0,0,0,0.2) 0px 0px 2px 0px, rgba(0,0,0,0.12) 0px 12px 24px -4px; }
+        .premio-item.disponivel { background-color: #161c24; }
+        .premio-cota { height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background-color: #fff; color: #000; min-width: 20%; max-width: 40%; text-align: center; white-space: nowrap; }
+        .premio-item.disponivel .premio-cota { background-color: #919eab; color: #fff; }
+        .premio-nome { font-weight: 400; color: #fff; flex-grow: 1; text-align: center; font-size: 12px; }
+        .premio-status { font-weight: 400; color: #fff; font-size: 14px; text-align: right; white-space: nowrap; max-width: 30%; }
         .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
         .modal { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
         .tag-pulse { background-color: #22C55E; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 9999px; animation: pulse-opacity 1.5s infinite; }
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } }
-        .combo-roleta { background: linear-gradient(135deg, #1a5c34, #3fa85c); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; box-sizing: border-box; max-width: 100%; overflow: hidden; }
+        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px; margin-bottom: 0.5rem; box-sizing: border-box; max-width: 100%; overflow: hidden; }
         .combo-pulse { animation: pulse-opacity 1.8s infinite; }
         .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
         .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
@@ -504,12 +502,12 @@
                     <div class="combo-roleta combo-pulse">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:0.5rem;">
                             <div>
-                                <div class="text-sm text-green-100">A cada</div>
-                                <div class="text-xl font-bold text-white">${t.minimo_cotas} títulos</div>
+                                <div class="text-xs text-green-100">A cada</div>
+                                <div class="text-base font-bold text-white">${t.minimo_cotas} títulos</div>
                             </div>
-                            <div class="text-lg font-bold text-white text-right">Receba ${t.quantidade_giros} Roletas 🎯</div>
+                            <div class="text-sm font-bold text-white text-right">Receba ${t.quantidade_giros} Roletas 🎯</div>
                         </div>
-                        <div class="text-xs text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
+                        <div class="text-[0.65rem] text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
                     </div>
                 `).join(''));
             } else {
@@ -520,7 +518,7 @@
             const reivindicados = premiados.filter(p => p.status === 'reivindicada').length;
             $('#contador-premiados').text(`${reivindicados}/${premiados.length}`);
             renderListaPaginada('#lista-premios', '#btn-mostrar-mais-premios', premiados, 5, premio => `
-                <div class="premio-item ${premio.status === 'reivindicada' ? 'reivindicado' : ''}">
+                <div class="premio-item ${premio.status === 'reivindicada' ? '' : 'disponivel'}">
                     <span class="premio-cota">${premio.numero_cota}</span>
                     <span class="premio-nome">${premio.premio_titulo}</span>
                     ${premio.status === 'reivindicada'
