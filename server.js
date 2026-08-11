@@ -429,7 +429,9 @@ async function getSorteioPublicData(slug, funilSlug) {
   const { data: avisosTodos } = await supabase.from('avisos_urgencia').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true);
   const aviso_urgencia_ativo = (avisosTodos || []).find(a => a.data_inicio <= nowISO2 && a.data_fim >= nowISO2) || null;
 
-  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo };
+  const { data: promocoesAtivas } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true).order('quantidade_cotas', { ascending: true });
+
+  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo, promocoes: promocoesAtivas || [] };
 }
 
 app.get('/api/public/sorteio/:slug', async (req, res) => {
@@ -899,7 +901,13 @@ app.post('/api/public/pedidos/iniciar', async (req, res) => {
     if (sorteio.coletar_email && !usuario.email) return res.status(400).json({ error: 'Email é obrigatório para este sorteio' });
     if (sorteio.coletar_endereco && !usuario.endereco) return res.status(400).json({ error: 'Endereço é obrigatório para este sorteio' });
 
-    const valor_total = Number(sorteio.preco_cota) * Number(quantidade);
+    let valor_total = Number(sorteio.preco_cota) * Number(quantidade);
+    let promocao_aplicada = null;
+    const { data: promoMatch } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).maybeSingle();
+    if (promoMatch) {
+      valor_total = Number(promoMatch.preco_promocional);
+      promocao_aplicada = promoMatch.titulo;
+    }
     const token = uuidv4();
     const expira = new Date(Date.now() + (Number(sorteio.tempo_pagamento || 15) * 60000)).toISOString();
 
@@ -917,7 +925,7 @@ app.post('/api/public/pedidos/iniciar', async (req, res) => {
     }
 
     const { data: pedido } = await supabase.from('pedidos').insert({
-      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, created_at: new Date().toISOString()
+      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, created_at: new Date().toISOString()
     }).select().single();
 
     const pagamento = await criarPagamentoGateway(pedido, usuario);
@@ -1220,7 +1228,12 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
 app.get('/api/admin/sorteios/:id/roleta', ensureAdminAuth, async (req, res) => {
   try {
     const { data } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', req.params.id).eq('tipo', 'roleta').order('created_at', { ascending: true });
-    return ok(res, { roleta: data || [] });
+    const itens = data || [];
+    const usuarioIds = [...new Set(itens.map(b => b.usuario_id).filter(Boolean))];
+    const { data: usuarios } = usuarioIds.length ? await supabase.from('usuarios').select('*').in('id', usuarioIds) : { data: [] };
+    const usuarioMap = (usuarios || []).reduce((a, u) => (a[u.id] = u, a), {});
+    const enriquecidos = itens.map(b => ({ ...b, ganhador_nome: usuarioMap[b.usuario_id]?.nome_completo || b.nome_completo || null }));
+    return ok(res, { roleta: enriquecidos });
   } catch (e) { return fail(res); }
 });
 
@@ -1344,6 +1357,45 @@ app.put('/api/admin/avisos-urgencia/:id', ensureAdminAuth, async (req, res) => {
 });
 app.delete('/api/admin/avisos-urgencia/:id', ensureAdminAuth, async (req, res) => {
   try { const { error } = await supabase.from('avisos_urgencia').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
+});
+
+// ==================================================================
+// 🏷️ PROMOÇÕES — combos com desconto (ex: "300 títulos por R$10")
+// ==================================================================
+app.get('/api/admin/sorteios/:id/promocoes', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data } = await supabase.from('promocoes').select('*').eq('sorteio_id', req.params.id).order('quantidade_cotas', { ascending: true });
+    return ok(res, { lista: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/sorteios/:id/promocoes', ensureAdminAuth, async (req, res) => {
+  try {
+    const { titulo, quantidade_cotas, preco_promocional, ativo } = req.body || {};
+    if (!quantidade_cotas || !preco_promocional) return fail(res, 'Preencha a quantidade e o preço promocional', 400);
+    const { data, error } = await supabase.from('promocoes').insert({
+      sorteio_id: req.params.id, titulo: titulo || 'Promoção',
+      quantidade_cotas: parseInt(quantidade_cotas), preco_promocional: parseFloat(preco_promocional),
+      ativo: ativo !== false
+    }).select().single();
+    if (error) return fail(res, error.message);
+    return ok(res, { promocao: data });
+  } catch (e) { return fail(res); }
+});
+app.put('/api/admin/promocoes/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { titulo, quantidade_cotas, preco_promocional, ativo } = req.body || {};
+    const payload = {};
+    if (titulo !== undefined) payload.titulo = titulo;
+    if (quantidade_cotas !== undefined) payload.quantidade_cotas = parseInt(quantidade_cotas);
+    if (preco_promocional !== undefined) payload.preco_promocional = parseFloat(preco_promocional);
+    if (ativo !== undefined) payload.ativo = !!ativo;
+    const { error } = await supabase.from('promocoes').update(payload).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/promocoes/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('promocoes').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
 });
 
 // Liga/desliga a roleta pra um sorteio sem precisar reenviar o formulário inteiro

@@ -166,6 +166,9 @@
                 <div class="detalhe-item"><span class="detalhe-label">Situação:</span><span id="detalhe-situacao" class="detalhe-valor text-yellow-400">Aguardando pagamento</span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Data/horário:</span><span id="detalhe-data" class="detalhe-valor"></span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Expira em:</span><span id="detalhe-expira" class="detalhe-valor"></span></div>
+                <div id="banner-chance-dobro-checkout" class="hidden" style="background:linear-gradient(to right,#1a8754 45%,#5be584); border-radius:10px; padding:10px 14px; margin-bottom:10px;">
+                    <span style="color:#fff; font-weight:700; font-size:0.9rem;"></span>
+                </div>
                 <div class="detalhe-item"><span class="detalhe-label">Quantidade:</span><span id="detalhe-quantidade" class="detalhe-valor">0</span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Total:</span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
                 <div class="detalhe-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
@@ -317,6 +320,7 @@
         }
 
         let TODAS_COTAS = [];
+        let QUANTIDADE_PAGA = 0;
         let COTAS_VISIVEIS = 30;
         function renderCotasPagina() {
             const $cotasContainer = $('#cotas-geradas');
@@ -324,6 +328,13 @@
             $cotasContainer.html(visiveis.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
             $('#detalhe-titulos-status').text(`${TODAS_COTAS.length} título(s):`).removeClass('hidden');
             $('#btn-ver-mais-titulos').toggleClass('hidden', COTAS_VISIVEIS >= TODAS_COTAS.length);
+
+            // Se a quantidade de títulos recebidos for maior do que a paga, foi Chance em Dobro (ou outro bônus)
+            if (QUANTIDADE_PAGA > 0 && TODAS_COTAS.length > QUANTIDADE_PAGA) {
+                $('#banner-chance-dobro-checkout').removeClass('hidden').find('span').text(
+                    `🔥 Você comprou com Chance em Dobro! Pagou por ${QUANTIDADE_PAGA} e recebeu ${TODAS_COTAS.length} títulos.`
+                );
+            }
         }
         $('#btn-ver-mais-titulos').on('click', function() { COTAS_VISIVEIS += 30; renderCotasPagina(); });
 
@@ -550,6 +561,7 @@
             $('#sorteio-img').attr('src', pedido.sorteios?.foto_url || '');
             $('#sorteio-nome').text(pedido.sorteios?.nome || '');
             $('#sorteio-qtd').text(`Cotas adquiridas: ${pedido.quantidade_cotas || 0}`);
+            QUANTIDADE_PAGA = Number(pedido.quantidade_cotas || 0);
             $('#sorteio-total').text(`Total: ${formatarMoeda(pedido.valor_total)}`);
             $('#detalhe-token').text(pedido.token || '');
             $('#detalhe-comprador').text(pedido.usuarios?.nome_completo || '');

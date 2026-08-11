@@ -329,6 +329,7 @@
         const LINK_CODIGO = URL_PARAMS.get('lk') || null;
 
         let SORTEIO_DATA = {};
+        let CHANCE_DOBRO_ATIVA = null;
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
         let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
@@ -535,6 +536,7 @@
         function renderPagina(data) {
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
+            CHANCE_DOBRO_ATIVA = data.chance_dobro_ativa || null;
             BILHETES_PREMIADOS = bilhetes_premiados || [];
             FUNIL_DATA = funil || null;
 
@@ -700,7 +702,11 @@
                 const modalCheckout = $('#modal-checkout');
                 const nomeSorteio = (SORTEIO_DATA.nome || '').toUpperCase();
                 const qtd = quantidadeCotas;
-                $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong>`);
+                if (CHANCE_DOBRO_ATIVA) {
+                    $('#checkout-confirm-text').html(`🔥 Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong> — e leva o <strong>DOBRO</strong>: <strong>${qtd * 2}</strong> título(s) no total, graças à promoção "${CHANCE_DOBRO_ATIVA.titulo || 'Chance em Dobro'}" ativa agora!`);
+                } else {
+                    $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong>`);
+                }
                 $('#checkout-confirm-bar').removeClass('hidden');
 
                 // Volta pra etapa 1 (telefone) toda vez que abre — mas já pré-preenche se tiver dado salvo
