@@ -1807,11 +1807,33 @@ function renderGridBilhetesAdmin() {
         const saiu = p.status === 'reivindicada';
         const cor = saiu ? 'bg-green-600' : 'bg-red-600';
         const inativo = p.ativo === false ? ' opacity-40' : '';
-        return `<span class="chip ${cor} text-white${inativo}" title="${p.premio_titulo || ''}${p.ativo === false ? ' (inativo)' : ''}">🎫 ${p.numero_cota}<button type="button" onclick="removerPremio('${p.id}')" style="margin-left:6px;">&times;</button></span>`;
+        const acaoManual = saiu
+            ? `<button type="button" onclick="desmarcarReivindicado('${p.id}')" title="Desmarcar (voltar pra disponível)" style="margin-left:4px;">↺</button>`
+            : `<button type="button" onclick="abrirMarcarReivindicado('${p.id}')" title="Marcar como já reivindicado" style="margin-left:4px;">🏆</button>`;
+        return `<span class="chip ${cor} text-white${inativo}" title="${p.premio_titulo || ''}${p.ativo === false ? ' (inativo)' : ''}">🎫 ${p.numero_cota}${acaoManual}<button type="button" onclick="removerPremio('${p.id}')" style="margin-left:4px;">&times;</button></span>`;
     }).join('') || '<p class="opacity-60 text-sm">Nenhum bilhete premiado cadastrado ainda.</p>');
 }
 let BILHETES_ADMIN_CACHE = [];
 $(document).on('input', '#input-buscar-bilhete', renderGridBilhetesAdmin);
+
+function abrirMarcarReivindicado(id) {
+    const nome = prompt('Nome do ganhador:');
+    if (!nome) return;
+    const telefone = prompt('Telefone do ganhador (opcional, sem espaços):') || '';
+    api('POST', `/api/admin/premios/${id}/marcar-reivindicado`, { nome_completo: nome, telefone }).then(() => {
+        notificar('Marcado como reivindicado!', 'sucesso');
+        carregarPremios(SORTEIO_BILHETE_ID);
+    }).catch(err => notificar(err.error || 'Erro', 'erro'));
+}
+function desmarcarReivindicado(id) {
+    confirmar('Desmarcar', 'Esse bilhete volta a ficar disponível pra qualquer cliente ganhar.').then(yes => {
+        if (!yes) return;
+        api('POST', `/api/admin/premios/${id}/desmarcar-reivindicado`).then(() => {
+            notificar('Desmarcado.', 'sucesso');
+            carregarPremios(SORTEIO_BILHETE_ID);
+        });
+    });
+}
 
 function mudarModoBilhete(modo, el) {
     $('#bilhete-conteudo [data-modo]').removeClass('active');

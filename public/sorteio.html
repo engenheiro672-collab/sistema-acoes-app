@@ -6,28 +6,31 @@
     <title id="page-title">Sorteio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
 
     <style>
-        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
+        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; }
         .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
         #logo-box img { max-height: 40px; max-width: 280px; }
         .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
         .title-bar { color: #fff; }
-        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 600; font-size: 0.8125rem; padding: 8px 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-transform: uppercase; }
+        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 500; font-size: 0.8125rem; padding: 8px 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-transform: uppercase; }
         .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
         @media (max-width: 480px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; padding: 0.75rem; } .cota-num { font-size: 1.6rem !important; } .cota-label { font-size: 0.7rem !important; } }
         .cota-num { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cota-btn { background-color: #000; border-radius: 4px; padding: 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: none; position: relative; }
+        .cota-btn { background-color: #000; border-radius: 4px; padding: 0.75rem 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: none; position: relative; }
         .cota-btn:hover { background-color: #111; }
         .cota-btn.popular { background-color: #c8facd; }
         .cota-btn.popular .cota-num { color: rgba(0,0,0,.87); }
         .cota-btn.popular .cota-label { color: rgba(0,0,0,.87); }
         .cota-btn.selecionado { box-shadow: 0 0 0 2px #1a8754; }
         .cota-badge { font-size: 0.875em; font-weight: 400; background-color: #1a8754; color: #ffffff; padding: 0 7px; border-radius: 5px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
-        .cota-num { font-size: 2.25rem; font-weight: 700; color: #fff; }
-        .cota-label { font-size: 1rem; font-weight: 500; color: #a0aec0; }
+        .cota-num { font-size: 2.25rem; font-weight: 500; color: #fff; }
+        .cota-label { font-size: 0.85rem; font-weight: 300; color: rgba(160,174,192,0.75); }
         .purchase-grid { display: grid; grid-template-columns: 2fr 3fr; gap: 0.6rem; padding: 0 1rem 1rem 1rem; align-items: stretch; }
         .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #2a303c; border-radius: 8px; padding: 0.4rem; }
         .manual-selector button { font-size: 1.4rem; font-weight: 300; color: #a0aec0; width: 36px; height: 36px; flex-shrink: 0; }
@@ -52,18 +55,18 @@
         .modal-content { transition: transform 0.3s ease; }
         .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); }
         .caption-header .tag-ending { margin-top: 4px; margin-bottom: 4px; align-self: flex-start; }
-        .caption-header h1 { font-weight: 700; font-size: 1.4rem; line-height: 1.25; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
-        .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.95rem; font-weight: 600; height: 32px; line-height: 32px; padding: 0 14px; border-radius: 8px; display: inline-block; animation: blink 2s infinite; }
+        .caption-header h1 { font-weight: 500; font-size: 1.4rem; line-height: 1.25; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
+        .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.95rem; font-weight: 500; height: 32px; line-height: 32px; padding: 0 14px; border-radius: 8px; display: inline-block; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-        .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 16px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
+        .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 10px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
         .countdown-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
         .countdown-subtitle { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin: 0; }
         .countdown-warning { margin-top: 12px; font-size: 0.75rem; opacity: 0.9; }
-        .urgencia-tempo-pill { position: relative; background: rgba(0,0,0,0.25); border-radius: 999px; margin: 10px auto; display: block; width: 90%; overflow: hidden; height: 34px; }
-        .urgencia-tempo-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.35); border-radius: 999px; transition: width 1s linear; }
+        .urgencia-tempo-pill { position: relative; background: rgba(0,0,0,0.2); border-radius: 8px; margin: 10px auto; display: block; width: 92%; overflow: hidden; height: 34px; }
+        .urgencia-tempo-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.4); border-radius: 8px; transition: width 1s linear; }
         .urgencia-tempo-texto { position: relative; z-index: 2; height: 34px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #fff; }
         .time-number-inline { font-weight: 800; }
-        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.015); } }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 86%; overflow: visible; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
@@ -121,7 +124,7 @@
             <i class="bi bi-cart3"></i> Meus títulos
         </button>
 
-        <div class="title-bar flex justify-center items-center p-4">
+        <div class="title-bar flex justify-center items-center" style="padding:10px 1rem;">
             <h6 style="margin:0; font-weight:600; font-size:12.3px; color:#fff;">Por apenas</h6>
             <span id="preco-cota" style="margin-left:8px; min-height:26px; padding:4px 10px; border-radius:6px; background:#000; color:#fff; font-weight:700; font-size:1rem; white-space:nowrap; display:inline-flex; align-items:center; line-height:1;">R$ 0,00</span>
         </div>
@@ -130,7 +133,7 @@
             <p id="urgencia-titulo" class="countdown-title">🚨 CORRE QUE ESTÁ ACABANDO 🚨</p>
             <div id="urgencia-barra-tempo" class="urgencia-tempo-pill">
                 <div id="urgencia-fill" class="urgencia-tempo-fill" style="width:0%;"></div>
-                <div class="urgencia-tempo-texto">Encerra em <span id="urgencia-contagem" class="time-number-inline">&nbsp;--:--:--</span></div>
+                <div class="urgencia-tempo-texto"><span style="margin-right:6px;">Encerra em</span><span id="urgencia-contagem" class="time-number-inline">--:--:--</span></div>
             </div>
             <p id="urgencia-descricao" class="countdown-subtitle mt-1"></p>
             <p id="urgencia-validade" class="countdown-warning"></p>
@@ -149,7 +152,7 @@
         </div>
 
         <section class="mt-4">
-            <p class="text-center text-gray-300 mb-4">Quanto mais títulos, mais chances de ganhar!</p>
+            <p class="text-center text-gray-300 mb-4" style="font-weight:400;">Quanto mais títulos, mais chances de ganhar!</p>
 
             <div class="cota-grid" id="cota-grid"></div>
 
@@ -195,6 +198,9 @@
             <button id="btn-mostrar-mais-premios" class="w-full text-center text-gray-400 mt-4 font-semibold hover:text-white hidden">
                 <i class="bi bi-chevron-down"></i> Mostrar Mais
             </button>
+            <button id="btn-mostrar-menos-premios" class="w-full text-center text-gray-400 mt-2 font-semibold hover:text-white hidden">
+                <i class="bi bi-chevron-up"></i> Mostrar Menos
+            </button>
         </section>
 
         <section id="secao-roleta-resultados" class="titulos-premiados mt-2 hidden">
@@ -205,6 +211,9 @@
             <div id="lista-roleta-vencedores"></div>
             <button id="btn-mostrar-mais-roleta" class="w-full text-center text-gray-400 mt-4 font-semibold hover:text-white hidden">
                 <i class="bi bi-chevron-down"></i> Mostrar Mais
+            </button>
+            <button id="btn-mostrar-menos-roleta" class="w-full text-center text-gray-400 mt-2 font-semibold hover:text-white hidden">
+                <i class="bi bi-chevron-up"></i> Mostrar Menos
             </button>
         </section>
 
@@ -251,6 +260,22 @@
                     Continuar
                 </button>
             </form>
+
+            <!-- ETAPA 1.5: comprador já conhecido — confirma os dados salvos ou troca de conta -->
+            <div id="etapa-confirmar-comprador" class="hidden">
+                <p class="text-gray-300 mb-3">Você está adquirindo <strong id="confirmar-qtd-cotas" class="text-white">0</strong> título(s) por <strong id="confirmar-valor-total" class="text-green-400">R$ 0,00</strong>.</p>
+                <div class="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 mb-4">
+                    <p class="text-xs text-gray-400 mb-1">Seus dados:</p>
+                    <p class="text-white font-semibold" id="confirmar-nome-cliente">—</p>
+                    <p class="text-gray-300 text-sm" id="confirmar-tel-cliente">—</p>
+                </div>
+                <button type="button" id="btn-finalizar-pedido-conhecido" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded text-lg">
+                    Finalizar Pedido
+                </button>
+                <button type="button" id="btn-usar-outra-conta" class="w-full text-gray-400 hover:text-white text-sm mt-3 py-2">
+                    Usar outra conta
+                </button>
+            </div>
 
             <!-- ETAPA 2: dados adicionais — só aparece se for comprador novo, ou faltar algum dado ativado pro sorteio -->
             <form id="form-checkout-dados" class="hidden">
@@ -400,13 +425,15 @@
         }
 
         // Renderiza uma lista com "Mostrar Mais" progressivo (5 em 5), reaproveitado pra bilhetes e roleta
-        function renderListaPaginada(seletorLista, seletorBotao, itens, passo, templateFn) {
+        function renderListaPaginada(seletorLista, seletorBotaoMais, itens, passo, templateFn, seletorBotaoMenos) {
             let visiveis = passo;
             function desenhar() {
                 $(seletorLista).html(itens.slice(0, visiveis).map(templateFn).join(''));
-                $(seletorBotao).toggleClass('hidden', visiveis >= itens.length);
+                $(seletorBotaoMais).toggleClass('hidden', visiveis >= itens.length);
+                if (seletorBotaoMenos) $(seletorBotaoMenos).toggleClass('hidden', visiveis <= passo);
             }
-            $(seletorBotao).off('click').on('click', function() { visiveis += passo; desenhar(); });
+            $(seletorBotaoMais).off('click').on('click', function() { visiveis += passo; desenhar(); });
+            if (seletorBotaoMenos) $(seletorBotaoMenos).off('click').on('click', function() { visiveis = passo; desenhar(); window.scrollTo({ top: $(seletorLista).offset().top - 80, behavior: 'smooth' }); });
             desenhar();
         }
 
@@ -569,7 +596,7 @@
                 $('#secao-roleta-tiers').addClass('hidden');
             }
 
-            const premiados = BILHETES_PREMIADOS;
+            const premiados = [...BILHETES_PREMIADOS].sort((a, b) => (b.status === 'reivindicada') - (a.status === 'reivindicada'));
             const reivindicados = premiados.filter(p => p.status === 'reivindicada').length;
             $('#contador-premiados').text(`${reivindicados}/${premiados.length}`);
             renderListaPaginada('#lista-premios', '#btn-mostrar-mais-premios', premiados, 5, premio => `
@@ -580,20 +607,21 @@
                         ? `<span class="premio-status">${premio.ganhador_nome ? premio.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
                         : `<span class="premio-status">Disponível</span>`}
                 </div>
-            `);
+            `, '#btn-mostrar-menos-premios');
 
             // Roletas já sorteadas (nunca mostra o número do giro, só o prêmio e quem ganhou)
             if (sorteio.roleta_ativada && roleta_resultados && roleta_resultados.total > 0) {
                 $('#secao-roleta-resultados').removeClass('hidden');
                 $('#contador-roleta').text(`${roleta_resultados.ganhas}/${roleta_resultados.total}`);
-                renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roleta_resultados.lista || [], 5, v => `
+                const roletaOrdenada = [...(roleta_resultados.lista || [])].sort((a, b) => b.reivindicada - a.reivindicada);
+                renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roletaOrdenada, 5, v => `
                     <div class="premio-item ${v.reivindicada ? '' : 'disponivel'}">
                         <span class="premio-nome" style="text-align:left; flex-grow:2;">${v.valor_premio || v.premio_titulo || 'Prêmio'}</span>
                         ${v.reivindicada
                             ? `<span class="premio-status">${v.ganhador_nome ? v.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
                             : `<span class="premio-status">Disponível</span>`}
                     </div>
-                `);
+                `, '#btn-mostrar-menos-roleta');
             } else {
                 $('#secao-roleta-resultados').addClass('hidden');
             }
@@ -686,6 +714,7 @@
 
                 // Volta pra etapa 1 (telefone) toda vez que abre — mas já pré-preenche se tiver dado salvo
                 $('#form-checkout-dados').addClass('hidden');
+                $('#etapa-confirmar-comprador').addClass('hidden');
                 $('#form-checkout-telefone').removeClass('hidden');
                 const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
                 if (salvo?.telefone) $('#checkout-tel').val(salvo.telefoneFormatado || '');
@@ -752,13 +781,19 @@
 
             // ETAPA 1: telefone. Verifica se é um comprador conhecido antes de pedir o resto dos dados.
             let COMPRADOR_CONHECIDO = null;
+            let TELEFONE_ATUAL = null;
+            function formatarTelefoneExibicao(tel) {
+                const v = String(tel || '').replace(/\D/g, '');
+                if (v.length < 10) return tel;
+                return `(${v.slice(0, 2)}) ${v.slice(2, v.length - 4)}-${v.slice(-4)}`;
+            }
             $('#form-checkout-telefone').on('submit', function(e) {
                 e.preventDefault();
                 const tel = $('#checkout-tel').val();
                 if (!tel || tel.replace(/\D/g, '').length < 10) { notificar('Por favor, insira um telefone válido com DDD.', 'erro'); return; }
                 const telLimpo = tel.replace(/\D/g, '');
 
-                $('#btn-continuar-telefone').prop('disabled', true).text('Verificando...');
+                $('#btn-continuar-telefone').prop('disabled', true).text('Localizando comprador no sistema...');
                 $.ajax({
                     url: '/api/public/usuarios/verificar', type: 'POST', contentType: 'application/json',
                     data: JSON.stringify({ telefone: telLimpo })
@@ -778,8 +813,14 @@
                     $('#campo-endereco').toggleClass('hidden', !precisaEndereco);
 
                     if (!precisaNome && !precisaCpf && !precisaEmail && !precisaEndereco) {
-                        // Comprador já tem tudo — envia direto, sem nem mostrar a etapa 2
-                        finalizarCompra(telLimpo, COMPRADOR_CONHECIDO?.nome_completo || '', '', '', '');
+                        // Comprador já tem tudo — mostra a tela de confirmação (Finalizar Pedido / Usar outra conta)
+                        TELEFONE_ATUAL = telLimpo;
+                        $('#confirmar-qtd-cotas').text(quantidadeCotas);
+                        $('#confirmar-valor-total').text(formatarMoeda(quantidadeCotas * PRECO));
+                        $('#confirmar-nome-cliente').text(COMPRADOR_CONHECIDO?.nome_completo || '');
+                        $('#confirmar-tel-cliente').text(formatarTelefoneExibicao(telLimpo));
+                        $('#form-checkout-telefone').addClass('hidden');
+                        $('#etapa-confirmar-comprador').removeClass('hidden');
                     } else {
                         $('#form-checkout-telefone').addClass('hidden');
                         $('#form-checkout-dados').removeClass('hidden');
@@ -794,6 +835,21 @@
                     $('#form-checkout-telefone').addClass('hidden');
                     $('#form-checkout-dados').removeClass('hidden');
                 });
+            });
+
+            // ETAPA 1.5: comprador conhecido confirma os dados ou pede pra usar outra conta
+            $('#btn-finalizar-pedido-conhecido').on('click', function() {
+                finalizarCompra(TELEFONE_ATUAL, COMPRADOR_CONHECIDO?.nome_completo || '', '', '', '');
+            });
+            $('#btn-usar-outra-conta').on('click', function() {
+                $('#campo-nome').removeClass('hidden');
+                $('#campo-cpf').toggleClass('hidden', !SORTEIO_DATA.coletar_cpf);
+                $('#campo-email').toggleClass('hidden', !SORTEIO_DATA.coletar_email);
+                $('#campo-endereco').toggleClass('hidden', !SORTEIO_DATA.coletar_endereco);
+                $('#checkout-nome, #checkout-cpf, #checkout-email, #checkout-endereco').val('');
+                COMPRADOR_CONHECIDO = null;
+                $('#etapa-confirmar-comprador').addClass('hidden');
+                $('#form-checkout-dados').removeClass('hidden');
             });
 
             // ETAPA 2: dados adicionais (só o que faltava)

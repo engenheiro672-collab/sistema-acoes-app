@@ -387,7 +387,7 @@ async function getSorteioPublicData(slug, funilSlug) {
   const usuarioIdsBilhetes = [...new Set(bilhetes.filter(b => b.status === 'reivindicada').map(b => b.usuario_id).filter(Boolean))];
   const { data: usuariosBilhetes } = usuarioIdsBilhetes.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsBilhetes) : { data: [] };
   const usuarioMapBilhetes = (usuariosBilhetes || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
-  const bilhetesComNome = bilhetes.map(b => ({ ...b, ganhador_nome: b.status === 'reivindicada' ? (usuarioMapBilhetes[b.usuario_id] || null) : null }));
+  const bilhetesComNome = bilhetes.map(b => ({ ...b, ganhador_nome: b.status === 'reivindicada' ? (usuarioMapBilhetes[b.usuario_id] || b.nome_completo || null) : null }));
 
   // Roleta: nunca expõe o número do giro — só título/valor/nome de quem ganhou (igual ao site de referência)
   const roletaGanhas = roletaTodos.filter(r => r.status === 'reivindicada');
@@ -400,7 +400,7 @@ async function getSorteioPublicData(slug, funilSlug) {
     ganhas: roletaGanhas.length,
     // Lista completa (ganhas primeiro, depois disponíveis) — nunca inclui numero_cota
     lista: [
-      ...roletaGanhas.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: usuarioMapRoleta[r.usuario_id] || null, reivindicada: true })),
+      ...roletaGanhas.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: usuarioMapRoleta[r.usuario_id] || r.nome_completo || null, reivindicada: true })),
       ...roletaDisponiveis.map(r => ({ premio_titulo: r.premio_titulo, valor_premio: r.valor_premio, ganhador_nome: null, reivindicada: false }))
     ]
   };
@@ -1940,6 +1940,38 @@ app.post('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) =>
 });
 app.delete('/api/admin/premios/:id', ensureAdminAuth, async (req, res) => {
   try { const { error } = await supabase.from('bilhetes_premiados').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
+});
+// Marca manualmente um bilhete/roleta como já reivindicado (pra registrar ganhadores que saíram fora do fluxo normal de compra)
+app.post('/api/admin/premios/:id/marcar-reivindicado', ensureAdminAuth, async (req, res) => {
+  try {
+    const { nome_completo, telefone } = req.body || {};
+    if (!nome_completo) return fail(res, 'Nome do ganhador é obrigatório', 400);
+    const telefoneLimpo = String(telefone || '').replace(/\D/g, '') || null;
+
+    let usuario_id = null;
+    if (telefoneLimpo) {
+      const { data: existente } = await supabase.from('usuarios').select('id').eq('telefone', telefoneLimpo).maybeSingle();
+      if (existente) usuario_id = existente.id;
+      else {
+        const { data: novo } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo }).select('id').single();
+        usuario_id = novo?.id || null;
+      }
+    }
+
+    const { error } = await supabase.from('bilhetes_premiados').update({
+      status: 'reivindicada', usuario_id, reivindicada_em: new Date().toISOString(),
+      nome_completo: usuario_id ? null : nome_completo // fallback se não tiver telefone pra vincular usuário
+    }).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/premios/:id/desmarcar-reivindicado', ensureAdminAuth, async (req, res) => {
+  try {
+    const { error } = await supabase.from('bilhetes_premiados').update({ status: 'disponivel', usuario_id: null, pedido_id: null, reivindicada_em: null }).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
 });
 app.delete('/api/admin/sorteios/:id', ensureAdminAuth, async (req, res) => {
   try {
