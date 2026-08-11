@@ -536,6 +536,20 @@
                     <div><label class="text-sm text-gray-400">Nome do Sorteio</label><input name="nome" id="inp-nome" class="input-dark mt-1" required></div>
                     <div><label class="text-sm text-gray-400">Descrição</label><textarea name="descricao" id="inp-descricao" class="input-dark mt-1" rows="3"></textarea></div>
                     <div><label class="text-sm text-gray-400">Regulamento (aparece colapsado, abaixo dos botões de compra no site)</label><textarea name="regulamento" id="inp-regulamento" class="input-dark mt-1" rows="6" placeholder="Ex: Este sorteio é válido para maiores de 18 anos..."></textarea></div>
+
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mt-2">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold text-white">🚨 Aviso de Urgência</h4>
+                            <label class="toggle-switch"><input type="checkbox" name="notice_active" id="inp-notice-active"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-3">Banner com contagem regressiva que aparece logo abaixo do preço no site — ex: "CORRE QUE ESTÁ ACABANDO".</p>
+                        <input name="notice_title" id="inp-notice-title" class="input-dark mb-2" placeholder="Título (ex: 🚨CORRE QUE ESTÁ ACABANDO🚨)">
+                        <input name="notice_description" id="inp-notice-description" class="input-dark mb-2" placeholder="Descrição (ex: ⚠️ POUCOS NÚMEROS DÍSPONÍVEIS ⚠️)">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="text-xs text-gray-400">Início</label><input type="datetime-local" name="notice_init_at" id="inp-notice-init" class="input-dark mt-1"></div>
+                            <div><label class="text-xs text-gray-400">Fim (contagem regressiva)</label><input type="datetime-local" name="notice_end_at" id="inp-notice-end" class="input-dark mt-1"></div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-sm text-gray-400">Preço por cota</label><input name="preco_cota_display" id="inp-preco-display" class="input-dark mt-1" placeholder="R$ 0,00" oninput="mascaraMoeda(this)"><input type="hidden" name="preco_cota" id="inp-preco"></div>
                         <div><label class="text-sm text-gray-400">Total de Cotas</label>
@@ -1664,6 +1678,11 @@ function abrirFormSorteio(id) {
         $('#inp-nome').val(s.nome);
         $('#inp-descricao').val(s.descricao);
         $('#inp-regulamento').val(s.regulamento);
+        $('#inp-notice-active').prop('checked', !!s.notice_active);
+        $('#inp-notice-title').val(s.notice_title);
+        $('#inp-notice-description').val(s.notice_description);
+        $('#inp-notice-init').val(s.notice_init_at ? s.notice_init_at.slice(0, 16) : '');
+        $('#inp-notice-end').val(s.notice_end_at ? s.notice_end_at.slice(0, 16) : '');
         setMascaraMoedaValor(s.preco_cota);
         setTotalCotasValor(s.total_cotas);
         $('#inp-min').val(s.minimo_cotas_compra);
