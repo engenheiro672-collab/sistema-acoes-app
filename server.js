@@ -426,7 +426,10 @@ async function getSorteioPublicData(slug, funilSlug) {
   const { data: chancesDobroTodas } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true);
   const chance_dobro_ativa = (chancesDobroTodas || []).find(c => c.data_inicio <= nowISO2 && c.data_fim >= nowISO2) || null;
 
-  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa };
+  const { data: avisosTodos } = await supabase.from('avisos_urgencia').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true);
+  const aviso_urgencia_ativo = (avisosTodos || []).find(a => a.data_inicio <= nowISO2 && a.data_fim >= nowISO2) || null;
+
+  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo };
 }
 
 app.get('/api/public/sorteio/:slug', async (req, res) => {
@@ -1079,9 +1082,10 @@ app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
 
     const resultados = [];
     for (const link of (links || [])) {
-      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status').eq('link_id', link.id);
+      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status, expira_em').eq('link_id', link.id);
+      const nowISOLink = new Date().toISOString();
       const pagos = (pedidos || []).filter(p => p.status === 'pago');
-      const pendentes = (pedidos || []).filter(p => p.status === 'aguardando');
+      const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISOLink));
       const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const pendente = pendentes.reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const total_pedidos = (pedidos || []).length;
@@ -1149,7 +1153,7 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
       const nowISO = new Date().toISOString();
       const expirados = (pedidos || []).filter(p => p.status === 'aguardando' && p.expira_em && p.expira_em < nowISO).length;
       const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
-      const pendente = (pedidos || []).filter(p => p.status === 'aguardando').reduce((s, p) => s + Number(p.valor_total || 0), 0);
+      const pendente = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISO)).reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
       const conversao = cliques > 0 ? (pagos.length / cliques) * 100 : 0;
       // Link oficial (auto-direto do sorteio, sem funil) tem URL limpa; links criados manualmente usam ?lk=
@@ -1224,8 +1228,10 @@ app.post('/api/admin/sorteios/:id/roleta', ensureAdminAuth, async (req, res) => 
   try {
     const { id } = req.params;
     const { numero_cota, premio_titulo, valor_premio } = req.body || {};
+    const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', id).maybeSingle();
+    const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
     const { data, error } = await supabase.from('bilhetes_premiados').insert({
-      sorteio_id: id, numero_cota, premio_titulo, valor_premio: valor_premio || null, tipo: 'roleta', status: 'disponivel'
+      sorteio_id: id, numero_cota: numeroFormatado, premio_titulo, valor_premio: valor_premio || null, tipo: 'roleta', status: 'disponivel'
     }).select();
     if (error) return fail(res, error.message);
     return ok(res, data);
@@ -1285,14 +1291,59 @@ app.post('/api/admin/sorteios/:id/chance-dobro', ensureAdminAuth, async (req, re
 });
 app.put('/api/admin/chance-dobro/:id', ensureAdminAuth, async (req, res) => {
   try {
-    const { ativo } = req.body || {};
-    const { error } = await supabase.from('chance_dobro').update({ ativo: !!ativo }).eq('id', req.params.id);
+    const { ativo, titulo, data_inicio, data_fim } = req.body || {};
+    const payload = {};
+    if (ativo !== undefined) payload.ativo = !!ativo;
+    if (titulo !== undefined) payload.titulo = titulo;
+    if (data_inicio) payload.data_inicio = new Date(data_inicio).toISOString();
+    if (data_fim) payload.data_fim = new Date(data_fim).toISOString();
+    const { error } = await supabase.from('chance_dobro').update(payload).eq('id', req.params.id);
     if (error) return fail(res, error.message);
     return ok(res);
   } catch (e) { return fail(res); }
 });
 app.delete('/api/admin/chance-dobro/:id', ensureAdminAuth, async (req, res) => {
   try { const { error } = await supabase.from('chance_dobro').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
+});
+
+// ==================================================================
+// 🚨 AVISOS DE URGÊNCIA — banners com contagem regressiva (pode ter vários por sorteio)
+// ==================================================================
+app.get('/api/admin/sorteios/:id/avisos-urgencia', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data } = await supabase.from('avisos_urgencia').select('*').eq('sorteio_id', req.params.id).order('data_inicio', { ascending: false });
+    return ok(res, { lista: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/sorteios/:id/avisos-urgencia', ensureAdminAuth, async (req, res) => {
+  try {
+    const { titulo, descricao, data_inicio, data_fim, ativo } = req.body || {};
+    if (!data_inicio || !data_fim) return fail(res, 'Preencha o início e o fim do período', 400);
+    const { data, error } = await supabase.from('avisos_urgencia').insert({
+      sorteio_id: req.params.id, titulo: titulo || '🚨 CORRE QUE ESTÁ ACABANDO 🚨', descricao: descricao || null,
+      data_inicio: new Date(data_inicio).toISOString(), data_fim: new Date(data_fim).toISOString(),
+      ativo: ativo !== false
+    }).select().single();
+    if (error) return fail(res, error.message);
+    return ok(res, { aviso: data });
+  } catch (e) { return fail(res); }
+});
+app.put('/api/admin/avisos-urgencia/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { ativo, titulo, descricao, data_inicio, data_fim } = req.body || {};
+    const payload = {};
+    if (ativo !== undefined) payload.ativo = !!ativo;
+    if (titulo !== undefined) payload.titulo = titulo;
+    if (descricao !== undefined) payload.descricao = descricao;
+    if (data_inicio) payload.data_inicio = new Date(data_inicio).toISOString();
+    if (data_fim) payload.data_fim = new Date(data_fim).toISOString();
+    const { error } = await supabase.from('avisos_urgencia').update(payload).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/avisos-urgencia/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('avisos_urgencia').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
 });
 
 // Liga/desliga a roleta pra um sorteio sem precisar reenviar o formulário inteiro
@@ -1454,7 +1505,8 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     qf = baseFilter(qf);
     const { data: paid } = await qf;
 
-    let vp = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando');
+    const nowISOCards = new Date().toISOString();
+    let vp = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').gte('expira_em', nowISOCards);
     vp = baseFilter(vp);
     const { data: pend } = await vp;
 
@@ -1485,12 +1537,13 @@ app.get('/api/admin/dashboard/por-sorteio', ensureAdminAuth, async (req, res) =>
     const { data: sorteios } = await supabase.from('sorteios').select('id, nome').order('created_at', { ascending: false });
     const resultados = [];
     for (const s of (sorteios || [])) {
-      let qp = supabase.from('pedidos').select('valor_total, status').eq('sorteio_id', s.id);
+      let qp = supabase.from('pedidos').select('valor_total, status, expira_em').eq('sorteio_id', s.id);
       if (start_date) qp = qp.gte('created_at', start_date);
       if (end_date) qp = qp.lte('created_at', end_date);
       const { data: pedidos } = await qp;
+      const nowISORel = new Date().toISOString();
       const pagos = (pedidos || []).filter(p => p.status === 'pago');
-      const pendentes = (pedidos || []).filter(p => p.status === 'aguardando');
+      const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISORel));
       const faturamento = pagos.reduce((s2, p) => s2 + Number(p.valor_total || 0), 0);
       const pendente = pendentes.reduce((s2, p) => s2 + Number(p.valor_total || 0), 0);
       const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
@@ -1649,11 +1702,7 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       nome: body.nome,
       descricao: body.descricao,
       regulamento: body.regulamento || null,
-      notice_active: body.notice_active === true || body.notice_active === 'true' || body.notice_active === 'on',
-      notice_title: body.notice_title || null,
-      notice_description: body.notice_description || null,
-      notice_init_at: body.notice_init_at ? new Date(body.notice_init_at).toISOString() : null,
-      notice_end_at: body.notice_end_at ? new Date(body.notice_end_at).toISOString() : null,
+      // notice_* removidos daqui — agora é a tabela avisos_urgencia, gerenciada pela aba própria
       preco_cota: parseFloat(body.preco_cota) || 0,
       total_cotas: parseInt(normalizeNumber(body.total_cotas)),
       tempo_pagamento: parseInt(normalizeNumber(body.tempo_pagamento)),
@@ -1676,7 +1725,7 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       coletar_cpf: body.coletar_cpf === true || body.coletar_cpf === 'true' || body.coletar_cpf === 'on',
       coletar_email: body.coletar_email === true || body.coletar_email === 'true' || body.coletar_email === 'on',
       coletar_endereco: body.coletar_endereco === true || body.coletar_endereco === 'true' || body.coletar_endereco === 'on',
-      roleta_ativada: body.roleta_ativada === true || body.roleta_ativada === 'true' || body.roleta_ativada === 'on',
+      // roleta_ativada NÃO fica aqui — é gerenciado só pelo endpoint próprio /roleta-ativada (senão sobrescreve toda vez que salva o sorteio)
       roleta_pool_total: body.roleta_pool_total ? parseInt(body.roleta_pool_total) : 0,
       updated_at: new Date().toISOString()
     };
@@ -1898,7 +1947,9 @@ app.get('/api/admin/sorteios/:id/export', ensureAdminAuth, async (req, res) => {
 app.post('/api/admin/sorteios/:id/bloqueios', ensureAdminAuth, async (req, res) => {
   try {
     const { id } = req.params; const { numero_cota } = req.body;
-    const { data, error } = await supabase.from('cotas_bloqueadas').insert({ sorteio_id: id, numero_cota }).select();
+    const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', id).maybeSingle();
+    const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
+    const { data, error } = await supabase.from('cotas_bloqueadas').insert({ sorteio_id: id, numero_cota: numeroFormatado }).select();
     if (error) return fail(res, error.message); return ok(res, data);
   } catch (e) { return fail(res); }
 });
@@ -1917,7 +1968,9 @@ app.post('/api/admin/sorteios/:id/agendamentos', ensureAdminAuth, async (req, re
   try {
     const { numero_cota, liberar_em, condicao_tipo, condicao_quantidade } = req.body || {};
     if (!numero_cota || !liberar_em) return fail(res, 'Cota e data são obrigatórios', 400);
-    const payload = { sorteio_id: req.params.id, numero_cota, liberar_em: new Date(liberar_em).toISOString() };
+    const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', req.params.id).maybeSingle();
+    const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
+    const payload = { sorteio_id: req.params.id, numero_cota: numeroFormatado, liberar_em: new Date(liberar_em).toISOString() };
     if (condicao_tipo === 'acima' || condicao_tipo === 'abaixo') {
       payload.condicao_tipo = condicao_tipo;
       payload.condicao_quantidade = parseInt(condicao_quantidade) || null;
@@ -1934,8 +1987,24 @@ app.delete('/api/admin/agendamentos/:id', ensureAdminAuth, async (req, res) => {
 app.post('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) => {
   try {
     const { id } = req.params; const { numero_cota, premio_titulo, ativo } = req.body;
-    const { data, error } = await supabase.from('bilhetes_premiados').insert({ sorteio_id: id, numero_cota, premio_titulo, tipo: 'bilhete', status: 'disponivel', ativo: ativo !== false }).select();
+    const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', id).maybeSingle();
+    const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
+    const { data, error } = await supabase.from('bilhetes_premiados').insert({ sorteio_id: id, numero_cota: numeroFormatado, premio_titulo, tipo: 'bilhete', status: 'disponivel', ativo: ativo !== false }).select();
     if (error) return fail(res, error.message); return ok(res, data);
+  } catch (e) { return fail(res); }
+});
+app.put('/api/admin/premios/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { premio_titulo, ativo, numero_cota, sorteio_id } = req.body || {};
+    const payload = {};
+    if (premio_titulo !== undefined) payload.premio_titulo = premio_titulo;
+    if (ativo !== undefined) payload.ativo = !!ativo;
+    if (numero_cota !== undefined) {
+      const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', sorteio_id).maybeSingle();
+      payload.numero_cota = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
+    }
+    const { error } = await supabase.from('bilhetes_premiados').update(payload).eq('id', req.params.id);
+    if (error) return fail(res, error.message); return ok(res);
   } catch (e) { return fail(res); }
 });
 app.delete('/api/admin/premios/:id', ensureAdminAuth, async (req, res) => {

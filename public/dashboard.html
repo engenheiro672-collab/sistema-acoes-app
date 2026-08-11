@@ -187,6 +187,7 @@
             <li><a id="nav-bilhete-premiado" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('bilhete-premiado', this)"><i class="bi bi-ticket-detailed w-6 text-lg"></i> Bilhete Premiado</a></li>
             <li><a id="nav-roleta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('roleta', this)"><i class="bi bi-circle w-6 text-lg"></i> Roleta</a></li>
             <li><a id="nav-chance-dobro" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('chance-dobro', this)"><i class="bi bi-lightning-charge w-6 text-lg"></i> Chance em Dobro</a></li>
+            <li><a id="nav-urgencia" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('urgencia', this)"><i class="bi bi-exclamation-triangle w-6 text-lg"></i> Urgência</a></li>
             <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
             <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
             <li class="border-t border-gray-800 my-2"></li>
@@ -412,6 +413,33 @@
             </div>
         </div>
 
+        <!-- ===================== URGÊNCIA (aba própria) ===================== -->
+        <div id="page-urgencia" class="page-section">
+            <h2 class="text-2xl font-bold mb-2 text-center">🚨 Aviso de Urgência</h2>
+            <p class="text-sm opacity-60 mb-4 text-center">Banner com contagem regressiva no site — ex: "CORRE QUE ESTÁ ACABANDO". Pode ter vários avisos, cada um com seu período.</p>
+            <div class="flex justify-center mb-6">
+                <select id="select-urgencia-sorteio" class="input-dark text-lg text-center" style="max-width:400px; padding:14px;" onchange="selecionarSorteioUrgencia(this.value)"><option value="">Selecione um sorteio...</option></select>
+            </div>
+
+            <div id="urgencia-conteudo" class="hidden space-y-6 max-w-2xl mx-auto">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-3" id="urgencia-form-titulo">Criar novo aviso</h4>
+                    <input type="hidden" id="urg-edit-id" value="">
+                    <input id="urg-titulo" placeholder="Título (ex: 🚨 CORRE QUE ESTÁ ACABANDO 🚨)" class="input-dark mb-2">
+                    <input id="urg-descricao" placeholder="Descrição (ex: ⚠️ POUCOS NÚMEROS DÍSPONÍVEIS ⚠️)" class="input-dark mb-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div><label class="text-xs text-gray-400">Início</label><input id="urg-inicio" type="datetime-local" class="input-dark mt-1"></div>
+                        <div><label class="text-xs text-gray-400">Fim (contagem regressiva)</label><input id="urg-fim" type="datetime-local" class="input-dark mt-1"></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn-primary" id="urg-btn-salvar" onclick="salvarAvisoUrgencia()">Criar Aviso</button>
+                        <button type="button" class="text-gray-400 hover:text-white text-sm hidden" id="urg-btn-cancelar" onclick="cancelarEdicaoUrgencia()">Cancelar edição</button>
+                    </div>
+                </div>
+                <div id="lista-urgencia" class="space-y-3"></div>
+            </div>
+        </div>
+
 
         <!-- ===================== TOP COMPRADOR (aba própria) ===================== -->
         <div id="page-top-comprador" class="page-section">
@@ -537,19 +565,6 @@
                     <div><label class="text-sm text-gray-400">Descrição</label><textarea name="descricao" id="inp-descricao" class="input-dark mt-1" rows="3"></textarea></div>
                     <div><label class="text-sm text-gray-400">Regulamento (aparece colapsado, abaixo dos botões de compra no site)</label><textarea name="regulamento" id="inp-regulamento" class="input-dark mt-1" rows="6" placeholder="Ex: Este sorteio é válido para maiores de 18 anos..."></textarea></div>
 
-                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mt-2">
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="font-semibold text-white">🚨 Aviso de Urgência</h4>
-                            <label class="toggle-switch"><input type="checkbox" name="notice_active" id="inp-notice-active"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-3">Banner com contagem regressiva que aparece logo abaixo do preço no site — ex: "CORRE QUE ESTÁ ACABANDO".</p>
-                        <input name="notice_title" id="inp-notice-title" class="input-dark mb-2" placeholder="Título (ex: 🚨CORRE QUE ESTÁ ACABANDO🚨)">
-                        <input name="notice_description" id="inp-notice-description" class="input-dark mb-2" placeholder="Descrição (ex: ⚠️ POUCOS NÚMEROS DÍSPONÍVEIS ⚠️)">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div><label class="text-xs text-gray-400">Início</label><input type="datetime-local" name="notice_init_at" id="inp-notice-init" class="input-dark mt-1"></div>
-                            <div><label class="text-xs text-gray-400">Fim (contagem regressiva)</label><input type="datetime-local" name="notice_end_at" id="inp-notice-end" class="input-dark mt-1"></div>
-                        </div>
-                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-sm text-gray-400">Preço por cota</label><input name="preco_cota_display" id="inp-preco-display" class="input-dark mt-1" placeholder="R$ 0,00" oninput="mascaraMoeda(this)"><input type="hidden" name="preco_cota" id="inp-preco"></div>
                         <div><label class="text-sm text-gray-400">Total de Cotas</label>
@@ -1222,6 +1237,7 @@ $('#btn-fechar-menu-mobile').on('click', fecharMenuMobile);
 $('#overlay-menu-mobile').on('click', fecharMenuMobile);
 
 function navTo(page, el) {
+    localStorage.setItem('dashboard_ultima_pagina', page);
     $('.page-section').removeClass('active');
     $('#page-' + page).addClass('active');
     $('.sidebar-item').removeClass('active');
@@ -1237,7 +1253,7 @@ function navTo(page, el) {
     if (page === 'clientes') { carregarClientes(); }
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
-    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
     if (page === 'gateway') { carregarGateway(); }
     if (page === 'marketing') { carregarMarketing(); }
     if (page === 'minha-conta') { carregarConta(); }
@@ -1255,7 +1271,7 @@ function popularSelectsSorteios() {
     const opts = '<option value="">Todos</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
     $('.select-sorteio-dash').html(opts);
     const optsEscolha = '<option value="">Selecione um sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
-    $('#select-bilhete-sorteio, #select-roleta-sorteio, #select-chance-sorteio').html(optsEscolha);
+    $('#select-bilhete-sorteio, #select-roleta-sorteio, #select-chance-sorteio, #select-urgencia-sorteio').html(optsEscolha);
 }
 
 // ---------------- PERÍODO (presets + datas customizadas) ----------------
@@ -1678,11 +1694,7 @@ function abrirFormSorteio(id) {
         $('#inp-nome').val(s.nome);
         $('#inp-descricao').val(s.descricao);
         $('#inp-regulamento').val(s.regulamento);
-        $('#inp-notice-active').prop('checked', !!s.notice_active);
-        $('#inp-notice-title').val(s.notice_title);
-        $('#inp-notice-description').val(s.notice_description);
-        $('#inp-notice-init').val(s.notice_init_at ? s.notice_init_at.slice(0, 16) : '');
-        $('#inp-notice-end').val(s.notice_end_at ? s.notice_end_at.slice(0, 16) : '');
+
         setMascaraMoedaValor(s.preco_cota);
         setTotalCotasValor(s.total_cotas);
         $('#inp-min').val(s.minimo_cotas_compra);
@@ -1870,6 +1882,12 @@ function addPremio() {
     });
 }
 function removerPremio(id) { api('DELETE', `/api/admin/premios/${id}`).then(() => carregarPremios(SORTEIO_BILHETE_ID)); }
+function removerRoletaPremio(id) {
+    confirmar('Excluir prêmio da roleta', 'Não pode ser desfeito.').then(yes => {
+        if (!yes) return;
+        api('DELETE', `/api/admin/premios/${id}`).then(() => carregarRoleta(SORTEIO_ROLETA_ID));
+    });
+}
 
 // ---- Bloqueios / Liberação (com condição de quantidade) ----
 function carregarBloqueios(sorteioId) {
@@ -1938,7 +1956,7 @@ function carregarRoleta(sorteioId) {
         const data = d.roleta || [];
         $('#lista-roleta').html(data.map(p => {
             const inativo = p.ativo === false ? ' opacity-40' : '';
-            return `<div class="p-2 bg-gray-800 rounded flex justify-between items-center${inativo}"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span> ${p.valor_premio ? `<span class="text-yellow-400 text-xs ml-2">${p.valor_premio}</span>` : ''} ${p.ativo === false ? '<span class="badge badge-outro ml-2">Inativo</span>' : ''}</div><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerPremio('${p.id}')">Remover</button></div>`;
+            return `<div class="p-2 bg-gray-800 rounded flex justify-between items-center${inativo}"><div><b>${p.numero_cota}</b> — <span class="text-gray-400">${p.premio_titulo || ''}</span> ${p.valor_premio ? `<span class="text-yellow-400 text-xs ml-2">${p.valor_premio}</span>` : ''} ${p.ativo === false ? '<span class="badge badge-outro ml-2">Inativo</span>' : ''}</div><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerRoletaPremio('${p.id}')">Remover</button></div>`;
         }).join('') || '<p class="text-gray-400 text-sm">Nenhum item de roleta configurado.</p>');
     });
 }
@@ -2044,6 +2062,89 @@ function toggleChanceDobro(id, ativo) {
 }
 function removerChanceDobro(id) {
     confirmar('Excluir período', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/chance-dobro/${id}`).then(() => carregarChanceDobro(SORTEIO_CHANCE_ID)); });
+}
+
+// ==================== URGÊNCIA (página própria) ====================
+let SORTEIO_URGENCIA_ID = null;
+function selecionarSorteioUrgencia(id) {
+    SORTEIO_URGENCIA_ID = id || null;
+    $('#urgencia-conteudo').toggleClass('hidden', !id);
+    if (id) carregarUrgencia(id);
+}
+function carregarUrgencia(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/avisos-urgencia`).then(d => {
+        const lista = d.lista || [];
+        const agora = new Date();
+        $('#lista-urgencia').html(lista.map(a => {
+            const inicio = new Date(a.data_inicio), fim = new Date(a.data_fim);
+            const status = !a.ativo ? '<span class="badge badge-outro">Desativado</span>' : (agora < inicio ? '<span class="badge badge-ads">Agendado</span>' : (agora > fim ? '<span class="badge badge-outro">Encerrado</span>' : '<span class="badge badge-organico">Ativo agora</span>'));
+            return `
+                <div class="funil-card">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1 flex-wrap"><h4 class="font-semibold text-white">${a.titulo}</h4> ${status}</div>
+                            ${a.descricao ? `<p class="text-sm text-gray-400">${a.descricao}</p>` : ''}
+                            <p class="text-xs text-gray-500 mt-1">De ${inicio.toLocaleString('pt-BR')} até ${fim.toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div class="flex gap-2 flex-shrink-0">
+                            <label class="toggle-switch"><input type="checkbox" ${a.ativo ? 'checked' : ''} onchange="toggleUrgencia('${a.id}', this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <button class="text-purple-300 hover:text-purple-200" onclick="editarUrgencia('${a.id}')"><i class="bi bi-pencil"></i></button>
+                            <button class="text-red-400 hover:text-red-300" onclick="removerUrgencia('${a.id}')"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('') || '<p class="opacity-60 text-sm">Nenhum aviso criado ainda.</p>');
+    });
+}
+function salvarAvisoUrgencia() {
+    const editId = $('#urg-edit-id').val();
+    const titulo = $('#urg-titulo').val();
+    const descricao = $('#urg-descricao').val();
+    const data_inicio = $('#urg-inicio').val();
+    const data_fim = $('#urg-fim').val();
+    if (!SORTEIO_URGENCIA_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
+    if (!data_inicio || !data_fim) return notificar('Preencha o início e o fim.', 'erro');
+    if (new Date(data_fim) <= new Date(data_inicio)) return notificar('O fim precisa ser depois do início.', 'erro');
+
+    const payload = { titulo, descricao, data_inicio, data_fim };
+    const chamada = editId
+        ? api('PUT', `/api/admin/avisos-urgencia/${editId}`, payload)
+        : api('POST', `/api/admin/sorteios/${SORTEIO_URGENCIA_ID}/avisos-urgencia`, payload);
+
+    chamada.then(() => {
+        cancelarEdicaoUrgencia();
+        carregarUrgencia(SORTEIO_URGENCIA_ID);
+        notificar(editId ? 'Aviso atualizado!' : 'Aviso criado!', 'sucesso');
+    }).catch(err => notificar(err.error || 'Erro ao salvar', 'erro'));
+}
+function editarUrgencia(id) {
+    api('GET', `/api/admin/sorteios/${SORTEIO_URGENCIA_ID}/avisos-urgencia`).then(d => {
+        const aviso = (d.lista || []).find(a => a.id === id);
+        if (!aviso) return;
+        $('#urg-edit-id').val(aviso.id);
+        $('#urg-titulo').val(aviso.titulo);
+        $('#urg-descricao').val(aviso.descricao);
+        $('#urg-inicio').val(aviso.data_inicio ? aviso.data_inicio.slice(0, 16) : '');
+        $('#urg-fim').val(aviso.data_fim ? aviso.data_fim.slice(0, 16) : '');
+        $('#urgencia-form-titulo').text('Editando aviso');
+        $('#urg-btn-salvar').text('Salvar alterações');
+        $('#urg-btn-cancelar').removeClass('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
+function cancelarEdicaoUrgencia() {
+    $('#urg-edit-id').val('');
+    $('#urg-titulo, #urg-descricao, #urg-inicio, #urg-fim').val('');
+    $('#urgencia-form-titulo').text('Criar novo aviso');
+    $('#urg-btn-salvar').text('Criar Aviso');
+    $('#urg-btn-cancelar').addClass('hidden');
+}
+function toggleUrgencia(id, ativo) {
+    api('PUT', `/api/admin/avisos-urgencia/${id}`, { ativo }).then(() => carregarUrgencia(SORTEIO_URGENCIA_ID));
+}
+function removerUrgencia(id) {
+    confirmar('Excluir aviso', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/avisos-urgencia/${id}`).then(() => carregarUrgencia(SORTEIO_URGENCIA_ID)); });
 }
 
 // ---- FUNIS (nova funcionalidade) ----
@@ -2874,7 +2975,12 @@ $(document).ready(function() {
         PERIODO_ESTADO.dash.de = p0.de; PERIODO_ESTADO.dash.ate = p0.ate;
         PERIODO_ESTADO.rel.de = p0.de; PERIODO_ESTADO.rel.ate = p0.ate;
         carregarSorteios();
-        carregarDashboard();
+        const ultimaPagina = localStorage.getItem('dashboard_ultima_pagina');
+        if (ultimaPagina && ultimaPagina !== 'dashboard' && $('#page-' + ultimaPagina).length) {
+            navTo(ultimaPagina);
+        } else {
+            carregarDashboard();
+        }
         carregarNotificacoes(true);
         setInterval(() => carregarNotificacoes(true), 30000);
     });

@@ -458,27 +458,20 @@
 
 
         let urgenciaInterval = null;
-        function iniciarUrgencia(sorteio) {
+        function iniciarUrgencia(aviso) {
             clearInterval(urgenciaInterval);
-            const agora = Date.now();
-            const inicio = sorteio.notice_init_at ? new Date(sorteio.notice_init_at).getTime() : null;
-            const fim = sorteio.notice_end_at ? new Date(sorteio.notice_end_at).getTime() : null;
-            const ativo = sorteio.notice_active && (!inicio || agora >= inicio) && (!fim || agora <= fim);
+            if (!aviso) { $('#banner-urgencia').addClass('hidden'); return; }
 
-            if (!ativo) { $('#banner-urgencia').addClass('hidden'); return; }
+            const inicio = new Date(aviso.data_inicio).getTime();
+            const fim = new Date(aviso.data_fim).getTime();
 
-            $('#urgencia-titulo').text(sorteio.notice_title || '🚨 CORRE QUE ESTÁ ACABANDO 🚨');
-            $('#urgencia-descricao').text(sorteio.notice_description || '');
-            if (inicio && fim) {
-                const fmt = ts => new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
-                $('#urgencia-validade').text(`Válido de ${fmt(inicio)} até ${fmt(fim)}`);
-            } else {
-                $('#urgencia-validade').text('');
-            }
+            $('#urgencia-titulo').text(aviso.titulo || '🚨 CORRE QUE ESTÁ ACABANDO 🚨');
+            $('#urgencia-descricao').text(aviso.descricao || '');
+            const fmt = ts => new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
+            $('#urgencia-validade').text(`Válido de ${fmt(inicio)} até ${fmt(fim)}`);
             $('#banner-urgencia').removeClass('hidden');
 
             function atualizar() {
-                if (!fim) { $('#urgencia-barra-tempo').hide(); return; }
                 const restanteMs = fim - Date.now();
                 if (restanteMs <= 0) { $('#banner-urgencia').addClass('hidden'); clearInterval(urgenciaInterval); return; }
                 const h = Math.floor(restanteMs / 3600000);
@@ -486,10 +479,8 @@
                 const s = Math.floor((restanteMs % 60000) / 1000);
                 $('#urgencia-contagem').text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
                 // Preenche a barra conforme o tempo já passou (do início até agora) — igual ao efeito visual da referência
-                if (inicio) {
-                    const percentualDecorrido = Math.min(100, Math.max(0, ((Date.now() - inicio) / (fim - inicio)) * 100));
-                    $('#urgencia-fill').css('width', percentualDecorrido + '%');
-                }
+                const percentualDecorrido = Math.min(100, Math.max(0, ((Date.now() - inicio) / (fim - inicio)) * 100));
+                $('#urgencia-fill').css('width', percentualDecorrido + '%');
             }
             atualizar();
             urgenciaInterval = setInterval(atualizar, 1000);
@@ -573,7 +564,7 @@
 
             // Essas três são "extras" — se alguma falhar, não pode derrubar o resto da página
             try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
-            try { iniciarUrgencia(sorteio); } catch (e) { console.error('iniciarUrgencia', e); }
+            try { iniciarUrgencia(data.aviso_urgencia_ativo); } catch (e) { console.error('iniciarUrgencia', e); }
             try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
             try { renderRedesSociaisFlutuantes(data.redes_sociais); } catch (e) { console.error('renderRedesSociaisFlutuantes', e); }
 
