@@ -14,7 +14,7 @@
         .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
         #logo-box img { max-height: 40px; max-width: 280px; }
         .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
-        .title-bar { background-color: #1a1a1a; color: #fff; }
+        .title-bar { color: #fff; }
         .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 600; font-size: 0.8125rem; padding: 8px 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-transform: uppercase; }
         .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
         @media (max-width: 480px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; padding: 0.75rem; } .cota-num { font-size: 1.6rem !important; } .cota-label { font-size: 0.7rem !important; } }
@@ -53,9 +53,8 @@
         .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); }
         .caption-header .tag-ending { margin-top: 4px; margin-bottom: 4px; align-self: flex-start; }
         .caption-header h1 { font-weight: 700; font-size: 1.4rem; line-height: 1.25; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
-        .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.75rem; font-weight: 500; height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; display: inline-block; animation: blink 2s infinite; }
+        .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.95rem; font-weight: 600; height: 32px; line-height: 32px; padding: 0 14px; border-radius: 8px; display: inline-block; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-        @keyframes pulse-opacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.88; } }
         .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 16px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
         .countdown-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
         .countdown-subtitle { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin: 0; }
@@ -64,7 +63,8 @@
         .urgencia-tempo-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.35); border-radius: 999px; transition: width 1s linear; }
         .urgencia-tempo-texto { position: relative; z-index: 2; height: 34px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #fff; }
         .time-number-inline { font-weight: 800; }
-        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 94%; overflow: hidden; }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.015); } }
+        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 86%; overflow: visible; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
         .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
@@ -75,10 +75,10 @@
         .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
         @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
         /* Carrossel de imagens */
-        .carrossel { position: relative; overflow: hidden; height: 350px; max-height: 350px; }
+        .carrossel { position: relative; overflow: hidden; height: 310px; max-height: 310px; margin-top: -1px; }
         .carrossel-track { display: flex; transition: transform 0.35s ease; }
         .carrossel-slide { width: 100%; flex-shrink: 0; }
-        .carrossel-slide img, #sorteio-img { width: 100%; height: 350px !important; max-height: 350px !important; object-fit: cover; display: block; }
+        .carrossel-slide img, #sorteio-img { width: 100%; height: 310px !important; max-height: 310px !important; object-fit: cover; display: block; filter: contrast(1.08) saturate(1.12) brightness(1.02); }
         .carrossel-dots { position: absolute; bottom: 8px; left: 0; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 10; }
         .carrossel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; }
         .carrossel-dot.active { background: #fff; }
@@ -99,7 +99,7 @@
             <button id="btn-menu" class="text-gray-300 hover:text-white text-xl"><i class="bi bi-list"></i></button>
         </nav>
         <div id="menu-dropdown" class="menu-dropdown hidden">
-            <button id="menu-meus-titulos"><i class="bi bi-cart"></i> Meus Títulos</button>
+            <button id="menu-meus-titulos"><i class="bi bi-cart3"></i> Meus Títulos</button>
             <a id="menu-whatsapp-suporte" href="#" target="_blank" class="hidden"><i class="bi bi-whatsapp"></i> Suporte via WhatsApp</a>
         </div>
     </header>
@@ -118,12 +118,12 @@
         </section>
 
         <button id="btn-meus-numeros" class="btn-meus-titulos-full">
-            <i class="bi bi-cart"></i> Meus títulos
+            <i class="bi bi-cart3"></i> Meus títulos
         </button>
 
         <div class="title-bar flex justify-center items-center p-4">
             <h6 style="margin:0; font-weight:600; font-size:12.3px; color:#fff;">Por apenas</h6>
-            <span id="preco-cota" style="margin-left:8px; height:22px; line-height:22px; padding:0 8px; border-radius:6px; background:#000; color:#fff; font-weight:700; font-size:1rem; border:1px solid rgba(145,158,171,0.32); white-space:nowrap;">R$ 0,00</span>
+            <span id="preco-cota" style="margin-left:8px; min-height:26px; padding:4px 10px; border-radius:6px; background:#000; color:#fff; font-weight:700; font-size:1rem; white-space:nowrap; display:inline-flex; align-items:center; line-height:1;">R$ 0,00</span>
         </div>
 
         <div id="banner-urgencia" class="mx-4 mt-4 hidden countdown-card">
@@ -507,7 +507,7 @@
 
             $('#cota-grid').html(botoes.slice(0, 6).map(b => `
                 <div class="cota-btn btn-add-cota ${b.popular ? 'popular' : ''}" data-qtd="${b.valor}">
-                    ${b.popular ? '<span class="cota-badge">Popular</span>' : ''}
+                    ${b.popular ? '<span class="cota-badge">Mais popular</span>' : ''}
                     <div class="cota-num ${b.popular ? 'text-[#15803D]' : ''}">+${b.valor}</div>
                     <div class="cota-label ${b.popular ? 'text-[#15803D]' : ''}">SELECIONAR</div>
                 </div>
@@ -557,12 +557,12 @@
                     <div class="combo-roleta combo-pulse">
                         <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
                             <div style="min-width:0;">
-                                <div class="text-xs text-green-100" style="line-height:1.1;">A cada</div>
-                                <div class="text-lg font-bold text-white" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
+                                <div class="text-sm text-green-100" style="line-height:1.1;">A cada</div>
+                                <div class="text-xl font-bold text-white" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
                             </div>
-                            <div class="text-base font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
+                            <div class="text-lg font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
                         </div>
-                        <div class="text-[0.65rem] text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
+                        <div class="text-xs text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
                     </div>
                 `).join(''));
             } else {
