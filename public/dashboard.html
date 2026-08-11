@@ -201,6 +201,7 @@
             <li><a id="nav-chance-dobro" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('chance-dobro', this)"><i class="bi bi-lightning-charge w-6 text-lg"></i> Chance em Dobro</a></li>
             <li><a id="nav-urgencia" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('urgencia', this)"><i class="bi bi-exclamation-triangle w-6 text-lg"></i> Urgência</a></li>
             <li><a id="nav-promocoes" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('promocoes', this)"><i class="bi bi-tags w-6 text-lg"></i> Promoções</a></li>
+            <li><a id="nav-push" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('push', this)"><i class="bi bi-bell w-6 text-lg"></i> Notificação Push</a></li>
             <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
             <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
             <li class="border-t border-gray-800 my-2"></li>
@@ -503,6 +504,47 @@
                     </div>
                 </div>
                 <div id="lista-promocoes" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- ===================== NOTIFICAÇÃO PUSH ===================== -->
+        <div id="page-push" class="page-section">
+            <h2 class="text-2xl font-bold mb-2 text-center">🔔 Notificação Push</h2>
+            <p class="text-sm opacity-60 mb-6 text-center">Manda notificação direto pra tela de bloqueio do celular de quem ativou — mesmo com o site fechado.</p>
+
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-semibold text-white">Ativar o banner "Ativar Notificação" no site</h4>
+                        <p class="text-xs text-gray-500">Enquanto desligada, o banner não aparece em lugar nenhum do site.</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="inp-push-ativo" onchange="salvarPushAtivo()"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="metric-card"><i class="bi bi-bell-fill metric-icon text-green-400"></i><p class="text-sm opacity-60">Ativos agora</p><p class="text-2xl font-bold text-green-400" id="push-stat-ativos">0</p></div>
+                    <div class="metric-card"><i class="bi bi-bell-slash metric-icon text-red-400"></i><p class="text-sm opacity-60">Desativados</p><p class="text-2xl font-bold text-red-400" id="push-stat-desativados">0</p></div>
+                    <div class="metric-card"><i class="bi bi-people metric-icon text-blue-400"></i><p class="text-sm opacity-60">Total já inscrito</p><p class="text-2xl font-bold text-blue-400" id="push-stat-total">0</p></div>
+                </div>
+
+                <div id="push-aviso-nao-configurado" class="hidden bg-yellow-900/30 border border-yellow-700 rounded-xl p-4 text-sm text-yellow-300">
+                    ⚠️ As chaves de segurança (VAPID) ainda não foram configuradas no servidor. Rode <code class="bg-black/30 px-1 rounded">node scripts/gerar-chaves-push.js</code> e adicione o resultado nas variáveis de ambiente antes de disparar notificações.
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-3">Criar novo disparo</h4>
+                    <select id="push-sorteio" class="select-sorteio-dash input-dark mb-2"><option value="">Sem sorteio específico (link livre)</option></select>
+                    <input id="push-titulo" class="input-dark mb-2" placeholder="Título (ex: 🔥 Chance em Dobro ativa agora!)">
+                    <textarea id="push-mensagem" class="input-dark mb-2" rows="2" placeholder="Mensagem (ex: Compre até meia-noite e leve o dobro de títulos!)"></textarea>
+                    <input id="push-imagem" class="input-dark mb-2" placeholder="URL da imagem (opcional)">
+                    <input id="push-link" class="input-dark mb-3" placeholder="Link de destino ao clicar (ex: /sorteio/meu-sorteio)">
+                    <button type="button" class="btn-primary w-full" onclick="dispararPush()"><i class="bi bi-send"></i> Enviar Notificação Agora</button>
+                </div>
+
+                <div>
+                    <h4 class="font-semibold text-white mb-3">Últimos disparos</h4>
+                    <div id="lista-push-disparos" class="space-y-2"></div>
+                </div>
             </div>
         </div>
 
@@ -1348,7 +1390,8 @@ function navTo(page, el) {
     if (page === 'clientes') { carregarClientes(); }
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
-    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'push') { carregarPagePush(); }
     if (page === 'gateway') { carregarGateway(); }
     if (page === 'marketing') { carregarMarketing(); }
     if (page === 'minha-conta') { carregarConta(); }
@@ -1364,9 +1407,10 @@ function mudarTab(tab, el) {
 // ---------------- DASHBOARD ----------------
 function popularSelectsSorteios() {
     const opts = '<option value="">Todos</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
-    $('.select-sorteio-dash').html(opts);
+    $('.select-sorteio-dash').not('#push-sorteio').html(opts);
     const optsEscolha = '<option value="">Selecione um sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
     $('#select-bilhete-sorteio, #select-roleta-sorteio, #select-chance-sorteio, #select-urgencia-sorteio, #select-promo-sorteio').html(optsEscolha);
+    $('#push-sorteio').html('<option value="">Sem sorteio específico (link livre)</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
 }
 
 // ---------------- PERÍODO (presets + datas customizadas) ----------------
@@ -2486,6 +2530,60 @@ function togglePromocao(id, ativo) {
 }
 function removerPromocao(id) {
     confirmar('Excluir promoção', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/promocoes/${id}`).then(() => carregarPromocoes(SORTEIO_PROMO_ID)); });
+}
+
+// ==================== NOTIFICAÇÃO PUSH ====================
+function carregarPagePush() {
+    api('GET', '/api/admin/push/config').then(d => {
+        $('#inp-push-ativo').prop('checked', !!d.ativo);
+        $('#push-aviso-nao-configurado').toggleClass('hidden', !!d.configurado);
+    });
+    api('GET', '/api/admin/push/stats').then(d => {
+        $('#push-stat-ativos').text(d.ativos || 0);
+        $('#push-stat-desativados').text(d.desativados || 0);
+        $('#push-stat-total').text(d.total || 0);
+    });
+    api('GET', '/api/admin/push/disparos').then(d => {
+        const lista = d.lista || [];
+        $('#lista-push-disparos').html(lista.map(disp => `
+            <div class="funil-card">
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <h4 class="font-semibold text-white">${disp.titulo}</h4>
+                        <p class="text-sm text-gray-400">${disp.mensagem || ''}</p>
+                        <p class="text-xs text-gray-500 mt-1">${disp.sorteios?.nome ? `📌 ${disp.sorteios.nome} · ` : ''}${new Date(disp.created_at).toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <div class="text-sm text-green-400 font-semibold">${disp.total_enviado || 0} enviados</div>
+                        <div class="text-xs text-purple-300">${disp.total_clicado || 0} clicaram</div>
+                    </div>
+                </div>
+            </div>
+        `).join('') || '<p class="opacity-60 text-sm">Nenhum disparo ainda.</p>');
+    });
+}
+function salvarPushAtivo() {
+    const ativo = $('#inp-push-ativo').is(':checked');
+    api('POST', '/api/admin/push/config', { ativo }).then(() => {
+        notificar(ativo ? 'Banner de notificação ativado no site!' : 'Banner de notificação desativado.', 'sucesso');
+    });
+}
+function dispararPush() {
+    const titulo = $('#push-titulo').val();
+    const mensagem = $('#push-mensagem').val();
+    const imagem_url = $('#push-imagem').val();
+    const link_destino = $('#push-link').val();
+    const sorteio_id = $('#push-sorteio').val() || null;
+    if (!titulo) return notificar('Escreva um título pra notificação.', 'erro');
+
+    confirmar('Enviar notificação agora', `Vai ser enviada pra todo mundo que estiver com a notificação ativa. Confirma o envio de "${titulo}"?`).then(yes => {
+        if (!yes) return;
+        api('POST', '/api/admin/push/disparar', { titulo, mensagem, imagem_url, link_destino, sorteio_id }).then(d => {
+            notificar(`Enviado pra ${d.enviados} de ${d.total_inscritos} inscritos!`, 'sucesso');
+            $('#push-titulo, #push-mensagem, #push-imagem, #push-link').val('');
+            carregarPagePush();
+        }).catch(err => notificar(err.error || 'Erro ao disparar notificação.', 'erro'));
+    });
 }
 
 // ---- FUNIS (nova funcionalidade) ----
