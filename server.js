@@ -52,6 +52,27 @@ function padCota(numero, totalCotas) {
   return String(numero).padStart(digits, '0');
 }
 
+// Corrige automaticamente bilhetes/roleta que ainda estão marcados como "disponível" mas cuja cota
+// já foi vendida de verdade (ex: cadastrado depois da compra, ou criado antes dessa verificação existir).
+// Roda em toda leitura, então nunca fica "preso" desatualizado.
+async function sincronizarBilhetesComCotasVendidas(sorteioId) {
+  try {
+    const { data: pendentes } = await supabase.from('bilhetes_premiados').select('id, numero_cota').eq('sorteio_id', sorteioId).eq('status', 'disponivel');
+    if (!pendentes || pendentes.length === 0) return;
+    const numeros = pendentes.map(p => p.numero_cota);
+    const { data: cotasVendidas } = await supabase.from('cotas').select('numero_cota, user_id, pedido_id').eq('sorteio_id', sorteioId).in('numero_cota', numeros);
+    if (!cotasVendidas || cotasVendidas.length === 0) return;
+    const vendidaMap = cotasVendidas.reduce((acc, c) => (acc[c.numero_cota] = c, acc), {});
+    const agora = new Date().toISOString();
+    await Promise.all(pendentes.filter(p => vendidaMap[p.numero_cota]).map(p => {
+      const c = vendidaMap[p.numero_cota];
+      return supabase.from('bilhetes_premiados').update({
+        status: 'reivindicada', usuario_id: c.user_id || null, pedido_id: c.pedido_id || null, reivindicada_em: agora
+      }).eq('id', p.id);
+    }));
+  } catch (e) { console.error('sincronizarBilhetesComCotasVendidas', e); }
+}
+
 async function safeUpdatePedidos(id, payload) {
   try {
     const { data, error } = await supabase.from('pedidos').update(payload).eq('id', id);
@@ -369,6 +390,8 @@ app.get('/api/public/inicio', async (_req, res) => {
 async function getSorteioPublicData(slug, funilSlug) {
   const { data: sorteio } = await supabase.from('sorteios').select('*').eq('slug', slug).maybeSingle();
   if (!sorteio) return null;
+
+  await sincronizarBilhetesComCotasVendidas(sorteio.id);
 
   const [{ count: vendidas }, { data: bloqueadas }, { data: agendadas }] = await Promise.all([
     supabase.from('cotas').select('*', { head: true, count: 'exact' }).eq('sorteio_id', sorteio.id),
@@ -1227,6 +1250,7 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
 
 app.get('/api/admin/sorteios/:id/roleta', ensureAdminAuth, async (req, res) => {
   try {
+    await sincronizarBilhetesComCotasVendidas(req.params.id);
     const { data } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', req.params.id).eq('tipo', 'roleta').order('created_at', { ascending: true });
     const itens = data || [];
     const usuarioIds = [...new Set(itens.map(b => b.usuario_id).filter(Boolean))];
@@ -1243,9 +1267,19 @@ app.post('/api/admin/sorteios/:id/roleta', ensureAdminAuth, async (req, res) => 
     const { numero_cota, premio_titulo, valor_premio } = req.body || {};
     const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', id).maybeSingle();
     const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
-    const { data, error } = await supabase.from('bilhetes_premiados').insert({
-      sorteio_id: id, numero_cota: numeroFormatado, premio_titulo, valor_premio: valor_premio || null, tipo: 'roleta', status: 'disponivel'
-    }).select();
+
+    const { data: cotaVendida } = await supabase.from('cotas').select('user_id, pedido_id').eq('sorteio_id', id).eq('numero_cota', numeroFormatado).maybeSingle();
+    const payload = { sorteio_id: id, numero_cota: numeroFormatado, premio_titulo, valor_premio: valor_premio || null, tipo: 'roleta' };
+    if (cotaVendida) {
+      payload.status = 'reivindicada';
+      payload.usuario_id = cotaVendida.user_id || null;
+      payload.pedido_id = cotaVendida.pedido_id || null;
+      payload.reivindicada_em = new Date().toISOString();
+    } else {
+      payload.status = 'disponivel';
+    }
+
+    const { data, error } = await supabase.from('bilhetes_premiados').insert(payload).select().single();
     if (error) return fail(res, error.message);
     return ok(res, data);
   } catch (e) { return fail(res); }
@@ -1412,7 +1446,7 @@ app.post('/api/admin/sorteios/:id/roleta-tiers', ensureAdminAuth, async (req, re
   try {
     const { minimo_cotas, quantidade_giros } = req.body || {};
     if (!minimo_cotas || !quantidade_giros) return fail(res, 'Preencha os dois campos', 400);
-    const { data, error } = await supabase.from('roleta_tiers').insert({ sorteio_id: req.params.id, minimo_cotas, quantidade_giros }).select();
+    const { data, error } = await supabase.from('roleta_tiers').insert({ sorteio_id: req.params.id, minimo_cotas, quantidade_giros }).select().single();
     if (error) return fail(res, error.message);
     return ok(res, data);
   } catch (e) { return fail(res); }
@@ -1636,6 +1670,7 @@ app.get('/api/admin/dashboard/vendas-diarias', ensureAdminAuth, async (req, res)
 app.get('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    await sincronizarBilhetesComCotasVendidas(id);
     const { data } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', id).eq('tipo', 'bilhete').order('created_at', { ascending: true });
     const bilhetes = data || [];
     const usuarioIds = [...new Set(bilhetes.map(b => b.usuario_id).filter(Boolean))];
@@ -2031,12 +2066,12 @@ app.post('/api/admin/sorteios/:id/bloqueios', ensureAdminAuth, async (req, res) 
     const { id } = req.params; const { numero_cota } = req.body;
     const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', id).maybeSingle();
     const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
-    const { data, error } = await supabase.from('cotas_bloqueadas').insert({ sorteio_id: id, numero_cota: numeroFormatado }).select();
+    const { data, error } = await supabase.from('cotas_bloqueadas').insert({ sorteio_id: id, numero_cota: numeroFormatado }).select().single();
     if (error) return fail(res, error.message); return ok(res, data);
   } catch (e) { return fail(res); }
 });
 app.get('/api/admin/sorteios/:id/bloqueios', ensureAdminAuth, async (req, res) => {
-  try { const { id } = req.params; const { data } = await supabase.from('cotas_bloqueadas').select('*').eq('sorteio_id', id); return ok(res, data); } catch (e) { return fail(res); }
+  try { const { id } = req.params; const { data } = await supabase.from('cotas_bloqueadas').select('*').eq('sorteio_id', id).order('created_at', { ascending: false }); return ok(res, { lista: data || [] }); } catch (e) { return fail(res); }
 });
 app.delete('/api/admin/bloqueios/:id', ensureAdminAuth, async (req, res) => {
   try { const { error } = await supabase.from('cotas_bloqueadas').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
@@ -2044,7 +2079,7 @@ app.delete('/api/admin/bloqueios/:id', ensureAdminAuth, async (req, res) => {
 
 // Cotas agendadas: ficam bloqueadas até uma data/hora específica, depois liberam sozinhas
 app.get('/api/admin/sorteios/:id/agendamentos', ensureAdminAuth, async (req, res) => {
-  try { const { data } = await supabase.from('cotas_agendadas').select('*').eq('sorteio_id', req.params.id).order('liberar_em', { ascending: true }); return ok(res, data || []); } catch (e) { return fail(res); }
+  try { const { data } = await supabase.from('cotas_agendadas').select('*').eq('sorteio_id', req.params.id).order('liberar_em', { ascending: true }); return ok(res, { lista: data || [] }); } catch (e) { return fail(res); }
 });
 app.post('/api/admin/sorteios/:id/agendamentos', ensureAdminAuth, async (req, res) => {
   try {
@@ -2057,7 +2092,7 @@ app.post('/api/admin/sorteios/:id/agendamentos', ensureAdminAuth, async (req, re
       payload.condicao_tipo = condicao_tipo;
       payload.condicao_quantidade = parseInt(condicao_quantidade) || null;
     }
-    const { data, error } = await supabase.from('cotas_agendadas').insert(payload).select();
+    const { data, error } = await supabase.from('cotas_agendadas').insert(payload).select().single();
     if (error) return fail(res, error.message);
     return ok(res, data);
   } catch (e) { return fail(res); }
@@ -2071,7 +2106,20 @@ app.post('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) =>
     const { id } = req.params; const { numero_cota, premio_titulo, ativo } = req.body;
     const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', id).maybeSingle();
     const numeroFormatado = padCota(String(numero_cota).replace(/\D/g, ''), sorteioRef?.total_cotas);
-    const { data, error } = await supabase.from('bilhetes_premiados').insert({ sorteio_id: id, numero_cota: numeroFormatado, premio_titulo, tipo: 'bilhete', status: 'disponivel', ativo: ativo !== false }).select();
+
+    // Verifica se essa cota já foi vendida antes de cadastrar o bilhete — se já foi, marca reivindicado na hora
+    const { data: cotaVendida } = await supabase.from('cotas').select('user_id, pedido_id').eq('sorteio_id', id).eq('numero_cota', numeroFormatado).maybeSingle();
+    const payload = { sorteio_id: id, numero_cota: numeroFormatado, premio_titulo, tipo: 'bilhete', ativo: ativo !== false };
+    if (cotaVendida) {
+      payload.status = 'reivindicada';
+      payload.usuario_id = cotaVendida.user_id || null;
+      payload.pedido_id = cotaVendida.pedido_id || null;
+      payload.reivindicada_em = new Date().toISOString();
+    } else {
+      payload.status = 'disponivel';
+    }
+
+    const { data, error } = await supabase.from('bilhetes_premiados').insert(payload).select().single();
     if (error) return fail(res, error.message); return ok(res, data);
   } catch (e) { return fail(res); }
 });

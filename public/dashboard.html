@@ -153,6 +153,17 @@
     </div>
 </div>
 
+<div id="modal-form" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+    <div class="modal-box">
+        <h3 class="text-xl font-bold text-white mb-4" id="form-modal-title">Preencher dados</h3>
+        <div id="form-modal-campos" class="space-y-3 mb-6"></div>
+        <div class="flex justify-end gap-3">
+            <button id="btn-form-cancelar" class="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition">Cancelar</button>
+            <button id="btn-form-confirmar" class="btn-primary">Confirmar</button>
+        </div>
+    </div>
+</div>
+
 <!-- Barra superior só no mobile: botão de menu -->
 <div class="md:hidden flex items-center justify-between p-3 bg-darkCard border-b border-gray-800 sticky top-0 z-30">
     <span class="font-bold text-white" id="mobile-brand-name">Painel</span>
@@ -1134,6 +1145,30 @@ function confirmar(titulo, msg) {
     });
 }
 
+// Modal genérico de formulário, no lugar do prompt() feio do navegador.
+// campos: [{ id, label, valor, placeholder, tipo }]
+function perguntarFormulario(titulo, campos) {
+    return new Promise(resolve => {
+        $('#form-modal-title').text(titulo);
+        $('#form-modal-campos').html(campos.map(c => `
+            <div>
+                <label class="text-xs text-gray-400">${c.label}</label>
+                <input id="form-campo-${c.id}" type="${c.tipo || 'text'}" class="input-dark mt-1" placeholder="${c.placeholder || ''}" value="${c.valor || ''}">
+            </div>
+        `).join(''));
+        $('#modal-form').removeClass('hidden').css('display', 'flex');
+        $(`#form-campo-${campos[0].id}`).focus();
+
+        function fechar(resultado) { $('#modal-form').addClass('hidden').css('display', ''); resolve(resultado); }
+        $('#btn-form-confirmar').off('click').on('click', () => {
+            const resultado = {};
+            campos.forEach(c => resultado[c.id] = $(`#form-campo-${c.id}`).val());
+            fechar(resultado);
+        });
+        $('#btn-form-cancelar').off('click').on('click', () => fechar(null));
+    });
+}
+
 function formatBR(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
 // Notificação bonitinha no lugar do alert() feio do navegador
@@ -1889,13 +1924,16 @@ let BILHETES_ADMIN_CACHE = [];
 $(document).on('input', '#input-buscar-bilhete', renderGridBilhetesAdmin);
 
 function abrirMarcarReivindicado(id) {
-    const nome = prompt('Nome do ganhador:');
-    if (!nome) return;
-    const telefone = prompt('Telefone do ganhador (opcional, sem espaços):') || '';
-    api('POST', `/api/admin/premios/${id}/marcar-reivindicado`, { nome_completo: nome, telefone }).then(() => {
-        notificar('Marcado como reivindicado!', 'sucesso');
-        carregarPremios(SORTEIO_BILHETE_ID);
-    }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    perguntarFormulario('Marcar como reivindicado', [
+        { id: 'nome', label: 'Nome do ganhador', placeholder: 'Ex: João da Silva' },
+        { id: 'telefone', label: 'Telefone do ganhador (opcional)', placeholder: 'Ex: 5511999999999' }
+    ]).then(dados => {
+        if (!dados || !dados.nome) return;
+        api('POST', `/api/admin/premios/${id}/marcar-reivindicado`, { nome_completo: dados.nome, telefone: dados.telefone || '' }).then(() => {
+            notificar('Marcado como reivindicado!', 'sucesso');
+            carregarPremios(SORTEIO_BILHETE_ID);
+        }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    });
 }
 function desmarcarReivindicado(id) {
     confirmar('Desmarcar', 'Esse bilhete volta a ficar disponível pra qualquer cliente ganhar.').then(yes => {
@@ -1909,14 +1947,16 @@ function desmarcarReivindicado(id) {
 function editarPremio(id) {
     const p = BILHETES_ADMIN_CACHE.find(b => b.id === id);
     if (!p) return;
-    const novoTitulo = prompt('Título do prêmio:', p.premio_titulo || '');
-    if (novoTitulo === null) return;
-    const novaCota = prompt('Número da cota (deixe igual se não quiser mudar):', p.numero_cota);
-    if (novaCota === null) return;
-    api('PUT', `/api/admin/premios/${id}`, { premio_titulo: novoTitulo, numero_cota: novaCota, sorteio_id: SORTEIO_BILHETE_ID }).then(() => {
-        notificar('Bilhete atualizado!', 'sucesso');
-        carregarPremios(SORTEIO_BILHETE_ID);
-    }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    perguntarFormulario('Editar bilhete premiado', [
+        { id: 'titulo', label: 'Título do prêmio', valor: p.premio_titulo || '' },
+        { id: 'cota', label: 'Número da cota', valor: p.numero_cota }
+    ]).then(dados => {
+        if (!dados) return;
+        api('PUT', `/api/admin/premios/${id}`, { premio_titulo: dados.titulo, numero_cota: dados.cota, sorteio_id: SORTEIO_BILHETE_ID }).then(() => {
+            notificar('Bilhete atualizado!', 'sucesso');
+            carregarPremios(SORTEIO_BILHETE_ID);
+        }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    });
 }
 
 function mudarModoBilhete(modo, el) {
@@ -1933,8 +1973,8 @@ function renderGridBilhetesView() {
         const saiu = p.status === 'reivindicada';
         const nome = p.usuario?.nome_completo || p.nome_completo || '';
         const tel = p.usuario?.telefone || '';
-        const corBorda = saiu ? '#16a34a' : '#dc2626';
-        const corBg = saiu ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.1)';
+        const corBorda = saiu ? '#dc2626' : '#16a34a';
+        const corBg = saiu ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.12)';
         let whatsBtn = '';
         if (saiu && tel) {
             const msg = encodeURIComponent(`Opa ${nome}! Você ganhou um bilhete premiado 🎉 (nº ${p.numero_cota} — ${p.premio_titulo || ''}). Vamos combinar a entrega?`);
@@ -1980,11 +2020,11 @@ function removerRoletaPremio(id) {
 // ---- Bloqueios / Liberação (com condição de quantidade) ----
 function carregarBloqueios(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/bloqueios`).then(d => {
-        const data = d.data || d || [];
+        const data = d.lista || [];
         $('#lista-bloqueios').html((Array.isArray(data) ? data : []).map(b => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${b.numero_cota}</b><span class="text-xs opacity-60">bloqueio permanente</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerBloqueio('${b.id}')">Remover</button></div>`).join('') || '<p class="text-xs opacity-50">Nenhum bloqueio permanente.</p>');
     });
     api('GET', `/api/admin/sorteios/${sorteioId}/agendamentos`).then(d => {
-        const data = d.data || d || [];
+        const data = d.lista || [];
         $('#lista-agendamentos').html((Array.isArray(data) ? data : []).map(a => {
             const dataFmt = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
             const condTxt = a.condicao_tipo ? ` · só p/ quem comprou ${a.condicao_tipo === 'acima' ? 'acima' : 'abaixo'} de ${a.condicao_quantidade}` : '';
@@ -1999,7 +2039,8 @@ function addBloqueio() {
     api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/bloqueios`, { numero_cota }).then(() => {
         $('#inp-bloqueio').val('');
         carregarBloqueios(SORTEIO_BILHETE_ID);
-    });
+        notificar('Cota bloqueada!', 'sucesso');
+    }).catch(err => notificar(err.error || 'Erro ao bloquear a cota.', 'erro'));
 }
 function addAgendamento() {
     const numero_cota = $('#inp-lib-cota').val();
@@ -2014,7 +2055,7 @@ function addAgendamento() {
         $('#inp-lib-condicao').val('');
         carregarBloqueios(SORTEIO_BILHETE_ID);
         notificar('Liberação agendada!', 'sucesso');
-    });
+    }).catch(err => notificar(err.error || 'Erro ao agendar liberação.', 'erro'));
 }
 function removerBloqueio(id) { api('DELETE', `/api/admin/bloqueios/${id}`).then(() => carregarBloqueios(SORTEIO_BILHETE_ID)); }
 function removerAgendamento(id) { api('DELETE', `/api/admin/agendamentos/${id}`).then(() => carregarBloqueios(SORTEIO_BILHETE_ID)); }
@@ -2022,11 +2063,11 @@ function removerAgendamento(id) { api('DELETE', `/api/admin/agendamentos/${id}`)
 // Atalho de bloqueio/liberação de cota, acessível direto da aba Roleta (mesmos endpoints do Bilhete Premiado)
 function carregarBloqueiosRoleta(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/bloqueios`).then(d => {
-        const data = d.data || d || [];
+        const data = d.lista || [];
         $('#lista-bloqueios-roleta').html((Array.isArray(data) ? data : []).map(b => `<div class="p-2 bg-gray-800 rounded flex justify-between items-center mb-2"><b>${b.numero_cota}</b><span class="text-xs opacity-60">bloqueio permanente</span><button class="px-2 py-1 bg-red-600 text-white rounded" onclick="removerBloqueioRoleta('${b.id}')">Remover</button></div>`).join('') || '<p class="text-xs opacity-50">Nenhum bloqueio permanente.</p>');
     });
     api('GET', `/api/admin/sorteios/${sorteioId}/agendamentos`).then(d => {
-        const data = d.data || d || [];
+        const data = d.lista || [];
         $('#lista-agendamentos-roleta').html((Array.isArray(data) ? data : []).map(a => {
             const dataFmt = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
             const condTxt = a.condicao_tipo ? ` · só p/ quem comprou ${a.condicao_tipo === 'acima' ? 'acima' : 'abaixo'} de ${a.condicao_quantidade}` : '';
@@ -2113,14 +2154,17 @@ function carregarRoleta(sorteioId) {
 }
 let ROLETA_ADMIN_CACHE = [];
 function abrirMarcarReivindicadoRoleta(id) {
-    const nome = prompt('Nome do ganhador:');
-    if (!nome) return;
-    const telefone = prompt('Telefone do ganhador (opcional, sem espaços):') || '';
-    api('POST', `/api/admin/premios/${id}/marcar-reivindicado`, { nome_completo: nome, telefone }).then(() => {
-        notificar('Marcado como já ganho! Confira na página do sorteio.', 'sucesso');
-        carregarRoleta(SORTEIO_ROLETA_ID);
-        carregarRoletaResultadosAdmin(SORTEIO_ROLETA_ID);
-    }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    perguntarFormulario('Simular ganho na roleta', [
+        { id: 'nome', label: 'Nome do ganhador', placeholder: 'Ex: João da Silva' },
+        { id: 'telefone', label: 'Telefone do ganhador (opcional)', placeholder: 'Ex: 5511999999999' }
+    ]).then(dados => {
+        if (!dados || !dados.nome) return;
+        api('POST', `/api/admin/premios/${id}/marcar-reivindicado`, { nome_completo: dados.nome, telefone: dados.telefone || '' }).then(() => {
+            notificar('Marcado como já ganho! Confira na página do sorteio.', 'sucesso');
+            carregarRoleta(SORTEIO_ROLETA_ID);
+            carregarRoletaResultadosAdmin(SORTEIO_ROLETA_ID);
+        }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    });
 }
 function desmarcarReivindicadoRoleta(id) {
     confirmar('Desmarcar', 'Esse prêmio da roleta volta a ficar disponível.').then(yes => {
@@ -2135,14 +2179,16 @@ function desmarcarReivindicadoRoleta(id) {
 function editarRoletaPremio(id) {
     const p = ROLETA_ADMIN_CACHE.find(x => x.id === id);
     if (!p) return;
-    const novoTitulo = prompt('Título do prêmio:', p.premio_titulo || '');
-    if (novoTitulo === null) return;
-    const novaCota = prompt('Número da cota:', p.numero_cota);
-    if (novaCota === null) return;
-    api('PUT', `/api/admin/premios/${id}`, { premio_titulo: novoTitulo, numero_cota: novaCota, sorteio_id: SORTEIO_ROLETA_ID }).then(() => {
-        notificar('Prêmio atualizado!', 'sucesso');
-        carregarRoleta(SORTEIO_ROLETA_ID);
-    }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    perguntarFormulario('Editar prêmio da roleta', [
+        { id: 'titulo', label: 'Título do prêmio', valor: p.premio_titulo || '' },
+        { id: 'cota', label: 'Número da cota', valor: p.numero_cota }
+    ]).then(dados => {
+        if (!dados) return;
+        api('PUT', `/api/admin/premios/${id}`, { premio_titulo: dados.titulo, numero_cota: dados.cota, sorteio_id: SORTEIO_ROLETA_ID }).then(() => {
+            notificar('Prêmio atualizado!', 'sucesso');
+            carregarRoleta(SORTEIO_ROLETA_ID);
+        }).catch(err => notificar(err.error || 'Erro', 'erro'));
+    });
 }
 function addRoleta() {
     const numero_cota = $('#inp-roleta-cota').val();

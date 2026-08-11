@@ -48,8 +48,8 @@
         .premio-item.disponivel { background-color: #161c24; }
         .premio-cota { height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background-color: #fff; color: #000; min-width: 20%; max-width: 40%; text-align: center; white-space: nowrap; }
         .premio-item.disponivel .premio-cota { background-color: #919eab; color: #fff; }
-        .premio-nome { font-weight: 400; color: #fff; flex-grow: 1; text-align: center; font-size: 12px; }
-        .premio-status { font-weight: 400; color: #fff; font-size: 14px; text-align: right; white-space: nowrap; max-width: 30%; }
+        .premio-nome { font-weight: 400; color: #fff; flex-grow: 1; text-align: center; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .premio-status { font-weight: 400; color: #fff; font-size: 14px; text-align: right; white-space: nowrap; max-width: 30%; overflow: hidden; text-overflow: ellipsis; }
         .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
         .modal { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
@@ -155,6 +155,10 @@
             <p class="text-center text-gray-300 mb-4" style="font-weight:400;">Quanto mais títulos, mais chances de ganhar!</p>
 
             <div class="cota-grid" id="cota-grid"></div>
+
+            <div id="secao-promocoes" class="hidden px-4 pb-2">
+                <div id="lista-promocoes-site" class="space-y-2"></div>
+            </div>
 
             <div class="purchase-grid">
                 <div class="manual-selector">
@@ -330,12 +334,20 @@
 
         let SORTEIO_DATA = {};
         let CHANCE_DOBRO_ATIVA = null;
+        let PROMOCOES_ATIVAS = [];
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
         let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
         let quantidadeCotas = 30;
 
         function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+        // Mostra o primeiro nome completo + só a inicial do segundo (evita nome grande vazando do card)
+        function nomeCurto(nomeCompleto) {
+            if (!nomeCompleto) return '';
+            const partes = String(nomeCompleto).trim().split(/\s+/);
+            if (partes.length === 1) return partes[0];
+            return `${partes[0]} ${partes[1][0]}.`;
+        }
 
         // Notificação bonitinha no lugar do alert() feio do navegador
         function notificar(mensagem, tipo) {
@@ -381,9 +393,16 @@
         }
 
         function atualizarPreco() {
-            const total = quantidadeCotas * PRECO;
             $('#input-qtd').val(quantidadeCotas);
-            $('#cta-preco-total').text(formatarMoeda(total));
+
+            const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === quantidadeCotas);
+            if (promoAtiva) {
+                const precoNormal = quantidadeCotas * PRECO;
+                $('#cta-preco-total').html(`<span style="text-decoration:line-through; opacity:0.6; font-size:0.85em; margin-right:6px;">${formatarMoeda(precoNormal)}</span>${formatarMoeda(promoAtiva.preco_promocional)}`);
+            } else {
+                const total = quantidadeCotas * PRECO;
+                $('#cta-preco-total').text(formatarMoeda(total));
+            }
 
             const $erro = $('#erro-limite');
             if (quantidadeCotas < MIN_QTY || quantidadeCotas > MAX_QTY) {
@@ -511,6 +530,33 @@
             chanceDobroInterval = setInterval(atualizar, 1000);
         }
 
+        function renderPromocoes(promocoes) {
+            if (!promocoes || promocoes.length === 0) { $('#secao-promocoes').addClass('hidden'); return; }
+            $('#secao-promocoes').removeClass('hidden');
+            $('#lista-promocoes-site').html(promocoes.map(p => {
+                const precoOriginal = p.quantidade_cotas * PRECO;
+                return `
+                    <div class="combo-roleta combo-pulse" style="cursor:pointer;" onclick="selecionarQuantidade(${p.quantidade_cotas})">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
+                            <div style="min-width:0;">
+                                <div class="text-xs text-green-100">🏷️ ${p.titulo}</div>
+                                <div class="text-lg font-bold text-white">${p.quantidade_cotas} títulos</div>
+                            </div>
+                            <div class="text-right" style="min-width:0;">
+                                <div class="text-xs text-green-100 line-through">${formatarMoeda(precoOriginal)}</div>
+                                <div class="text-lg font-bold text-white">${formatarMoeda(p.preco_promocional)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join(''));
+        }
+        function selecionarQuantidade(qtd) {
+            quantidadeCotas = qtd;
+            atualizarPreco();
+            window.scrollTo({ top: $('#btn-participar').offset().top - 150, behavior: 'smooth' });
+        }
+
         function renderBotoesCota(config) {
             let botoes = [];
             if (config) {
@@ -537,6 +583,7 @@
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
             CHANCE_DOBRO_ATIVA = data.chance_dobro_ativa || null;
+            PROMOCOES_ATIVAS = data.promocoes || [];
             BILHETES_PREMIADOS = bilhetes_premiados || [];
             FUNIL_DATA = funil || null;
 
@@ -566,6 +613,7 @@
 
             // Essas três são "extras" — se alguma falhar, não pode derrubar o resto da página
             try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
+            try { renderPromocoes(PROMOCOES_ATIVAS); } catch (e) { console.error('renderPromocoes', e); }
             try { iniciarUrgencia(data.aviso_urgencia_ativo); } catch (e) { console.error('iniciarUrgencia', e); }
             try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
             try { renderRedesSociaisFlutuantes(data.redes_sociais); } catch (e) { console.error('renderRedesSociaisFlutuantes', e); }
@@ -574,7 +622,7 @@
             if (sorteio.roleta_ativada && roleta_tiers && roleta_tiers.length > 0) {
                 $('#secao-roleta-tiers').removeClass('hidden');
                 $('#lista-roleta-tiers').html(roleta_tiers.map(t => `
-                    <div class="combo-roleta combo-pulse">
+                    <div class="combo-roleta combo-pulse" style="cursor:pointer;" onclick="selecionarQuantidade(${t.minimo_cotas})">
                         <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
                             <div style="min-width:0;">
                                 <div class="text-sm text-green-100" style="line-height:1.1;">A cada</div>
@@ -597,7 +645,7 @@
                     <span class="premio-cota">${premio.numero_cota}</span>
                     <span class="premio-nome">${premio.premio_titulo}</span>
                     ${premio.status === 'reivindicada'
-                        ? `<span class="premio-status">${premio.ganhador_nome ? premio.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                        ? `<span class="premio-status">${premio.ganhador_nome ? nomeCurto(premio.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
                         : `<span class="premio-status">Disponível</span>`}
                 </div>
             `, '#btn-mostrar-menos-premios');
@@ -611,7 +659,7 @@
                     <div class="premio-item ${v.reivindicada ? '' : 'disponivel'}">
                         <span class="premio-nome" style="text-align:left; flex-grow:2;">${v.valor_premio || v.premio_titulo || 'Prêmio'}</span>
                         ${v.reivindicada
-                            ? `<span class="premio-status">${v.ganhador_nome ? v.ganhador_nome + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                            ? `<span class="premio-status">${v.ganhador_nome ? nomeCurto(v.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
                             : `<span class="premio-status">Disponível</span>`}
                     </div>
                 `, '#btn-mostrar-menos-roleta');
@@ -650,6 +698,18 @@
                     $('#sorteio-nome').text('Sorteio não encontrado. Verifique o link e tente novamente.');
                 });
         }
+
+        
+        // Bloqueia o zoom por toque duplo (o navegador ignora "user-scalable=no" em telas recentes)
+        (function() {
+            let ultimoToque = 0;
+            document.addEventListener('touchend', function(e) {
+                const agora = Date.now();
+                if (agora - ultimoToque <= 350) { e.preventDefault(); }
+                ultimoToque = agora;
+            }, { passive: false });
+            document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        })();
 
         $(document).ready(function() {
             carregarSorteio();
@@ -702,8 +762,11 @@
                 const modalCheckout = $('#modal-checkout');
                 const nomeSorteio = (SORTEIO_DATA.nome || '').toUpperCase();
                 const qtd = quantidadeCotas;
+                const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === qtd);
                 if (CHANCE_DOBRO_ATIVA) {
                     $('#checkout-confirm-text').html(`🔥 Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong> — e leva o <strong>DOBRO</strong>: <strong>${qtd * 2}</strong> título(s) no total, graças à promoção "${CHANCE_DOBRO_ATIVA.titulo || 'Chance em Dobro'}" ativa agora!`);
+                } else if (promoAtiva) {
+                    $('#checkout-confirm-text').html(`🏷️ Você está comprando com a promoção <strong>"${promoAtiva.titulo}"</strong>: <strong>${qtd}</strong> título(s) por apenas <strong>${formatarMoeda(promoAtiva.preco_promocional)}</strong> da campanha <strong>${nomeSorteio}</strong>`);
                 } else {
                     $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong>`);
                 }
