@@ -56,6 +56,12 @@
         .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.75rem; font-weight: 500; height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; display: inline-block; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.88; } }
+        .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 16px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
+        .countdown-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
+        .countdown-subtitle { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin: 0; }
+        .countdown-warning { margin-top: 12px; font-size: 0.75rem; opacity: 0.9; }
+        .urgencia-tempo-pill { background: rgba(0,0,0,0.2); border-radius: 999px; padding: 6px 16px; margin: 10px auto; display: inline-block; font-weight: 600; }
+        .time-number-inline { font-weight: 800; }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 94%; overflow: hidden; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
@@ -91,7 +97,7 @@
             <button id="btn-menu" class="text-gray-300 hover:text-white text-xl"><i class="bi bi-list"></i></button>
         </nav>
         <div id="menu-dropdown" class="menu-dropdown hidden">
-            <button id="menu-meus-titulos"><i class="bi bi-ticket-detailed"></i> Meus Títulos</button>
+            <button id="menu-meus-titulos"><i class="bi bi-cart"></i> Meus Títulos</button>
             <a id="menu-whatsapp-suporte" href="#" target="_blank" class="hidden"><i class="bi bi-whatsapp"></i> Suporte via WhatsApp</a>
         </div>
     </header>
@@ -110,12 +116,19 @@
         </section>
 
         <button id="btn-meus-numeros" class="btn-meus-titulos-full">
-            <i class="bi bi-ticket-detailed"></i> Meus títulos
+            <i class="bi bi-cart"></i> Meus títulos
         </button>
 
         <div class="title-bar flex justify-center items-center p-4">
             <h6 style="margin:0; font-weight:600; font-size:12.3px; color:#fff;">Por apenas</h6>
             <span id="preco-cota" style="margin-left:8px; height:22px; line-height:22px; padding:0 8px; border-radius:6px; background:#000; color:#fff; font-weight:700; font-size:1rem; border:1px solid rgba(145,158,171,0.32); white-space:nowrap;">R$ 0,00</span>
+        </div>
+
+        <div id="banner-urgencia" class="mx-4 mt-4 hidden countdown-card">
+            <p id="urgencia-titulo" class="countdown-title">🚨 CORRE QUE ESTÁ ACABANDO 🚨</p>
+            <div id="urgencia-barra-tempo" class="urgencia-tempo-pill">Encerra em <span id="urgencia-contagem" class="time-number-inline">--:--:--</span></div>
+            <p id="urgencia-descricao" class="countdown-subtitle mt-1"></p>
+            <p id="urgencia-validade" class="countdown-warning"></p>
         </div>
 
         <div id="banner-chance-dobro" class="mx-4 mt-4 hidden combo-roleta">
@@ -412,6 +425,39 @@
         }
 
 
+        let urgenciaInterval = null;
+        function iniciarUrgencia(sorteio) {
+            clearInterval(urgenciaInterval);
+            const agora = Date.now();
+            const inicio = sorteio.notice_init_at ? new Date(sorteio.notice_init_at).getTime() : null;
+            const fim = sorteio.notice_end_at ? new Date(sorteio.notice_end_at).getTime() : null;
+            const ativo = sorteio.notice_active && (!inicio || agora >= inicio) && (!fim || agora <= fim);
+
+            if (!ativo) { $('#banner-urgencia').addClass('hidden'); return; }
+
+            $('#urgencia-titulo').text(sorteio.notice_title || '🚨 CORRE QUE ESTÁ ACABANDO 🚨');
+            $('#urgencia-descricao').text(sorteio.notice_description || '');
+            if (inicio && fim) {
+                const fmt = ts => new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
+                $('#urgencia-validade').text(`Válido de ${fmt(inicio)} até ${fmt(fim)}`);
+            } else {
+                $('#urgencia-validade').text('');
+            }
+            $('#banner-urgencia').removeClass('hidden');
+
+            function atualizar() {
+                if (!fim) { $('#urgencia-barra-tempo').hide(); return; }
+                const restanteMs = fim - Date.now();
+                if (restanteMs <= 0) { $('#banner-urgencia').addClass('hidden'); clearInterval(urgenciaInterval); return; }
+                const h = Math.floor(restanteMs / 3600000);
+                const m = Math.floor((restanteMs % 3600000) / 60000);
+                const s = Math.floor((restanteMs % 60000) / 1000);
+                $('#urgencia-contagem').text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+            }
+            atualizar();
+            urgenciaInterval = setInterval(atualizar, 1000);
+        }
+
         function iniciarChanceDobro(chance) {
             clearInterval(chanceDobroInterval);
             if (!chance) { $('#banner-chance-dobro').addClass('hidden'); return; }
@@ -490,6 +536,7 @@
 
             // Essas três são "extras" — se alguma falhar, não pode derrubar o resto da página
             try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
+            try { iniciarUrgencia(sorteio); } catch (e) { console.error('iniciarUrgencia', e); }
             try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
             try { renderRedesSociaisFlutuantes(data.redes_sociais); } catch (e) { console.error('renderRedesSociaisFlutuantes', e); }
 
