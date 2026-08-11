@@ -1750,6 +1750,36 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
   } catch (err) { console.error('POST /api/admin/sorteios', err); return fail(res, err.message); }
 });
 
+app.get('/api/admin/pedidos/export-expirados', ensureAdminAuth, async (_req, res) => {
+  try {
+    const nowISO = new Date().toISOString();
+    const { data } = await supabase.from('pedidos')
+      .select('quantidade_cotas, valor_total, created_at, expira_em, usuarios(nome_completo, telefone, cpf), sorteios(nome)')
+      .eq('status', 'aguardando').lt('expira_em', nowISO).order('created_at', { ascending: false });
+
+    const linhas = (data || []).map(p => ({
+      nome: p.usuarios?.nome_completo || '', telefone: p.usuarios?.telefone || '', cpf: p.usuarios?.cpf || '',
+      sorteio: p.sorteios?.nome || '', quantidade_cotas: p.quantidade_cotas, valor_total: p.valor_total,
+      criado_em: p.created_at, expirou_em: p.expira_em
+    }));
+    const csv = csvStringify(linhas, { header: true, columns: ['nome', 'telefone', 'cpf', 'sorteio', 'quantidade_cotas', 'valor_total', 'criado_em', 'expirou_em'] });
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="pedidos-expirados.csv"');
+    return res.send(csv);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/pedidos/expirados', ensureAdminAuth, async (_req, res) => {
+  try {
+    const nowISO = new Date().toISOString();
+    const { data: expirados } = await supabase.from('pedidos').select('id').eq('status', 'aguardando').lt('expira_em', nowISO);
+    const ids = (expirados || []).map(p => p.id);
+    if (ids.length === 0) return ok(res, { removidos: 0 });
+    const { error } = await supabase.from('pedidos').delete().in('id', ids);
+    if (error) return fail(res, error.message);
+    return ok(res, { removidos: ids.length });
+  } catch (e) { return fail(res); }
+});
+
 app.get('/api/admin/pedidos', ensureAdminAuth, async (req, res) => {
   try {
     const { filter, start_date, end_date } = req.query;

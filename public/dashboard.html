@@ -699,16 +699,21 @@
             <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
                 <h2 class="text-2xl font-bold text-white">Pedidos</h2>
                 <div class="flex gap-2 items-center flex-wrap">
+                    <input id="pedidos-busca" class="input-dark text-sm" style="width:220px" placeholder="Buscar por nome, telefone ou CPF...">
                     <input type="date" id="pedidos-data-de" class="input-dark text-xs" style="width:140px">
                     <input type="date" id="pedidos-data-ate" class="input-dark text-xs" style="width:140px">
                     <button class="btn-primary text-sm" onclick="carregarPedidos(PEDIDOS_FILTRO_ATUAL)"><i class="bi bi-funnel"></i> Filtrar</button>
                 </div>
             </div>
-            <div id="pedidos-status-tabs" class="flex gap-1 bg-darkCard border border-gray-800 rounded-lg p-1 mb-4 w-fit">
+            <div id="pedidos-status-tabs" class="flex gap-1 bg-darkCard border border-gray-800 rounded-lg p-1 mb-4 w-fit flex-wrap">
                 <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold active" data-f="todos" onclick="carregarPedidos('todos')">Todos</button>
                 <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold" data-f="pagos" onclick="carregarPedidos('pagos')">Pagos</button>
                 <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold" data-f="pendentes" onclick="carregarPedidos('pendentes')">Pendentes</button>
                 <button type="button" class="periodo-btn px-4 py-1.5 rounded text-xs font-semibold" data-f="expirados" onclick="carregarPedidos('expirados')">Expirados</button>
+            </div>
+            <div id="acoes-pedidos-expirados" class="hidden flex gap-2 mb-4 flex-wrap">
+                <button class="btn-primary text-sm" onclick="baixarListaExpirados()"><i class="bi bi-download"></i> Baixar lista de expirados</button>
+                <button class="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg" onclick="excluirTodosExpirados()"><i class="bi bi-trash"></i> Excluir todos os expirados</button>
             </div>
             <div id="lista-pedidos" class="bg-darkCard rounded-xl border border-gray-800 p-4">
                 <div id="tabela-pedidos" class="space-y-3"></div>
@@ -905,18 +910,6 @@
                         <div class="mb-3" id="funil-peso-box" style="display:none;">
                             <label class="text-xs text-gray-400">% do tráfego para este funil dentro do grupo de teste</label>
                             <input id="funil-peso" type="number" min="1" max="100" value="50" class="input-dark mt-1">
-                        </div>
-                        <div class="mb-3">
-                            <label class="text-xs text-gray-400">Pós-pagamento</label>
-                            <select id="funil-pos-tipo" class="input-dark mt-1" onchange="toggleBonusFields()">
-                                <option value="padrao">Padrão (mostra as cotas normalmente)</option>
-                                <option value="bonus">Bônus / Compra premiada (mensagem + cotas extras)</option>
-                            </select>
-                        </div>
-                        <div id="funil-bonus-fields" class="hidden space-y-3 mb-3 border-t border-gray-800 pt-3">
-                            <div><label class="text-xs text-gray-400">Título da tela de bônus</label><input id="funil-bonus-titulo" class="input-dark mt-1" placeholder="Ex: Sua compra foi premiada! 🎉"></div>
-                            <div><label class="text-xs text-gray-400">Mensagem</label><textarea id="funil-bonus-mensagem" class="input-dark mt-1" rows="2" placeholder="Ex: Você ganhou cotas grátis por ter comprado agora!"></textarea></div>
-                            <div><label class="text-xs text-gray-400">Cotas grátis de bônus</label><input id="funil-bonus-cotas" type="number" min="0" class="input-dark mt-1" placeholder="Ex: 5"></div>
                         </div>
                         <button type="button" class="btn-primary" onclick="criarFunil()">Criar Funil</button>
                     </div>
@@ -2148,11 +2141,6 @@ function removerUrgencia(id) {
 }
 
 // ---- FUNIS (nova funcionalidade) ----
-function toggleBonusFields() {
-    const tipo = $('#funil-pos-tipo').val();
-    $('#funil-bonus-fields').toggleClass('hidden', tipo !== 'bonus');
-}
-
 function badgeOrigem(origem) {
     const map = { ads: 'badge-ads', organico: 'badge-organico', outro: 'badge-outro' };
     return `<span class="badge ${map[origem] || 'badge-outro'}">${origem || 'outro'}</span>`;
@@ -2169,7 +2157,6 @@ function carregarFunis(sorteioId) {
         $('#lista-funis').html(funis.map(f => {
             const link = `${window.location.origin}/sorteio/${sorteio.slug || ''}/${f.slug}?lk=funil-${f.slug}`;
             const abLink = f.grupo_teste ? `${window.location.origin}/sorteio/${sorteio.slug || ''}/teste/${f.grupo_teste}` : null;
-            const tipoBadge = f.pos_pagamento_tipo === 'bonus' ? `<span class="badge badge-bonus">Bônus (+${f.bonus_cotas_extra || 0} cotas)</span>` : `<span class="badge badge-padrao">Padrão</span>`;
             const abBadge = f.grupo_teste ? `<span class="badge badge-ads">A/B: ${f.grupo_teste} (${f.peso_trafego || 100}%)</span>` : '';
             return `
                 <div class="funil-card">
@@ -2178,7 +2165,6 @@ function carregarFunis(sorteioId) {
                             <div class="flex items-center gap-2 mb-1 flex-wrap">
                                 <h4 class="font-semibold text-white">${f.nome}</h4>
                                 ${badgeOrigem(f.origem)}
-                                ${tipoBadge}
                                 ${abBadge}
                                 ${f.ativo === false ? '<span class="badge badge-outro">Inativo</span>' : ''}
                             </div>
@@ -2213,16 +2199,11 @@ function criarFunil() {
         arquivo_html: $('#funil-arquivo-html').val(),
         arquivo_checkout_html: $('#funil-arquivo-checkout').val(),
         grupo_teste: $('#funil-grupo-teste').val() || null,
-        peso_trafego: $('#funil-peso').val() || 100,
-        pos_pagamento_tipo: $('#funil-pos-tipo').val(),
-        pos_pagamento_titulo: $('#funil-bonus-titulo').val(),
-        pos_pagamento_mensagem: $('#funil-bonus-mensagem').val(),
-        bonus_cotas_extra: $('#funil-bonus-cotas').val() || 0
+        peso_trafego: $('#funil-peso').val() || 100
     };
     api('POST', `/api/admin/sorteios/${SORTEIO_FUNIL_ID}/funis`, payload).then(() => {
-        $('#funil-nome').val(''); $('#funil-bonus-titulo').val(''); $('#funil-bonus-mensagem').val(''); $('#funil-bonus-cotas').val('');
+        $('#funil-nome').val('');
         $('#funil-grupo-teste').val(''); $('#funil-peso-box').hide();
-        $('#funil-pos-tipo').val('padrao'); toggleBonusFields();
         carregarFunis(SORTEIO_FUNIL_ID);
         notificar('Funil criado!', 'sucesso');
     }).catch(err => notificar('Erro ao criar funil: ' + (err.error || ''), 'erro'));
@@ -2449,6 +2430,7 @@ function popularFiltroLinksSorteio() {
 // ---------------- PEDIDOS ----------------
 let PEDIDOS_FILTRO_ATUAL = 'todos';
 let PEDIDOS_CACHE = [];
+let PEDIDOS_FILTRADOS = [];
 let PEDIDOS_PAGINA = 1;
 const PEDIDOS_POR_PAGINA = 10;
 
@@ -2457,6 +2439,7 @@ function carregarPedidos(filter) {
     PEDIDOS_PAGINA = 1;
     $('#pedidos-status-tabs .periodo-btn').removeClass('active');
     $(`#pedidos-status-tabs .periodo-btn[data-f="${filter}"]`).addClass('active');
+    $('#acoes-pedidos-expirados').toggleClass('hidden', filter !== 'expirados');
 
     const params = [];
     if (filter !== 'todos') params.push(`filter=${filter}`);
@@ -2467,7 +2450,32 @@ function carregarPedidos(filter) {
 
     fetch(`/api/admin/pedidos${qs}`, { credentials: 'include' }).then(r => r.json()).then(data => {
         PEDIDOS_CACHE = data || [];
-        renderPedidosPagina();
+        aplicarBuscaPedidos();
+    });
+}
+function aplicarBuscaPedidos() {
+    const busca = ($('#pedidos-busca').val() || '').toLowerCase().trim();
+    PEDIDOS_FILTRADOS = !busca ? PEDIDOS_CACHE : PEDIDOS_CACHE.filter(p => {
+        const nome = (p.usuarios?.nome_completo || '').toLowerCase();
+        const tel = (p.usuarios?.telefone || '');
+        const cpf = (p.usuarios?.cpf || '');
+        return nome.includes(busca) || tel.includes(busca.replace(/\D/g, '')) || cpf.includes(busca.replace(/\D/g, ''));
+    });
+    PEDIDOS_PAGINA = 1;
+    renderPedidosPagina();
+}
+$(document).on('input', '#pedidos-busca', aplicarBuscaPedidos);
+
+function baixarListaExpirados() {
+    window.location = '/api/admin/pedidos/export-expirados';
+}
+function excluirTodosExpirados() {
+    confirmar('Excluir todos os pedidos expirados', 'Isso remove permanentemente do banco de dados todos os pedidos expirados de todos os sorteios. Não pode ser desfeito — considere baixar a lista antes.').then(yes => {
+        if (!yes) return;
+        api('DELETE', '/api/admin/pedidos/expirados').then(d => {
+            notificar(`${d.removidos || 0} pedido(s) expirado(s) removido(s).`, 'sucesso');
+            carregarPedidos('expirados');
+        }).catch(err => notificar(err.error || 'Erro ao excluir', 'erro'));
     });
 }
 
@@ -2479,7 +2487,7 @@ function statusVisual(p) {
 
 function renderPedidosPagina() {
     const inicio = (PEDIDOS_PAGINA - 1) * PEDIDOS_POR_PAGINA;
-    const pagina = PEDIDOS_CACHE.slice(inicio, inicio + PEDIDOS_POR_PAGINA);
+    const pagina = PEDIDOS_FILTRADOS.slice(inicio, inicio + PEDIDOS_POR_PAGINA);
     const html = pagina.map(p => {
         const aprovarBtn = p.status === 'aguardando' ? `<button class="btn-primary text-xs" onclick="event.stopPropagation(); aprovarPedido('${p.id}')">Aprovar</button>` : '';
         const funilTag = p.funis ? `<span class="badge badge-outro ml-2">🧩 ${p.funis.nome}</span>` : '';
@@ -2504,7 +2512,7 @@ function renderPedidosPagina() {
 }
 
 function renderPaginacaoPedidos() {
-    const totalPaginas = Math.ceil(PEDIDOS_CACHE.length / PEDIDOS_POR_PAGINA);
+    const totalPaginas = Math.ceil(PEDIDOS_FILTRADOS.length / PEDIDOS_POR_PAGINA);
     if (totalPaginas <= 1) { $('#paginacao-pedidos').empty(); return; }
     let botoes = '';
     for (let i = 1; i <= totalPaginas; i++) {
