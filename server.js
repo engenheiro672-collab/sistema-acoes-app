@@ -18,6 +18,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { stringify as csvStringify } from 'csv-stringify/sync';
+import webPush from 'web-push';
 
 dotenv.config();
 
@@ -71,6 +72,18 @@ async function sincronizarBilhetesComCotasVendidas(sorteioId) {
       }).eq('id', p.id);
     }));
   } catch (e) { console.error('sincronizarBilhetesComCotasVendidas', e); }
+}
+
+// Configura o web-push com as chaves VAPID (do .env ou geradas via scripts/gerar-chaves-push.js)
+let PUSH_CONFIGURADO = false;
+function configurarPush() {
+  if (PUSH_CONFIGURADO) return true;
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) return false;
+  webPush.setVapidDetails('mailto:contato@sistema-sorteios.com', publicKey, privateKey);
+  PUSH_CONFIGURADO = true;
+  return true;
 }
 
 async function safeUpdatePedidos(id, payload) {
@@ -235,7 +248,8 @@ async function getPublicMeta() {
       facebook: { ativo: cfg.SOCIAL_FACEBOOK_ATIVO === 'true', url: cfg.SOCIAL_FACEBOOK_URL || '' },
       whatsapp_grupo: { ativo: cfg.SOCIAL_WHATSAPP_GRUPO_ATIVO === 'true', url: cfg.SOCIAL_WHATSAPP_GRUPO_URL || '' },
       whatsapp_suporte: { ativo: cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true', numero: cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '' }
-    }
+    },
+    push_ativo: cfg.PUSH_ATIVO === 'true'
   };
 }
 
@@ -2361,6 +2375,119 @@ app.post('/api/webhook/pagamento', async (req, res) => {
     console.error('webhook processing error', e);
     return res.status(500).json({ error: 'erro' });
   }
+});
+
+// ==================================================================
+// 🔔 NOTIFICAÇÕES PUSH
+// ==================================================================
+
+// Chave pública — o site precisa dela pra pedir permissão de notificação
+app.get('/api/public/push/vapid-public-key', (_req, res) => {
+  if (!process.env.VAPID_PUBLIC_KEY) return res.status(503).json({ error: 'Push não configurado' });
+  return res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// Salva (ou reativa) a inscrição de um navegador
+app.post('/api/public/push/subscribe', async (req, res) => {
+  try {
+    const { subscription, telefone, sorteio_id } = req.body || {};
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      return fail(res, 'Inscrição inválida', 400);
+    }
+    const telefoneLimpo = telefone ? String(telefone).replace(/\D/g, '') : null;
+    let user_id = null;
+    if (telefoneLimpo) {
+      const { data: u } = await supabase.from('usuarios').select('id').eq('telefone', telefoneLimpo).maybeSingle();
+      user_id = u?.id || null;
+    }
+    const { data: existente } = await supabase.from('push_inscricoes').select('id').eq('endpoint', subscription.endpoint).maybeSingle();
+    if (existente) {
+      await supabase.from('push_inscricoes').update({ ativo: true, desativado_em: null, user_id, sorteio_id: sorteio_id || null }).eq('id', existente.id);
+    } else {
+      await supabase.from('push_inscricoes').insert({
+        endpoint: subscription.endpoint, chave_p256dh: subscription.keys.p256dh, chave_auth: subscription.keys.auth,
+        telefone: telefoneLimpo, user_id, sorteio_id: sorteio_id || null, ativo: true
+      });
+    }
+    return ok(res);
+  } catch (e) { console.error('push/subscribe', e); return fail(res); }
+});
+app.post('/api/public/push/unsubscribe', async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    if (!endpoint) return fail(res, 'Endpoint é obrigatório', 400);
+    await supabase.from('push_inscricoes').update({ ativo: false, desativado_em: new Date().toISOString() }).eq('endpoint', endpoint);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+// Confirma clique numa notificação (chamado pelo service worker)
+app.post('/api/public/push/registrar-clique/:disparoId', async (req, res) => {
+  try {
+    const { data: d } = await supabase.from('push_disparos').select('total_clicado').eq('id', req.params.disparoId).maybeSingle();
+    if (d) await supabase.from('push_disparos').update({ total_clicado: (d.total_clicado || 0) + 1 }).eq('id', req.params.disparoId);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+
+// ---- ADMIN ----
+app.get('/api/admin/push/config', ensureAdminAuth, async (_req, res) => {
+  const cfg = await fetchConfigFromDB();
+  return ok(res, { ativo: cfg.PUSH_ATIVO === 'true', configurado: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) });
+});
+app.post('/api/admin/push/config', ensureAdminAuth, async (req, res) => {
+  try {
+    const { ativo } = req.body || {};
+    await supabase.from('configuracoes').upsert({ chave: 'PUSH_ATIVO', valor: String(!!ativo) }, { onConflict: 'chave' });
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.get('/api/admin/push/stats', ensureAdminAuth, async (_req, res) => {
+  try {
+    const { count: totalAtivos } = await supabase.from('push_inscricoes').select('*', { head: true, count: 'exact' }).eq('ativo', true);
+    const { count: totalDesativados } = await supabase.from('push_inscricoes').select('*', { head: true, count: 'exact' }).eq('ativo', false);
+    const { count: totalGeral } = await supabase.from('push_inscricoes').select('*', { head: true, count: 'exact' });
+    return ok(res, { ativos: totalAtivos || 0, desativados: totalDesativados || 0, total: totalGeral || 0 });
+  } catch (e) { return fail(res); }
+});
+app.get('/api/admin/push/disparos', ensureAdminAuth, async (_req, res) => {
+  try {
+    const { data } = await supabase.from('push_disparos').select('*, sorteios(nome)').order('created_at', { ascending: false }).limit(50);
+    return ok(res, { lista: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/push/disparar', ensureAdminAuth, async (req, res) => {
+  try {
+    if (!configurarPush()) return fail(res, 'Chaves VAPID não configuradas no servidor (rode scripts/gerar-chaves-push.js e configure as variáveis de ambiente)', 500);
+
+    const { titulo, mensagem, imagem_url, link_destino, sorteio_id } = req.body || {};
+    if (!titulo) return fail(res, 'Título é obrigatório', 400);
+
+    const { data: disparo, error: errDisparo } = await supabase.from('push_disparos').insert({
+      titulo, mensagem: mensagem || '', imagem_url: imagem_url || null, link_destino: link_destino || '/', sorteio_id: sorteio_id || null
+    }).select().single();
+    if (errDisparo) return fail(res, errDisparo.message);
+
+    const { data: inscricoes } = await supabase.from('push_inscricoes').select('*').eq('ativo', true);
+    let enviados = 0;
+    await Promise.all((inscricoes || []).map(async (insc) => {
+      const payload = JSON.stringify({
+        title: titulo, body: mensagem || '', icon: imagem_url || undefined, image: imagem_url || undefined,
+        url: link_destino || '/', disparoId: disparo.id
+      });
+      try {
+        await webPush.sendNotification({ endpoint: insc.endpoint, keys: { p256dh: insc.chave_p256dh, auth: insc.chave_auth } }, payload);
+        enviados++;
+      } catch (err) {
+        // Inscrição morta (usuário desinstalou/bloqueou) — desativa pra não tentar de novo
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await supabase.from('push_inscricoes').update({ ativo: false, desativado_em: new Date().toISOString() }).eq('id', insc.id);
+        }
+      }
+    }));
+
+    await supabase.from('push_disparos').update({ total_enviado: enviados }).eq('id', disparo.id);
+    return ok(res, { disparo_id: disparo.id, enviados, total_inscritos: (inscricoes || []).length });
+  } catch (e) { console.error('push/disparar', e); return fail(res); }
 });
 
 app.listen(PORT, () => {

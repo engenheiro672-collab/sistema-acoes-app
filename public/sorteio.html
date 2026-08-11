@@ -99,7 +99,7 @@
     <header class="header-bar shadow-lg sticky top-0 z-50 relative">
         <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
             <a href="/" id="logo-link"><div id="logo-box" class="text-2xl font-bold text-white">LOGO</div></a>
-            <button id="btn-menu" class="text-gray-300 hover:text-white text-xl"><i class="bi bi-list"></i></button>
+            <button id="btn-menu" class="text-gray-300 hover:text-white" style="font-size:2rem; padding:8px;"><i class="bi bi-list"></i></button>
         </nav>
         <div id="menu-dropdown" class="menu-dropdown hidden">
             <button id="menu-meus-titulos"><i class="bi bi-cart3"></i> Meus Títulos</button>
@@ -221,6 +221,14 @@
             </button>
         </section>
 
+        <div id="banner-ativar-push" class="hidden mx-4 my-6" style="background:linear-gradient(135deg,#1a8754,#5be584); border-radius:16px; padding:1.5rem; text-align:center;">
+            <div style="font-size:2.5rem;">🔔</div>
+            <h3 class="text-white font-bold text-lg mt-2">Ative notificações e receba promoções exclusivas direto no seu celular!</h3>
+            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-6 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                <i class="bi bi-bell-fill"></i> Ativar Notificação
+            </button>
+        </div>
+
     </main>
 
     <div id="modal-meus-numeros" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
@@ -335,6 +343,7 @@
         let SORTEIO_DATA = {};
         let CHANCE_DOBRO_ATIVA = null;
         let PROMOCOES_ATIVAS = [];
+        let PUSH_ATIVO_GLOBAL = false;
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
         let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
@@ -348,6 +357,64 @@
             if (partes.length === 1) return partes[0];
             return `${partes[0]} ${partes[1][0]}.`;
         }
+
+        // ---------------- NOTIFICAÇÃO PUSH ----------------
+        function urlBase64ParaUint8Array(base64String) {
+            const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+        }
+        async function verificarSuportePush() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+            if (Notification.permission === 'denied') return false;
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                const sub = reg ? await reg.pushManager.getSubscription() : null;
+                if (sub) return false; // já está inscrito, não precisa mostrar de novo
+            } catch (e) {}
+            return true;
+        }
+        async function mostrarBannerPushSeAplicavel() {
+            const pushAtivadoNoSite = PUSH_ATIVO_GLOBAL === true;
+            if (!pushAtivadoNoSite) return;
+            const podeMostrar = await verificarSuportePush();
+            if (podeMostrar) $('#banner-ativar-push').removeClass('hidden');
+        }
+        async function ativarNotificacaoPush() {
+            try {
+                $('#btn-ativar-push').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Ativando...');
+                const permissao = await Notification.requestPermission();
+                if (permissao !== 'granted') {
+                    notificar('Você precisa permitir as notificações pra ativar.', 'aviso');
+                    $('#btn-ativar-push').prop('disabled', false).html('<i class="bi bi-bell-fill"></i> Ativar Notificação');
+                    return;
+                }
+                const reg = await navigator.serviceWorker.register('/sw.js');
+                const resp = await fetch('/api/public/push/vapid-public-key');
+                if (!resp.ok) throw new Error('Push não configurado no servidor');
+                const { publicKey } = await resp.json();
+
+                const subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ParaUint8Array(publicKey)
+                });
+
+                const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
+                await fetch('/api/public/push/subscribe', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subscription, telefone: salvo?.telefone || null, sorteio_id: SORTEIO_DATA?.id || null })
+                });
+
+                notificar('Notificações ativadas! 🔔', 'sucesso');
+                $('#banner-ativar-push').fadeOut(300);
+            } catch (e) {
+                console.error('ativarNotificacaoPush', e);
+                notificar('Não foi possível ativar as notificações agora.', 'erro');
+                $('#btn-ativar-push').prop('disabled', false).html('<i class="bi bi-bell-fill"></i> Ativar Notificação');
+            }
+        }
+        $(document).on('click', '#btn-ativar-push', ativarNotificacaoPush);
 
         // Notificação bonitinha no lugar do alert() feio do navegador
         function notificar(mensagem, tipo) {
@@ -584,6 +651,7 @@
             SORTEIO_DATA = sorteio || {};
             CHANCE_DOBRO_ATIVA = data.chance_dobro_ativa || null;
             PROMOCOES_ATIVAS = data.promocoes || [];
+            PUSH_ATIVO_GLOBAL = data.push_ativo === true;
             BILHETES_PREMIADOS = bilhetes_premiados || [];
             FUNIL_DATA = funil || null;
 
@@ -615,6 +683,7 @@
             try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
             try { renderPromocoes(PROMOCOES_ATIVAS); } catch (e) { console.error('renderPromocoes', e); }
             try { iniciarUrgencia(data.aviso_urgencia_ativo); } catch (e) { console.error('iniciarUrgencia', e); }
+            try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
             try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
             try { renderRedesSociaisFlutuantes(data.redes_sociais); } catch (e) { console.error('renderRedesSociaisFlutuantes', e); }
 

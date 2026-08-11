@@ -495,7 +495,7 @@
                     <input id="promo-titulo" placeholder="Título (ex: Combo Relâmpago)" class="input-dark mb-2">
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div><label class="text-xs text-gray-400">Quantidade de títulos</label><input id="promo-quantidade" type="number" min="1" class="input-dark mt-1" placeholder="Ex: 300"></div>
-                        <div><label class="text-xs text-gray-400">Preço promocional (total)</label><input id="promo-preco" type="number" step="0.01" min="0" class="input-dark mt-1" placeholder="Ex: 10.00"></div>
+                        <div><label class="text-xs text-gray-400">Preço promocional (total)</label><input id="promo-preco" type="text" inputmode="numeric" class="input-dark mt-1 mascara-real" placeholder="R$ 0,00"></div>
                     </div>
                     <div class="flex gap-2">
                         <button type="button" class="btn-primary" id="promo-btn-salvar" onclick="salvarPromocao()">Criar Promoção</button>
@@ -850,7 +850,7 @@
                 <p class="text-xs text-gray-500 mb-3">Adicione despesas (prêmio, tráfego pago, etc.) — elas entram no cálculo de Lucro Líquido e ROI do período filtrado acima.</p>
                 <div class="flex gap-2 mb-4 flex-wrap">
                     <input id="despesa-nome" placeholder="Nome (ex: Tráfego pago)" class="input-dark" style="max-width:220px">
-                    <input id="despesa-valor" type="number" step="0.01" placeholder="Valor (R$)" class="input-dark" style="max-width:140px">
+                    <input id="despesa-valor" type="text" inputmode="numeric" placeholder="R$ 0,00" class="input-dark mascara-real" style="max-width:140px">
                     <input id="despesa-data" type="date" class="input-dark" style="max-width:160px">
                     <button class="btn-primary" onclick="addDespesa()">Adicionar</button>
                 </div>
@@ -1200,6 +1200,18 @@ function setMascaraMoedaValor(valor) {
     $('#inp-preco-display').val('R$ ' + num.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'));
 }
 
+// Máscara de dinheiro genérica e reaproveitável — aplica em qualquer input (formata "R$ 1.234,56" enquanto digita)
+$(document).on('input', '.mascara-real', function() {
+    let v = this.value.replace(/\D/g, '');
+    v = (Number(v) / 100).toFixed(2);
+    v = v.replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    this.value = 'R$ ' + v;
+});
+// Converte "R$ 1.234,56" de volta pra número puro (1234.56), pra mandar pro backend
+function valorMoedaParaNumero(valorFormatado) {
+    return Number(String(valorFormatado || '').replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+}
+
 // ---------------- MÁSCARA DE TELEFONE (WhatsApp) ----------------
 function mascaraTelefone(input) {
     let v = input.value.replace(/\D/g, '').slice(0, 11);
@@ -1533,6 +1545,21 @@ function mascararNome(nomeCompleto) {
     const partes = nomeCompleto.trim().split(/\s+/);
     if (partes.length === 1) return partes[0];
     return partes[0] + ' ' + partes.slice(1).map(p => p[0] + '*'.repeat(Math.max(p.length - 1, 1))).join(' ');
+}
+// Formata telefone com DDD entre parênteses: (11) 91234-5678 — sem mascarar (visão interna do admin)
+function formatarTelefone(tel) {
+    let v = String(tel || '').replace(/\D/g, '');
+    if (v.length > 11 && v.startsWith('55')) v = v.slice(2);
+    if (v.length < 10) return tel || '—';
+    const ddd = v.slice(0, 2);
+    const resto = v.slice(2);
+    return resto.length === 9 ? `(${ddd}) ${resto.slice(0, 5)}-${resto.slice(5)}` : `(${ddd}) ${resto.slice(0, 4)}-${resto.slice(4)}`;
+}
+// Formata CPF com pontos e traço: 123.456.789-00
+function formatarCPF(cpf) {
+    const v = String(cpf || '').replace(/\D/g, '');
+    if (v.length !== 11) return cpf || '—';
+    return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`;
 }
 // Formata telefone bonito e mascara o meio: (11) 9****-**34
 function mascararTelefoneFormatado(tel) {
@@ -2418,7 +2445,7 @@ function salvarPromocao() {
     const editId = $('#promo-edit-id').val();
     const titulo = $('#promo-titulo').val();
     const quantidade_cotas = $('#promo-quantidade').val();
-    const preco_promocional = $('#promo-preco').val();
+    const preco_promocional = valorMoedaParaNumero($('#promo-preco').val());
     if (!SORTEIO_PROMO_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!quantidade_cotas || !preco_promocional) return notificar('Preencha a quantidade e o preço.', 'erro');
 
@@ -2440,7 +2467,7 @@ function editarPromocao(id) {
         $('#promo-edit-id').val(p.id);
         $('#promo-titulo').val(p.titulo);
         $('#promo-quantidade').val(p.quantidade_cotas);
-        $('#promo-preco').val(p.preco_promocional);
+        $('#promo-preco').val('R$ ' + Number(p.preco_promocional).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'));
         $('#promo-form-titulo').text('Editando promoção');
         $('#promo-btn-salvar').text('Salvar alterações');
         $('#promo-btn-cancelar').removeClass('hidden');
@@ -2880,8 +2907,8 @@ function renderModalPedido() {
     $('#detalhe-pedido-corpo').html(`
         <div class="space-y-2 text-sm">
             <div><span class="opacity-60">Comprador:</span> <b>${p.usuarios?.nome_completo || '—'}</b></div>
-            <div><span class="opacity-60">Telefone:</span> ${tel || '—'}</div>
-            ${p.usuarios?.cpf ? `<div><span class="opacity-60">CPF:</span> ${p.usuarios.cpf}</div>` : ''}
+            <div><span class="opacity-60">Telefone:</span> ${tel ? formatarTelefone(tel) : '—'}</div>
+            ${p.usuarios?.cpf ? `<div><span class="opacity-60">CPF:</span> ${formatarCPF(p.usuarios.cpf)}</div>` : ''}
             <div><span class="opacity-60">Sorteio:</span> ${p.sorteios?.nome || '—'}</div>
             <div><span class="opacity-60">Funil:</span> ${p.funis?.nome || 'Padrão'}</div>
             <div><span class="opacity-60">Quantidade:</span> ${p.quantidade_cotas}</div>
@@ -3069,7 +3096,7 @@ function carregarDespesas() {
 }
 function addDespesa() {
     const nome = $('#despesa-nome').val();
-    const valor = $('#despesa-valor').val();
+    const valor = valorMoedaParaNumero($('#despesa-valor').val());
     const data = $('#despesa-data').val();
     if (!nome || !valor) return notificar('Preencha nome e valor da despesa.', 'erro');
     api('POST', '/api/admin/despesas', { nome, valor, data: data ? `${data}T12:00:00` : undefined }).then(() => {

@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
 
     <style>
         html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
@@ -227,11 +228,30 @@
 
         function formatarMoeda(valor) { return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
-        // Mostra só o começo e o fim de um número (CPF/telefone), escondendo o meio com asteriscos
-        function mascarar(valor) {
+        // Formata telefone com DDD entre parênteses: (11) 91234-5678
+        function formatarTelefone(tel) {
+            let v = String(tel || '').replace(/\D/g, '');
+            if (v.length > 11 && v.startsWith('55')) v = v.slice(2);
+            if (v.length < 10) return tel || '';
+            const ddd = v.slice(0, 2);
+            const resto = v.slice(2);
+            return resto.length === 9 ? `(${ddd}) ${resto.slice(0, 5)}-${resto.slice(5)}` : `(${ddd}) ${resto.slice(0, 4)}-${resto.slice(4)}`;
+        }
+        // Formata CPF com pontos e traço: 123.456.789-00
+        function formatarCPF(cpf) {
+            const v = String(cpf || '').replace(/\D/g, '');
+            if (v.length !== 11) return cpf || '';
+            return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`;
+        }
+        // Mostra só o começo e o fim (CPF/telefone), já no formato certo, escondendo o meio com asteriscos
+        function mascarar(valor, tipo) {
+            const formatado = tipo === 'cpf' ? formatarCPF(valor) : formatarTelefone(valor);
             const v = String(valor || '').replace(/\D/g, '');
-            if (v.length <= 6) return v;
-            return v.slice(0, 4) + '*'.repeat(v.length - 6) + v.slice(-2);
+            if (v.length <= 6) return formatado;
+            const mascarado = v.slice(0, 4) + '*'.repeat(v.length - 6) + v.slice(-2);
+            // Reaplica no formato visual, só trocando os dígitos que viraram asterisco
+            let i = 0;
+            return formatado.replace(/\d/g, () => mascarado[i++] || '*');
         }
 
         function notificar(mensagem, tipo) {
@@ -566,8 +586,8 @@
             $('#detalhe-token').text(pedido.token || '');
             $('#detalhe-comprador').text(pedido.usuarios?.nome_completo || '');
             const cpf = pedido.usuarios?.cpf;
-            if (cpf) { $('#linha-cpf').removeClass('hidden'); $('#detalhe-cpf').text(mascarar(cpf)); }
-            $('#detalhe-telefone').text(mascarar(pedido.usuarios?.telefone || ''));
+            if (cpf) { $('#linha-cpf').removeClass('hidden'); $('#detalhe-cpf').text(mascarar(cpf, 'cpf')); }
+            $('#detalhe-telefone').text(mascarar(pedido.usuarios?.telefone || '', 'tel'));
             $('#detalhe-situacao').text(pedido.status === 'aguardando' ? 'Aguardando pagamento' : (pedido.status === 'pago' ? 'Pago' : pedido.status));
             $('#detalhe-data').text(pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '');
             $('#detalhe-expira').text(pedido.expira_em ? new Date(pedido.expira_em).toLocaleString('pt-BR') : '');
