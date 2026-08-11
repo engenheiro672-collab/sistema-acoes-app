@@ -15,9 +15,7 @@
         #logo-box img { max-height: 40px; max-width: 280px; }
         .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
         .title-bar { background-color: #1a1a1a; color: #fff; }
-        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 600; padding: 0.9rem 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .price-bar { color: #a0aec0; }
-        .price-bar strong { color: #f7b731; font-size: 1.125rem; margin-left: 8px; }
+        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 600; font-size: 0.8125rem; padding: 8px 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
         @media (max-width: 480px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; padding: 0.75rem; } .cota-num { font-size: 1.6rem !important; } .cota-label { font-size: 0.7rem !important; } }
         .cota-num { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -54,7 +52,7 @@
         .modal-content { transition: transform 0.3s ease; }
         .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); }
         .caption-header .tag-ending { margin-top: 4px; margin-bottom: 4px; align-self: flex-start; }
-        .caption-header h1 { font-weight: 600; font-size: 1.5rem; line-height: 1.2; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
+        .caption-header h1 { font-weight: 500; font-size: 1rem; line-height: 1.2; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
         .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.75rem; font-weight: 500; height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; display: inline-block; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.88; } }
@@ -115,12 +113,9 @@
             <i class="bi bi-ticket-detailed"></i> Meus títulos
         </button>
 
-        <div class="title-bar flex justify-between items-center p-4">
-            <div></div>
-            <div class="price-bar text-right">
-                Por apenas
-                <strong id="preco-cota">R$ 0,00</strong>
-            </div>
+        <div class="title-bar flex justify-center items-center p-4">
+            <h6 style="margin:0; font-weight:600; font-size:12.3px; color:#fff;">Por apenas</h6>
+            <span id="preco-cota" style="margin-left:8px; height:22px; line-height:22px; padding:0 8px; border-radius:6px; background:#000; color:#fff; font-weight:700; font-size:1rem; border:1px solid rgba(145,158,171,0.32); white-space:nowrap;">R$ 0,00</span>
         </div>
 
         <div id="banner-chance-dobro" class="mx-4 mt-4 hidden combo-roleta">
