@@ -27,6 +27,8 @@
     .sidebar-item:hover { background-color: var(--hover); color: var(--text); }
     .sidebar-item.active { background: linear-gradient(135deg,var(--accent),var(--accent-2)); color: #fff; box-shadow: 0 4px 14px rgba(139,92,246,0.4); }
     .input-dark { background-color: var(--input-bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 12px; width: 100%; }
+    input[type="date"].input-dark, input[type="datetime-local"].input-dark, input[type="time"].input-dark { color-scheme: dark; }
+    html.light input[type="date"].input-dark, html.light input[type="datetime-local"].input-dark, html.light input[type="time"].input-dark { color-scheme: light; }
     .input-dark:focus { outline: none; border-color: var(--accent); }
     .btn-primary { background: linear-gradient(135deg,var(--accent),var(--accent-2)); color: #fff; padding: 9px 18px; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 10px rgba(139,92,246,0.35); border: none; }
     .btn-primary:hover { filter: brightness(1.1); }
@@ -545,7 +547,17 @@
                             <input name="total_cotas" id="inp-total-cotas" class="input-dark mt-2 hidden" placeholder="Ex: 500000">
                         </div>
                         <div><label class="text-sm text-gray-400">Mínimo por compra</label><input name="minimo_cotas_compra" id="inp-min" class="input-dark mt-1"></div>
-                        <div><label class="text-sm text-gray-400">Máximo por compra</label><input name="maximo_cotas_compra" id="inp-max" class="input-dark mt-1"></div>
+                        <div><label class="text-sm text-gray-400">Máximo por compra</label>
+                            <select name="maximo_cotas_compra" id="inp-max" class="input-dark mt-1">
+                                <option value="1000">1.000</option>
+                                <option value="5000">5.000</option>
+                                <option value="10000">10.000</option>
+                                <option value="20000">20.000</option>
+                                <option value="50000">50.000</option>
+                                <option value="100000">100.000</option>
+                                <option value="1000000">Sem limite (1.000.000)</option>
+                            </select>
+                        </div>
                         <div><label class="text-sm text-gray-400">Mín. visível no seletor</label><input name="minimo_visivel_seletor" id="inp-min-visivel" class="input-dark mt-1"></div>
                         <div><label class="text-sm text-gray-400">Tempo p/ pagamento</label>
                             <select name="tempo_pagamento" id="inp-tempo" class="input-dark mt-1">
@@ -1655,7 +1667,11 @@ function abrirFormSorteio(id) {
         setMascaraMoedaValor(s.preco_cota);
         setTotalCotasValor(s.total_cotas);
         $('#inp-min').val(s.minimo_cotas_compra);
-        $('#inp-max').val(s.maximo_cotas_compra);
+        const valorMax = s.maximo_cotas_compra || 1000000;
+        if ($(`#inp-max option[value="${valorMax}"]`).length === 0) {
+            $('#inp-max').prepend(`<option value="${valorMax}">${valorMax.toLocaleString('pt-BR')} (atual)</option>`);
+        }
+        $('#inp-max').val(valorMax);
         $('#inp-min-visivel').val(s.minimo_visivel_seletor);
         $('#inp-tempo').val(String(s.tempo_pagamento));
         $('#inp-link-vip').val(s.link_grupo_vip);

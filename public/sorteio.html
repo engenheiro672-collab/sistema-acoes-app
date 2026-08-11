@@ -52,11 +52,14 @@
         .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
         .modal { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
+        .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); }
+        .caption-header .tag-ending { margin-top: 4px; margin-bottom: 4px; align-self: flex-start; }
+        .caption-header h1 { font-weight: 600; font-size: 1.5rem; line-height: 1.2; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
         .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.75rem; font-weight: 500; height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; display: inline-block; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-        @keyframes pulse-opacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
-        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px; margin-bottom: 0.5rem; box-sizing: border-box; max-width: 100%; overflow: hidden; }
-        .combo-pulse { animation: pulse-opacity 1.8s infinite; }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.88; } }
+        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 94%; overflow: hidden; }
+        .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
         .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
         .input-com-icon { padding-left: 3rem !important; width: 100%; }
@@ -101,10 +104,9 @@
             <div class="carrossel-track" id="carrossel-track">
                 <div class="carrossel-slide"><img id="sorteio-img" src="" alt="Prêmio"></div>
             </div>
-            <div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent" style="pointer-events:none;">
+            <div class="absolute bottom-0 left-0 w-full caption-header" style="pointer-events:none;">
                 <span id="sorteio-tag" class="tag-ending">Corre que está acabando!</span>
-                <h1 id="sorteio-nome" class="text-3xl font-bold text-white mt-2">Carregando...</h1>
-                <p id="sorteio-desc" class="text-gray-200"></p>
+                <h1 id="sorteio-nome">Carregando...</h1>
             </div>
             <div id="redes-sociais-flutuantes" class="absolute flex flex-col gap-2" style="right:10px; top:16px;"></div>
         </section>
@@ -480,13 +482,13 @@
             $('#page-title').text(`${sorteio.nome || ''} - Sorteios`);
             renderCarrossel(sorteio);
             $('#sorteio-nome').text(sorteio.nome || '');
-            $('#sorteio-desc').text(sorteio.subtitulo || 'Participe e concorra!');
             $('#preco-cota').text(PRECO ? formatarMoeda(PRECO) : 'R$ 0,00');
             $('#input-qtd').attr('min', MIN_QTY).attr('max', MAX_QTY);
 
-            if (sorteio.regulamento && sorteio.regulamento.trim()) {
+            const textoCompleto = [sorteio.descricao, sorteio.regulamento].filter(t => t && t.trim()).join('\n\n');
+            if (textoCompleto) {
                 $('#secao-regulamento').removeClass('hidden');
-                $('#corpo-regulamento').text(sorteio.regulamento);
+                $('#corpo-regulamento').text(textoCompleto);
             } else {
                 $('#secao-regulamento').addClass('hidden');
             }
@@ -501,12 +503,12 @@
                 $('#secao-roleta-tiers').removeClass('hidden');
                 $('#lista-roleta-tiers').html(roleta_tiers.map(t => `
                     <div class="combo-roleta combo-pulse">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:0.5rem; flex-wrap:wrap;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
                             <div style="min-width:0;">
-                                <div class="text-xs text-green-100">A cada</div>
-                                <div class="text-base font-bold text-white">${t.minimo_cotas} títulos</div>
+                                <div class="text-xs text-green-100" style="line-height:1.1;">A cada</div>
+                                <div class="text-lg font-bold text-white" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
                             </div>
-                            <div class="text-sm font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
+                            <div class="text-base font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
                         </div>
                         <div class="text-[0.65rem] text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
                     </div>
@@ -572,8 +574,7 @@
                     }
                 })
                 .fail(function() {
-                    $('#sorteio-nome').text('Sorteio não encontrado');
-                    $('#sorteio-desc').text('Verifique o link e tente novamente.');
+                    $('#sorteio-nome').text('Sorteio não encontrado. Verifique o link e tente novamente.');
                 });
         }
 
