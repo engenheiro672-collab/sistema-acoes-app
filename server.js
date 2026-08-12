@@ -364,13 +364,45 @@ async function trackearAcesso(req, res, next) {
   next();
 }
 
-app.get('/sorteio/:slug', trackearAcesso, (_req, res) => sendPage(res, 'sorteio.html'));
+// Escapa texto pra colocar dentro de atributo HTML com segurança (evita quebrar a página com aspas/símbolos)
+function escaparAtributoHtml(texto) {
+  return String(texto || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Injeta os dados reais do sorteio (foto, título, descrição) no HTML antes de mandar — necessário porque
+// o WhatsApp/Instagram/Facebook NÃO executam o JavaScript da página, só leem o HTML puro que o servidor manda.
+function enviarSorteioComOg(res, sorteio, req) {
+  const html = fs.readFileSync(path.join(PUBLIC_DIR, 'sorteio.html'), 'utf-8');
+  const titulo = sorteio?.nome ? `${sorteio.nome} — Participe e concorra!` : 'Sorteio';
+  const descricao = sorteio?.descricao ? String(sorteio.descricao).slice(0, 150) : 'Participe e concorra a prêmios incríveis!';
+  const imagem = sorteio?.foto_url || '';
+  const urlCompleta = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+
+  const htmlComOg = html
+    .replaceAll('__OG_TITLE__', escaparAtributoHtml(titulo))
+    .replaceAll('__OG_DESCRIPTION__', escaparAtributoHtml(descricao))
+    .replaceAll('__OG_IMAGE__', escaparAtributoHtml(imagem))
+    .replaceAll('__OG_URL__', escaparAtributoHtml(urlCompleta));
+
+  res.set('Content-Type', 'text/html');
+  return res.send(htmlComOg);
+}
+
+app.get('/sorteio/:slug', trackearAcesso, async (req, res) => {
+  try {
+    const { data: sorteio } = await supabase.from('sorteios').select('nome, descricao, foto_url').eq('slug', req.params.slug).maybeSingle();
+    return enviarSorteioComOg(res, sorteio, req);
+  } catch (err) {
+    console.error('Erro ao montar preview do sorteio', err);
+    return sendPage(res, 'sorteio.html');
+  }
+});
 
 // Serve o HTML correto para o funil: cada funil pode apontar pra um arquivo diferente em public/funis/
 app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
   try {
     const { slug, funilSlug } = req.params;
-    const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();
+    const { data: sorteio } = await supabase.from('sorteios').select('id, nome, descricao, foto_url').eq('slug', slug).maybeSingle();
     if (sorteio) {
       const { data: funil } = await supabase.from('funis').select('arquivo_html').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).maybeSingle();
       const arquivo = funil?.arquivo_html || 'sorteio.html';
@@ -379,6 +411,7 @@ app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
         const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
         if (fs.existsSync(customPath)) return res.sendFile(customPath);
       }
+      return enviarSorteioComOg(res, sorteio, req);
     }
   } catch (err) { console.error('Erro ao resolver arquivo do funil', err); }
   return sendPage(res, 'sorteio.html');
