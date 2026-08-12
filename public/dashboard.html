@@ -305,7 +305,7 @@
                         <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Já saiu (clique pra chamar o ganhador no WhatsApp)</span>
                         <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span> Ainda não saiu</span>
                     </div>
-                    <div id="grid-bilhetes-premiados" class="bg-darkCard rounded-xl border border-gray-800 p-4 flex flex-wrap gap-2 min-h-[80px]"></div>
+                    <div id="grid-bilhetes-premiados" class="bg-darkCard rounded-xl border border-gray-800 p-4 space-y-2 min-h-[80px]"></div>
                 </div>
 
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
@@ -1983,12 +1983,23 @@ function renderGridBilhetesAdmin() {
     const lista = filtro ? BILHETES_ADMIN_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_ADMIN_CACHE;
     $('#grid-bilhetes-premiados').html(lista.map(p => {
         const saiu = p.status === 'reivindicada';
-        const cor = saiu ? 'bg-green-600' : 'bg-red-600';
-        const inativo = p.ativo === false ? ' opacity-40' : '';
+        const corBorda = saiu ? '#16a34a' : '#dc2626';
+        const inativo = p.ativo === false ? ' opacity-50' : '';
         const acaoManual = saiu
-            ? `<button type="button" onclick="desmarcarReivindicado('${p.id}')" title="Desmarcar (voltar pra disponível)" style="margin-left:4px;">↺</button>`
-            : `<button type="button" onclick="abrirMarcarReivindicado('${p.id}')" title="Marcar como já reivindicado" style="margin-left:4px;">🏆</button>`;
-        return `<span class="chip ${cor} text-white${inativo}" title="${p.premio_titulo || ''}${p.ativo === false ? ' (inativo)' : ''}">🎫 ${p.numero_cota}${acaoManual}<button type="button" onclick="editarPremio('${p.id}')" title="Editar" style="margin-left:4px;">✏️</button><button type="button" onclick="removerPremio('${p.id}')" style="margin-left:4px;">&times;</button></span>`;
+            ? `<button type="button" class="text-xs opacity-80 hover:opacity-100" onclick="desmarcarReivindicado('${p.id}')" title="Desmarcar (voltar pra disponível)">↺ Desmarcar</button>`
+            : `<button type="button" class="text-xs opacity-80 hover:opacity-100" onclick="abrirMarcarReivindicado('${p.id}')" title="Marcar como já reivindicado">🏆 Simular ganho</button>`;
+        return `
+            <div class="p-3 rounded-lg flex justify-between items-center flex-wrap gap-2${inativo}" style="background:#1a1f2b; border:1px solid ${corBorda};">
+                <div>
+                    <div class="flex items-center gap-2"><span class="font-mono font-bold text-white">🎫 ${p.numero_cota}</span> <span class="text-gray-400 text-sm">${p.premio_titulo || ''}</span></div>
+                    ${p.ativo === false ? '<span class="badge badge-outro mt-1 inline-block">Inativo</span>' : ''}
+                </div>
+                <div class="flex gap-3 items-center flex-shrink-0">
+                    ${acaoManual}
+                    <button class="text-purple-300 hover:text-purple-200" onclick="editarPremio('${p.id}')" title="Editar"><i class="bi bi-pencil"></i></button>
+                    <button class="text-red-400 hover:text-red-300" onclick="removerPremio('${p.id}')" title="Excluir"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>`;
     }).join('') || '<p class="opacity-60 text-sm">Nenhum bilhete premiado cadastrado ainda.</p>');
 }
 let BILHETES_ADMIN_CACHE = [];

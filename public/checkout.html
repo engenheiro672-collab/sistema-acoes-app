@@ -11,6 +11,10 @@
 
     <style>
         html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
+        .sino-balancando { animation: balancar-sino 1.8s ease-in-out infinite; transform-origin: top center; display: inline-block; }
+        @keyframes balancar-sino { 0%, 100% { transform: rotate(0deg); } 10% { transform: rotate(-15deg); } 20% { transform: rotate(12deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 50% { transform: rotate(-4deg); } 60%, 100% { transform: rotate(0deg); } }
+        .banner-push-pulse { animation: pulsar-gradiente-verde 3s ease-in-out infinite; }
+        @keyframes pulsar-gradiente-verde { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .header-bar { background-color: #1a1a1a; padding: 1rem; }
         .card { background-color: #2b2b2b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
         .aguardando-icon { font-size: 2.5rem; color: #f7b731; }
@@ -94,17 +98,22 @@
         </div>
         <div id="bonus-tag-box" class="text-center"></div>
 
-        <a id="btn-grupo-vip" href="#" target="_blank" class="btn-grupo-vip hidden w-full text-center justify-center" style="font-size:1.1rem; padding: 1rem; box-shadow: 0 0 0 4px rgba(37,211,102,0.25); animation: pulse-vip 2s infinite;">
-            <i class="bi bi-whatsapp"></i> Entrar no Grupo VIP
-        </a>
-        <style>@keyframes pulse-vip { 0%,100% { box-shadow: 0 0 0 4px rgba(37,211,102,0.25); } 50% { box-shadow: 0 0 0 10px rgba(37,211,102,0.1); } }</style>
-
-        <div id="banner-ativar-push" class="hidden my-4" style="background:linear-gradient(135deg,#1a8754,#5be584); border-radius:16px; padding:1.5rem; text-align:center;">
-            <div style="font-size:2.5rem;">🔔</div>
-            <h3 class="text-white font-bold text-lg mt-2">Ative notificações e receba promoções exclusivas direto no seu celular!</h3>
-            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-6 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+        <div id="banner-ativar-push" class="hidden my-4 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:3rem;">🔔</div>
+            <h3 class="text-white font-black text-xl mt-2">Ative as notificações</h3>
+            <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Para receber promoções exclusivas, ative a notificação!</p>
+            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
                 <i class="bi bi-bell-fill"></i> Ativar Notificação
             </button>
+        </div>
+
+        <div id="banner-grupo-vip-novo" class="hidden my-4" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div style="font-size:3rem;">👥</div>
+            <h3 class="text-white font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
+            <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
+            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-4 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+                <i class="bi bi-whatsapp"></i> Entrar no Grupo
+            </a>
         </div>
 
         <p id="cronometro-box" class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
@@ -281,10 +290,23 @@
             return true;
         }
         async function mostrarBannerPushSeAplicavel() {
-            if (!PUSH_ATIVO_GLOBAL) return;
-            const podeMostrar = await verificarSuportePush();
-            if (podeMostrar) $('#banner-ativar-push').removeClass('hidden');
+            let mostrouPush = false;
+            if (PUSH_ATIVO_GLOBAL) {
+                const podeMostrar = await verificarSuportePush();
+                if (podeMostrar) { $('#banner-ativar-push').removeClass('hidden'); mostrouPush = true; }
+            }
+            if (!mostrouPush && LINK_GRUPO_VIP_ATUAL) {
+                $('#btn-entrar-grupo-vip-novo').attr('href', LINK_GRUPO_VIP_ATUAL);
+                $('#banner-grupo-vip-novo').removeClass('hidden');
+            }
         }
+        function revelarBannerGrupoVipAposPush() {
+            if (LINK_GRUPO_VIP_ATUAL) {
+                $('#btn-entrar-grupo-vip-novo').attr('href', LINK_GRUPO_VIP_ATUAL);
+                $('#banner-grupo-vip-novo').removeClass('hidden').hide().fadeIn(400);
+            }
+        }
+        let LINK_GRUPO_VIP_ATUAL = null;
         async function ativarNotificacaoPush() {
             try {
                 $('#btn-ativar-push').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Ativando...');
@@ -304,7 +326,7 @@
                     body: JSON.stringify({ subscription, telefone: PEDIDO_TELEFONE || null, sorteio_id: PEDIDO_SORTEIO_ID || null })
                 });
                 notificar('Notificações ativadas! 🔔', 'sucesso');
-                $('#banner-ativar-push').fadeOut(300);
+                $('#banner-ativar-push').fadeOut(300, revelarBannerGrupoVipAposPush);
             } catch (e) {
                 console.error('ativarNotificacaoPush', e);
                 notificar('Não foi possível ativar as notificações agora.', 'erro');
@@ -442,9 +464,7 @@
             aplicarTemaPosPagamento(data.funil || FUNIL_DATA);
             renderCotas((data.cotas && data.cotas.length) ? data.cotas : COTAS_GERADAS_INICIAIS);
 
-            if (data.link_grupo_vip) {
-                $('#btn-grupo-vip').attr('href', data.link_grupo_vip).removeClass('hidden');
-            }
+            LINK_GRUPO_VIP_ATUAL = data.link_grupo_vip || null;
 
             try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
 

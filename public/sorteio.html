@@ -58,6 +58,10 @@
         .caption-header h1 { font-weight: 500; font-size: 1.4rem; line-height: 1.25; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
         .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.95rem; font-weight: 500; height: 32px; line-height: 32px; padding: 0 14px; border-radius: 8px; display: inline-block; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        .sino-balancando { animation: balancar-sino 1.8s ease-in-out infinite; transform-origin: top center; display: inline-block; }
+        @keyframes balancar-sino { 0%, 100% { transform: rotate(0deg); } 10% { transform: rotate(-15deg); } 20% { transform: rotate(12deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 50% { transform: rotate(-4deg); } 60%, 100% { transform: rotate(0deg); } }
+        .banner-push-pulse { animation: pulsar-gradiente-verde 3s ease-in-out infinite; }
+        @keyframes pulsar-gradiente-verde { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 10px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
         .countdown-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
         .countdown-subtitle { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin: 0; }
@@ -221,12 +225,22 @@
             </button>
         </section>
 
-        <div id="banner-ativar-push" class="hidden mx-4 my-6" style="background:linear-gradient(135deg,#1a8754,#5be584); border-radius:16px; padding:1.5rem; text-align:center;">
-            <div style="font-size:2.5rem;">🔔</div>
-            <h3 class="text-white font-bold text-lg mt-2">Ative notificações e receba promoções exclusivas direto no seu celular!</h3>
-            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-6 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+        <div id="banner-ativar-push" class="hidden mx-4 my-6 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:3rem;">🔔</div>
+            <h3 class="text-white font-black text-xl mt-2">Ative as notificações</h3>
+            <p class="text-green-50 text-sm mt-1 opacity-90">Para receber promoções exclusivas, ative a notificação!</p>
+            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
                 <i class="bi bi-bell-fill"></i> Ativar Notificação
             </button>
+        </div>
+
+        <div id="banner-grupo-vip-novo" class="hidden mx-4 my-6" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div style="font-size:3rem;">👥</div>
+            <h3 class="text-white font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
+            <p class="text-green-50 text-sm mt-1 opacity-90">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
+            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-4 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+                <i class="bi bi-whatsapp"></i> Entrar no Grupo
+            </a>
         </div>
 
     </main>
@@ -376,10 +390,27 @@
             return true;
         }
         async function mostrarBannerPushSeAplicavel() {
+            const linkGrupo = SORTEIO_DATA?.link_grupo_vip;
             const pushAtivadoNoSite = PUSH_ATIVO_GLOBAL === true;
-            if (!pushAtivadoNoSite) return;
-            const podeMostrar = await verificarSuportePush();
-            if (podeMostrar) $('#banner-ativar-push').removeClass('hidden');
+            let mostrouPush = false;
+
+            if (pushAtivadoNoSite) {
+                const podeMostrar = await verificarSuportePush();
+                if (podeMostrar) { $('#banner-ativar-push').removeClass('hidden'); mostrouPush = true; }
+            }
+            // Se o banner de notificação não apareceu (não suportado, já inscrito, ou desativado), mostra o do grupo direto
+            if (!mostrouPush && linkGrupo) {
+                $('#btn-entrar-grupo-vip-novo').attr('href', linkGrupo);
+                $('#banner-grupo-vip-novo').removeClass('hidden');
+            }
+        }
+        // Depois que a pessoa ativa a notificação, revela o banner do grupo (se tiver link configurado)
+        function revelarBannerGrupoVipAposPush() {
+            const linkGrupo = SORTEIO_DATA?.link_grupo_vip;
+            if (linkGrupo) {
+                $('#btn-entrar-grupo-vip-novo').attr('href', linkGrupo);
+                $('#banner-grupo-vip-novo').removeClass('hidden').hide().fadeIn(400);
+            }
         }
         async function ativarNotificacaoPush() {
             try {
@@ -407,7 +438,7 @@
                 });
 
                 notificar('Notificações ativadas! 🔔', 'sucesso');
-                $('#banner-ativar-push').fadeOut(300);
+                $('#banner-ativar-push').fadeOut(300, revelarBannerGrupoVipAposPush);
             } catch (e) {
                 console.error('ativarNotificacaoPush', e);
                 notificar('Não foi possível ativar as notificações agora.', 'erro');
@@ -778,6 +809,20 @@
                 ultimoToque = agora;
             }, { passive: false });
             document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        })();
+
+        // No Android, se detectar que está dentro do navegador embutido do Instagram/Facebook,
+        // manda sair pro Chrome (preservando a URL inteira, com fbclid, pra não quebrar o rastreio do Meta).
+        // No iPhone não faz nada disso — a Apple não permite saída automática, e forçar geraria fricção sem necessidade.
+        (function tentarSairDoNavegadorEmbutidoAndroid() {
+            const ua = navigator.userAgent || '';
+            const isAndroid = /Android/i.test(ua);
+            const isNavegadorEmbutido = /Instagram|FBAN|FBAV|FB_IAB/i.test(ua);
+            if (isAndroid && isNavegadorEmbutido) {
+                const urlAtual = window.location.href;
+                const semEsquema = urlAtual.replace(/^https?:\/\//, '');
+                window.location.href = `intent://${semEsquema}#Intent;scheme=https;package=com.android.chrome;end`;
+            }
         })();
 
         $(document).ready(function() {
