@@ -663,7 +663,9 @@
         function selecionarQuantidade(qtd) {
             quantidadeCotas = qtd;
             atualizarPreco();
-            window.scrollTo({ top: $('#btn-participar').offset().top - 150, behavior: 'smooth' });
+            // Clicar num combo de promoção já avança direto pra tela de preencher os dados,
+            // como se tivesse clicado em "Quero participar" — sem precisar de um clique a mais.
+            $('#btn-participar').trigger('click');
         }
 
         function renderBotoesCota(config) {

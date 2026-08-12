@@ -24,11 +24,30 @@
             transition: transform 0.2s;
         }
         .card-destaque:hover { transform: translateY(-5px); }
+        .card-destaque-overlay {
+            position: absolute; left: 0; right: 0; bottom: 0; padding: 1.25rem 1.25rem 1rem;
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 10%, rgba(0,0,0,0.35) 60%, transparent 100%);
+        }
         .card-destaque-title {
-            color: #fff; font-weight: 600; font-size: 1.5rem;
+            color: #fff; font-weight: 700; font-size: 1.4rem; text-shadow: 0 2px 6px rgba(0,0,0,0.5);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .card-destaque-desc { color: #a0aec0; font-size: 1rem; }
+        .card-destaque-desc { color: #e2e8f0; font-size: 0.95rem; margin-top: 4px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+        .card-destaque-status {
+            position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px;
+            background: #16a34a; color: #fff; font-weight: 700; font-size: 0.7rem; text-transform: uppercase;
+            padding: 6px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .card-destaque-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: pulsar-status 1.4s ease-in-out infinite; }
+        @keyframes pulsar-status { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+        .card-destaque-cta { padding: 0 1.25rem 1.25rem; padding-top: 1rem; }
+        .card-destaque-cta-btn {
+            display: block; text-align: center; background: linear-gradient(90deg, #1a8754, #5be584);
+            color: #fff; font-weight: 700; font-size: 1.05rem; padding: 0.85rem; border-radius: 10px;
+        }
+        .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
+        .menu-dropdown a, .menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 16px; color: #e6edf3; font-size: 0.9rem; }
+        .menu-dropdown a:hover, .menu-dropdown button:hover { background: #343c4a; }
         .btn-bilhetes {
             background-color: #7c3aed; color: white; border-radius: 20px;
             padding: 8px 20px; font-weight: 600; transition: background-color 0.2s;
@@ -57,12 +76,11 @@
     <header class="bg-[#2a303c] shadow-lg sticky top-0 z-50">
         <nav class="container mx-auto max-w-6xl px-4 py-4 flex justify-between items-center">
             <div id="logo-box" class="text-2xl font-bold text-white">LOGO</div>
-            <div>
-                <button id="btn-meus-bilhetes" class="btn-bilhetes">
-                    <i class="bi bi-ticket-detailed"></i> Meus Bilhetes
-                </button>
-            </div>
+            <button id="btn-menu" class="text-gray-300 hover:text-white" style="font-size:2rem; padding:8px;"><i class="bi bi-list"></i></button>
         </nav>
+        <div id="menu-dropdown" class="menu-dropdown hidden">
+            <button id="btn-meus-bilhetes"><i class="bi bi-ticket-detailed"></i> Meus Bilhetes</button>
+        </div>
     </header>
 
     <main class="container mx-auto max-w-6xl p-4">
@@ -145,11 +163,15 @@
                 $destaque.html(`
                     <a href="/sorteio/${principal.slug}" class="block card-destaque">
                         <div class="relative">
-                            <img src="${principal.foto_url || ''}" alt="${principal.nome}" class="w-full h-auto md:h-[450px] object-cover">
+                            <img src="${principal.foto_url || ''}" alt="${principal.nome}" class="w-full h-auto md:h-[450px] object-cover" fetchpriority="high" loading="eager">
+                            <div class="card-destaque-overlay">
+                                <h3 class="card-destaque-title">${principal.nome}</h3>
+                                <p class="card-destaque-desc">Participe e concorra! Cota por R$ ${Number(principal.preco_cota || 0).toFixed(2).replace('.', ',')}</p>
+                            </div>
+                            <span class="card-destaque-status"><span class="card-destaque-status-dot"></span> Ativa · Adquira já</span>
                         </div>
-                        <div class="p-6">
-                            <h3 class="card-destaque-title mb-2">${principal.nome}</h3>
-                            <p class="card-destaque-desc">Participe e concorra! Cota por R$ ${Number(principal.preco_cota || 0).toFixed(2).replace('.', ',')}</p>
+                        <div class="card-destaque-cta">
+                            <span class="card-destaque-cta-btn"><i class="bi bi-lightning-charge-fill"></i> Participar Agora</span>
                         </div>
                     </a>
                 `);
@@ -194,6 +216,30 @@
             }
         }
 
+        // Bloqueia o zoom por toque duplo (o navegador ignora "user-scalable=no" em telas recentes)
+        (function() {
+            let ultimoToque = 0;
+            document.addEventListener('touchend', function(e) {
+                const agora = Date.now();
+                if (agora - ultimoToque <= 350) { e.preventDefault(); }
+                ultimoToque = agora;
+            }, { passive: false });
+            document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        })();
+
+        // No Android, se detectar que está dentro do navegador embutido do Instagram/Facebook,
+        // manda sair pro Chrome (preservando a URL inteira, pra não quebrar o rastreio do Meta).
+        (function tentarSairDoNavegadorEmbutidoAndroid() {
+            const ua = navigator.userAgent || '';
+            const isAndroid = /Android/i.test(ua);
+            const isNavegadorEmbutido = /Instagram|FBAN|FBAV|FB_IAB/i.test(ua);
+            if (isAndroid && isNavegadorEmbutido) {
+                const urlAtual = window.location.href;
+                const semEsquema = urlAtual.replace(/^https?:\/\//, '');
+                window.location.href = `intent://${semEsquema}#Intent;scheme=https;package=com.android.chrome;end`;
+            }
+        })();
+
         $(document).ready(function() {
             $.get('/api/public/inicio')
                 .done(function(resp) { renderPagina(resp); })
@@ -201,7 +247,9 @@
                     $('#sorteio-destaque').html('<p class="text-center text-red-400">Erro ao carregar sorteios. Tente novamente.</p>');
                 });
 
-            $('#btn-meus-bilhetes').on('click', function() { $('#modal-bilhetes').removeClass('hidden'); });
+            $('#btn-meus-bilhetes').on('click', function() { $('#menu-dropdown').addClass('hidden'); $('#modal-bilhetes').removeClass('hidden'); });
+            $('#btn-menu').on('click', function(e) { e.stopPropagation(); $('#menu-dropdown').toggleClass('hidden'); });
+            $(document).on('click', function() { $('#menu-dropdown').addClass('hidden'); });
             $('#close-modal-bilhetes').on('click', function() { $('#modal-bilhetes').addClass('hidden'); });
 
             $('#form-meus-bilhetes').on('submit', function(e) {
