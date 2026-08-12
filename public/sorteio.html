@@ -354,6 +354,7 @@
         let CHANCE_DOBRO_ATIVA = null;
         let PROMOCOES_ATIVAS = [];
         let PUSH_ATIVO_GLOBAL = false;
+        let VEIO_DE_COMBO_ROLETA = false;
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
         let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
@@ -697,6 +698,7 @@
             if (qtdDaUrl && qtdDaUrl > 0) {
                 quantidadeCotas = qtdDaUrl;
                 if (girosDaUrl) {
+                    VEIO_DE_COMBO_ROLETA = true;
                     setTimeout(() => notificar(`🎯 Você vai receber ${girosDaUrl} roleta(s) com essa compra!`, 'sucesso'), 600);
                 }
             }
@@ -1053,7 +1055,8 @@
                         email: email || null,
                         endereco: endereco || null,
                         funil_id: FUNIL_DATA ? FUNIL_DATA.id : null,
-                        link_codigo: LINK_CODIGO
+                        link_codigo: LINK_CODIGO,
+                        veio_de_combo_roleta: VEIO_DE_COMBO_ROLETA
                     }),
                     beforeSend: function() {
                         $('#btn-participar').prop('disabled', true); $('#btn-participar-label').text('Processando...');

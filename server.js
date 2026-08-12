@@ -514,7 +514,14 @@ async function getCheckoutPublicData(token) {
   };
   const cfg = await fetchConfigFromDB();
   const modo_teste_pagamento = cfg.MODO_TESTE_PAGAMENTO === 'true' || cfg.MODO_TESTE_PAGAMENTO === 'on';
-  return { pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta, pixels, modo_teste_pagamento };
+
+  let roleta_tiers = [];
+  if (sorteioDoPedido.roleta_ativada) {
+    const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteioDoPedido.id).order('minimo_cotas', { ascending: true });
+    roleta_tiers = tiers || [];
+  }
+
+  return { pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta, pixels, modo_teste_pagamento, roleta_tiers };
 }
 
 app.get('/api/public/checkout/:token', async (req, res) => {
@@ -850,12 +857,18 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
   const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, total_cotas, roleta_giros_por_compra').eq('id', sorteio_id).maybeSingle();
   if (!sorteio || !sorteio.roleta_ativada) return;
 
-  const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio_id).order('minimo_cotas', { ascending: false });
-  const qtdComprada = Number(pedido.quantidade_cotas || 0);
-  const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
   const girosGarantidos = Number(sorteio.roleta_giros_por_compra ?? 1);
-  // Todo mundo que compra tem direito ao mínimo garantido (padrão: 1) — os combos só aumentam esse número, nunca diminuem.
-  const qtdGiros = Math.max(girosGarantidos, tierAlcançado ? Number(tierAlcançado.quantidade_giros) : 0);
+  let qtdGiros = girosGarantidos;
+
+  // Os combos de "a cada X títulos, receba Y roletas" só valem quando o cliente comprou de novo
+  // clicando especificamente num combo (mostrado na tela da roleta) — nunca automaticamente em
+  // qualquer compra que "bata" com a quantidade. Compra normal (mesmo grande) = só o padrão.
+  if (pedido.veio_de_combo_roleta) {
+    const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio_id).order('minimo_cotas', { ascending: false });
+    const qtdComprada = Number(pedido.quantidade_cotas || 0);
+    const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
+    if (tierAlcançado) qtdGiros = Math.max(girosGarantidos, Number(tierAlcançado.quantidade_giros));
+  }
 
   // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível
   const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel').in('numero_cota', numerosGerados);
@@ -907,7 +920,7 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
 // --- API PEDIDOS PUBLIC (com suporte a funil_id) ---
 app.post('/api/public/pedidos/iniciar', async (req, res) => {
   try {
-    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo } = req.body || {};
+    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
@@ -964,7 +977,7 @@ app.post('/api/public/pedidos/iniciar', async (req, res) => {
     }
 
     const { data: pedido } = await supabase.from('pedidos').insert({
-      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, created_at: new Date().toISOString()
+      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, veio_de_combo_roleta: !!veio_de_combo_roleta, created_at: new Date().toISOString()
     }).select().single();
 
     const pagamento = await criarPagamentoGateway(pedido, usuario);
