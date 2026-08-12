@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { stringify as csvStringify } from 'csv-stringify/sync';
 import webPush from 'web-push';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -274,15 +275,26 @@ function sendPage(res, file) {
 // ==================================================================
 app.get('/admin/login', (_req, res) => sendPage(res, 'login.html'));
 
-app.post('/admin/login', async (req, res) => {
+// Trava contra força bruta: no máximo 8 tentativas de login por IP a cada 15 minutos.
+const limiteLoginAdmin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { status: 'error', error: 'Muitas tentativas de login. Aguarde alguns minutos e tente de novo.' }
+});
+
+app.post('/admin/login', limiteLoginAdmin, async (req, res) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) return fail(res, 'Email e senha obrigatórios', 400);
     const { data: user } = await supabase.from('admin_users').select('*').eq('email', email).maybeSingle();
-    if (!user) return fail(res, 'Usuário não encontrado', 401);
+    // Mensagem sempre igual, exista ou não o e-mail — evita que alguém descubra quais contas existem no sistema
+    const credenciaisInvalidas = () => fail(res, 'E-mail ou senha incorretos.', 401);
+    if (!user) return credenciaisInvalidas();
     if (user.status === 'suspended') return fail(res, 'Conta suspensa', 403);
     const okPass = await bcrypt.compare(password, user.password_hash || '');
-    if (!okPass) return fail(res, 'Credenciais inválidas', 401);
+    if (!okPass) return credenciaisInvalidas();
     req.session.admin = { id: user.id, email: user.email, name: user.name || 'Admin' };
     return ok(res, { redirect: '/dashboard' });
   } catch (err) { console.error('admin login error', err); return fail(res, 'Erro no login'); }
@@ -424,7 +436,16 @@ async function getSorteioPublicData(slug, funilSlug) {
   const usuarioIdsBilhetes = [...new Set(bilhetes.filter(b => b.status === 'reivindicada').map(b => b.usuario_id).filter(Boolean))];
   const { data: usuariosBilhetes } = usuarioIdsBilhetes.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsBilhetes) : { data: [] };
   const usuarioMapBilhetes = (usuariosBilhetes || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
-  const bilhetesComNome = bilhetes.map(b => ({ ...b, ganhador_nome: b.status === 'reivindicada' ? (usuarioMapBilhetes[b.usuario_id] || b.nome_completo || null) : null }));
+  // 🔒 Nunca expõe o número da cota de um bilhete premiado que AINDA NÃO SAIU — só depois de reivindicado
+  // (mesma regra que já era aplicada certinho pra roleta). Enquanto está disponível, ninguém pode saber
+  // qual é o número secreto, senão vira um jeito de tentar "caçar" a cota premiada antes de comprar.
+  const bilhetesComNome = bilhetes.map(b => ({
+    numero_cota: b.status === 'reivindicada' ? b.numero_cota : null,
+    premio_titulo: b.premio_titulo,
+    status: b.status,
+    ativo: b.ativo,
+    ganhador_nome: b.status === 'reivindicada' ? (usuarioMapBilhetes[b.usuario_id] || b.nome_completo || null) : null
+  }));
 
   // Roleta: nunca expõe o número do giro — só título/valor/nome de quem ganhou (igual ao site de referência)
   const roletaGanhas = roletaTodos.filter(r => r.status === 'reivindicada');
