@@ -847,13 +847,15 @@ async function gerarCotasUnicas(pedido) {
 // disponível (comprou pouco, ou nunca gira), a premiação não se perde: o sistema troca esse prêmio
 // pra outro número de cota que ainda não foi vendido, pra continuar valendo pra um comprador futuro.
 async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) {
-  const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, total_cotas').eq('id', sorteio_id).maybeSingle();
+  const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, total_cotas, roleta_giros_por_compra').eq('id', sorteio_id).maybeSingle();
   if (!sorteio || !sorteio.roleta_ativada) return;
 
   const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio_id).order('minimo_cotas', { ascending: false });
   const qtdComprada = Number(pedido.quantidade_cotas || 0);
   const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
-  const qtdGiros = tierAlcançado ? Number(tierAlcançado.quantidade_giros) : 0;
+  const girosGarantidos = Number(sorteio.roleta_giros_por_compra ?? 1);
+  // Todo mundo que compra tem direito ao mínimo garantido (padrão: 1) — os combos só aumentam esse número, nunca diminuem.
+  const qtdGiros = Math.max(girosGarantidos, tierAlcançado ? Number(tierAlcançado.quantidade_giros) : 0);
 
   // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível
   const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel').in('numero_cota', numerosGerados);
@@ -1451,6 +1453,14 @@ app.post('/api/admin/sorteios/:id/roleta-ativada', ensureAdminAuth, async (req, 
   try {
     const { roleta_ativada } = req.body || {};
     const { error } = await supabase.from('sorteios').update({ roleta_ativada: !!roleta_ativada }).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/sorteios/:id/roleta-giros-por-compra', ensureAdminAuth, async (req, res) => {
+  try {
+    const valor = Math.max(0, parseInt(req.body?.roleta_giros_por_compra) || 0);
+    const { error } = await supabase.from('sorteios').update({ roleta_giros_por_compra: valor }).eq('id', req.params.id);
     if (error) return fail(res, error.message);
     return ok(res);
   } catch (e) { return fail(res); }

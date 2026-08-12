@@ -371,6 +371,15 @@
                 </div>
 
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">Giros garantidos por compra</h4>
+                    <p class="text-xs text-gray-500 mb-2">Toda compra dá direito a esse número de giros, mesmo sem bater com nenhum combo. Os combos abaixo só aumentam esse número em compras maiores.</p>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" min="0" id="inp-giros-por-compra" class="input-dark" style="max-width:120px">
+                        <button type="button" class="btn-primary" onclick="salvarGirosPorCompra()">Salvar</button>
+                    </div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
                     <h4 class="font-semibold text-white mb-2">Faixas: título → giros ganhos</h4>
                     <div class="flex gap-2 mb-3">
                         <input id="tier-minimo" type="number" placeholder="A cada X títulos" class="input-dark">
@@ -2225,6 +2234,7 @@ function selecionarSorteioRoleta(id) {
     if (!id) return;
     const sorteio = SORTEIOS_CACHE.find(s => s.id === id);
     $('#inp-roleta-ativada-page').prop('checked', !!sorteio?.roleta_ativada);
+    $('#inp-giros-por-compra').val(sorteio?.roleta_giros_por_compra ?? 1);
     carregarRoleta(id);
     carregarRoletaTiers(id);
     carregarRoletaResultadosAdmin(id);
@@ -2238,6 +2248,13 @@ function salvarRoletaAtivada() {
         const s = SORTEIOS_CACHE.find(x => x.id === SORTEIO_ROLETA_ID);
         if (s) s.roleta_ativada = ativada;
     });
+}
+function salvarGirosPorCompra() {
+    const valor = $('#inp-giros-por-compra').val();
+    if (!SORTEIO_ROLETA_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/roleta-giros-por-compra`, { roleta_giros_por_compra: valor }).then(() => {
+        notificar('Salvo!', 'sucesso');
+    }).catch(err => notificar(err.error || 'Erro ao salvar', 'erro'));
 }
 function carregarRoleta(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/roleta`).then(d => {
