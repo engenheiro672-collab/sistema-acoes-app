@@ -264,7 +264,18 @@ function ensureAdminAuth(req, res, next) {
 // ==================================================================
 // 📁 ARQUIVOS ESTÁTICOS (front-end 100% HTML/JS)
 // ==================================================================
-app.use(express.static(PUBLIC_DIR, { index: false }));
+app.use(express.static(PUBLIC_DIR, {
+  index: false,
+  setHeaders: (res, filePath) => {
+    // CSS/JS/imagens ficam guardados no celular da pessoa por 7 dias — carrega instantâneo depois da 1ª vez.
+    // HTML nunca guarda em cache, pra qualquer atualização sua aparecer na hora, sem a pessoa precisar limpar nada.
+    if (/\.(css|js|png|jpg|jpeg|webp|svg|ico|woff2?)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    } else if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 function sendPage(res, file) {
   return res.sendFile(path.join(PUBLIC_DIR, file));
