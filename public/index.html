@@ -33,13 +33,15 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .card-destaque-desc { color: #e2e8f0; font-size: 0.95rem; margin-top: 4px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+        .card-destaque-preco { color: #f0fdf4; font-size: 0.85rem; font-weight: 600; margin-top: 2px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
         .card-destaque-status {
-            position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px;
-            background: #16a34a; color: #fff; font-weight: 700; font-size: 0.7rem; text-transform: uppercase;
-            padding: 6px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: absolute; right: 10px; top: 10px; display: flex; align-items: center; gap: 5px;
+            background: rgba(22,163,74,0.55); backdrop-filter: blur(2px); color: #fff; font-weight: 600; font-size: 0.62rem; text-transform: uppercase;
+            padding: 4px 9px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            animation: piscar-status-badge 2.2s ease-in-out infinite;
         }
-        .card-destaque-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: pulsar-status 1.4s ease-in-out infinite; }
-        @keyframes pulsar-status { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+        .card-destaque-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; flex-shrink: 0; }
+        @keyframes piscar-status-badge { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
         .card-destaque-cta { padding: 0 1.25rem 1.25rem; padding-top: 1rem; }
         .card-destaque-cta-btn {
             display: block; text-align: center; background: linear-gradient(90deg, #1a8754, #5be584);
@@ -166,9 +168,10 @@
                             <img src="${principal.foto_url || ''}" alt="${principal.nome}" class="w-full h-auto md:h-[450px] object-cover" fetchpriority="high" loading="eager">
                             <div class="card-destaque-overlay">
                                 <h3 class="card-destaque-title">${principal.nome}</h3>
-                                <p class="card-destaque-desc">Participe e concorra! Cota por R$ ${Number(principal.preco_cota || 0).toFixed(2).replace('.', ',')}</p>
+                                <p class="card-destaque-desc">Participe e concorra!</p>
+                                <p class="card-destaque-preco">Cota por R$ ${Number(principal.preco_cota || 0).toFixed(2).replace('.', ',')}</p>
                             </div>
-                            <span class="card-destaque-status"><span class="card-destaque-status-dot"></span> Ativa · Adquira já</span>
+                            <span class="card-destaque-status"><span class="card-destaque-status-dot"></span> Adquira já</span>
                         </div>
                         <div class="card-destaque-cta">
                             <span class="card-destaque-cta-btn"><i class="bi bi-lightning-charge-fill"></i> Participar Agora</span>

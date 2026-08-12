@@ -1358,12 +1358,12 @@ function padraoBotoesRapidos() {
 
 // ---------------- SESSÃO / LOGOUT ----------------
 function logout() {
-    api('POST', '/admin/logout').then(d => window.location.href = d.redirect || '/admin/login');
+    api('POST', '/88652715/logout').then(d => window.location.href = d.redirect || '/88652715/login');
 }
 
 function checkSession() {
     return fetch('/api/admin/session', { credentials: 'include' }).then(r => {
-        if (!r.ok) { window.location.href = '/admin/login'; throw new Error('not authenticated'); }
+        if (!r.ok) { window.location.href = '/88652715/login'; throw new Error('not authenticated'); }
         return r.json();
     });
 }
