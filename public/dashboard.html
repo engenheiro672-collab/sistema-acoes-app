@@ -281,7 +281,7 @@
                 <div id="bilhete-modo-visualizar">
                     <p class="text-sm opacity-60 mb-3">Todos os bilhetes premiados desse sorteio — verde já saiu (clique pra chamar no WhatsApp), vermelho ainda disponível.</p>
                     <input id="input-buscar-bilhete-view" class="input-dark text-sm mb-3" style="max-width:220px" placeholder="Buscar número...">
-                    <div id="grid-bilhetes-premiados-view" class="grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[80px]"></div>
+                    <div id="grid-bilhetes-premiados-view" class="space-y-3 min-h-[80px]"></div>
                 </div>
 
                 <div id="bilhete-modo-editar" class="space-y-6 hidden">
@@ -2050,18 +2050,37 @@ function mudarModoBilhete(modo, el) {
 }
 function renderGridBilhetesView() {
     const filtro = ($('#input-buscar-bilhete-view').val() || '').trim();
-    const lista = filtro ? BILHETES_ADMIN_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_ADMIN_CACHE;
+    let lista = filtro ? BILHETES_ADMIN_CACHE.filter(b => String(b.numero_cota).includes(filtro)) : BILHETES_ADMIN_CACHE;
+    // Já saiu primeiro, disponível depois
+    lista = [...lista].sort((a, b) => (b.status === 'reivindicada') - (a.status === 'reivindicada'));
+
     $('#grid-bilhetes-premiados-view').html(lista.map(p => {
         const saiu = p.status === 'reivindicada';
         const nome = p.usuario?.nome_completo || p.nome_completo || '';
         const tel = p.usuario?.telefone || '';
-        const corBorda = saiu ? '#dc2626' : '#16a34a';
-        const corBg = saiu ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.12)';
+        const cpf = p.usuario?.cpf || '';
+        const corBorda = saiu ? '#16a34a' : '#dc2626';
+        const corBg = saiu ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.1)';
+
+        let detalhesCompra = '';
         let whatsBtn = '';
-        if (saiu && tel) {
-            const msg = encodeURIComponent(`Opa ${nome}! Você ganhou um bilhete premiado 🎉 (nº ${p.numero_cota} — ${p.premio_titulo || ''}). Vamos combinar a entrega?`);
-            whatsBtn = `<a href="https://wa.me/${tel}?text=${msg}" target="_blank" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg mt-2 inline-flex items-center gap-1"><i class="bi bi-whatsapp"></i> Chamar no WhatsApp</a>`;
+        let verCompraBtn = '';
+        if (saiu) {
+            const linhasDados = [];
+            if (tel) linhasDados.push(`<div><span class="opacity-60">Telefone:</span> ${mascararTelefoneFormatado(tel)}</div>`);
+            if (cpf) linhasDados.push(`<div><span class="opacity-60">CPF:</span> ${mascararNumero(cpf)}</div>`);
+            if (p.pedido) linhasDados.push(`<div><span class="opacity-60">Compra:</span> ${p.pedido.quantidade_cotas} título(s) — <b class="text-green-300">${formatBR(p.pedido.valor_total)}</b></div>`);
+            if (linhasDados.length) detalhesCompra = `<div class="text-xs text-gray-300 mt-2 space-y-0.5">${linhasDados.join('')}</div>`;
+
+            if (tel) {
+                const msg = encodeURIComponent(`Opa ${nome}! Você ganhou um bilhete premiado 🎉 (nº ${p.numero_cota} — ${p.premio_titulo || ''}). Vamos combinar a entrega?`);
+                whatsBtn = `<a href="https://wa.me/${tel}?text=${msg}" target="_blank" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg mt-2 inline-flex items-center gap-1"><i class="bi bi-whatsapp"></i> Chamar no WhatsApp</a>`;
+            }
+            if (p.pedido?.token) {
+                verCompraBtn = `<button onclick="abrirDetalhePedidoPorToken('${p.pedido.token}')" class="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg mt-2 ml-2 inline-flex items-center gap-1"><i class="bi bi-receipt"></i> Ver compra</button>`;
+            }
         }
+
         return `
             <div style="background:${corBg}; border:1.5px solid ${corBorda}; border-radius:12px; padding:14px;">
                 <div class="flex justify-between items-start gap-2">
@@ -2069,15 +2088,28 @@ function renderGridBilhetesView() {
                         <div class="font-mono font-bold text-lg text-white">🎫 ${p.numero_cota}</div>
                         <div class="text-sm text-gray-300 mt-0.5">${p.premio_titulo || ''}</div>
                     </div>
-                    <span class="text-xs font-bold px-2 py-1 rounded-full" style="background:${corBorda}; color:#fff;">${saiu ? 'JÁ SAIU' : 'DISPONÍVEL'}</span>
+                    <span class="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style="background:${corBorda}; color:#fff;">${saiu ? 'JÁ SAIU' : 'DISPONÍVEL'}</span>
                 </div>
                 ${saiu ? `<div class="text-sm text-green-300 mt-2"><i class="bi bi-trophy-fill"></i> ${nome || 'Ganhador não identificado'}</div>` : ''}
-                ${whatsBtn}
+                ${detalhesCompra}
+                ${whatsBtn}${verCompraBtn}
             </div>
         `;
-    }).join('') || '<p class="opacity-60 text-sm col-span-full">Nenhum bilhete premiado cadastrado ainda.</p>');
+    }).join('') || '<p class="opacity-60 text-sm">Nenhum bilhete premiado cadastrado ainda.</p>');
 }
 $(document).on('input', '#input-buscar-bilhete-view', renderGridBilhetesView);
+
+function abrirDetalhePedidoPorToken(token) {
+    fetch(`/api/admin/pedidos?filter=todos`, { credentials: 'include' }).then(r => r.json()).then(lista => {
+        const pedido = (lista || []).find(p => p.token === token);
+        if (pedido) {
+            navTo('pedidos');
+            setTimeout(() => abrirDetalhePedido(pedido.id), 200);
+        } else {
+            notificar('Não encontrei os detalhes desse pedido.', 'erro');
+        }
+    });
+}
 
 function addPremio() {
     const numero_cota = $('#inp-premio-cota').val();

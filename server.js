@@ -1688,9 +1688,12 @@ app.get('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) => 
     const { data } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', id).eq('tipo', 'bilhete').order('created_at', { ascending: true });
     const bilhetes = data || [];
     const usuarioIds = [...new Set(bilhetes.map(b => b.usuario_id).filter(Boolean))];
+    const pedidoIds = [...new Set(bilhetes.map(b => b.pedido_id).filter(Boolean))];
     const { data: usuarios } = usuarioIds.length ? await supabase.from('usuarios').select('*').in('id', usuarioIds) : { data: [] };
+    const { data: pedidos } = pedidoIds.length ? await supabase.from('pedidos').select('id, valor_total, quantidade_cotas, token').in('id', pedidoIds) : { data: [] };
     const usuarioMap = (usuarios || []).reduce((a, u) => (a[u.id] = u, a), {});
-    const enriquecidos = bilhetes.map(b => ({ ...b, usuario: usuarioMap[b.usuario_id] || null }));
+    const pedidoMap = (pedidos || []).reduce((a, p) => (a[p.id] = p, a), {});
+    const enriquecidos = bilhetes.map(b => ({ ...b, usuario: usuarioMap[b.usuario_id] || null, pedido: pedidoMap[b.pedido_id] || null }));
     return ok(res, { bilhetes_premiados: enriquecidos });
   } catch (err) { return fail(res); }
 });
