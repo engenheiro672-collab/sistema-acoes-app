@@ -57,22 +57,28 @@ function padCota(numero, totalCotas) {
 // Corrige automaticamente bilhetes/roleta que ainda estão marcados como "disponível" mas cuja cota
 // já foi vendida de verdade (ex: cadastrado depois da compra, ou criado antes dessa verificação existir).
 // Roda em toda leitura, então nunca fica "preso" desatualizado.
-async function sincronizarBilhetesComCotasVendidas(sorteioId) {
+// bilhetesJaCarregados (opcional): se quem chamou já buscou os bilhetes_premiados desse sorteio,
+// passa aqui pra não gastar mais uma consulta ao banco repetindo a mesma busca.
+async function sincronizarBilhetesComCotasVendidas(sorteioId, bilhetesJaCarregados) {
   try {
-    const { data: pendentes } = await supabase.from('bilhetes_premiados').select('id, numero_cota').eq('sorteio_id', sorteioId).eq('status', 'disponivel');
-    if (!pendentes || pendentes.length === 0) return;
+    const pendentes = (bilhetesJaCarregados || (await supabase.from('bilhetes_premiados').select('id, numero_cota, status').eq('sorteio_id', sorteioId)).data || [])
+      .filter(b => b.status === 'disponivel');
+    if (!pendentes || pendentes.length === 0) return [];
     const numeros = pendentes.map(p => p.numero_cota);
     const { data: cotasVendidas } = await supabase.from('cotas').select('numero_cota, user_id, pedido_id').eq('sorteio_id', sorteioId).in('numero_cota', numeros);
-    if (!cotasVendidas || cotasVendidas.length === 0) return;
+    if (!cotasVendidas || cotasVendidas.length === 0) return [];
     const vendidaMap = cotasVendidas.reduce((acc, c) => (acc[c.numero_cota] = c, acc), {});
     const agora = new Date().toISOString();
-    await Promise.all(pendentes.filter(p => vendidaMap[p.numero_cota]).map(p => {
+    const corrigidos = pendentes.filter(p => vendidaMap[p.numero_cota]);
+    await Promise.all(corrigidos.map(p => {
       const c = vendidaMap[p.numero_cota];
       return supabase.from('bilhetes_premiados').update({
         status: 'reivindicada', usuario_id: c.user_id || null, pedido_id: c.pedido_id || null, reivindicada_em: agora
       }).eq('id', p.id);
     }));
-  } catch (e) { console.error('sincronizarBilhetesComCotasVendidas', e); }
+    // Devolve os IDs corrigidos + os dados novos, pra quem chamou poder atualizar sua cópia em memória sem consultar de novo.
+    return corrigidos.map(p => ({ id: p.id, usuario_id: vendidaMap[p.numero_cota].user_id || null, pedido_id: vendidaMap[p.numero_cota].pedido_id || null, status: 'reivindicada', reivindicada_em: agora }));
+  } catch (e) { console.error('sincronizarBilhetesComCotasVendidas', e); return []; }
 }
 
 // Configura o web-push com as chaves VAPID (do .env ou geradas via scripts/gerar-chaves-push.js)
@@ -428,25 +434,64 @@ async function getSorteioPublicData(slug, funilSlug) {
   const { data: sorteio } = await supabase.from('sorteios').select('*').eq('slug', slug).maybeSingle();
   if (!sorteio) return null;
 
-  await sincronizarBilhetesComCotasVendidas(sorteio.id);
-
-  const [{ count: vendidas }, { data: bloqueadas }, { data: agendadas }] = await Promise.all([
+  // Tudo que NÃO depende do resultado de outra consulta roda de uma vez só, em paralelo —
+  // antes disso, cada uma dessas ia uma atrás da outra, e cada "ida e volta" ao banco custa tempo.
+  const nowISO2 = new Date().toISOString();
+  const [
+    { count: vendidas },
+    { data: bloqueadas },
+    { data: agendadas },
+    { data: bilhetesTudo },
+    { data: roleta_tiers },
+    { data: funilData },
+    { data: chancesDobroTodas },
+    { data: avisosTodos },
+    { data: promocoesAtivas },
+    meta
+  ] = await Promise.all([
     supabase.from('cotas').select('*', { head: true, count: 'exact' }).eq('sorteio_id', sorteio.id),
     supabase.from('cotas_bloqueadas').select('numero_cota').eq('sorteio_id', sorteio.id),
     supabase.from('cotas_agendadas').select('numero_cota, release_at, liberar_em').eq('sorteio_id', sorteio.id),
+    supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: false }),
+    sorteio.roleta_ativada
+      ? supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio.id).order('minimo_cotas', { ascending: true })
+      : Promise.resolve({ data: [] }),
+    funilSlug
+      ? supabase.from('funis').select('*').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).eq('ativo', true).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true),
+    supabase.from('avisos_urgencia').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true),
+    supabase.from('promocoes').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true).order('quantidade_cotas', { ascending: true }),
+    getPublicMeta()
   ]);
-  const nowISO = new Date().toISOString();
+
+  // Corrige em memória qualquer bilhete que já foi vendido mas ainda tava marcado como disponível
+  // (reaproveita o bilhetesTudo que já veio ali de cima — não gasta outra consulta pra isso)
+  const correcoes = await sincronizarBilhetesComCotasVendidas(sorteio.id, bilhetesTudo || []);
+  const correcaoMap = correcoes.reduce((a, c) => (a[c.id] = c, a), {});
+  const bilhetesCorrigidos = (bilhetesTudo || []).map(b => correcaoMap[b.id] ? { ...b, ...correcaoMap[b.id] } : b);
+
+  const nowISO = nowISO2;
   const bloq = new Set((bloqueadas || []).map(b => b.numero_cota));
   const agnd = new Set((agendadas || []).filter(a => (a.release_at || a.liberar_em) && (a.release_at || a.liberar_em) > nowISO).map(a => a.numero_cota));
   const restantes = Math.max(0, Number(sorteio.total_cotas || 0) - Number(vendidas || 0) - bloq.size - agnd.size);
-  const { data: bilhetesTudo } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: false });
-  const bilhetes = (bilhetesTudo || []).filter(b => (b.tipo || 'bilhete') === 'bilhete');
-  const roletaTodos = (bilhetesTudo || []).filter(b => b.tipo === 'roleta');
+  const bilhetes = bilhetesCorrigidos.filter(b => (b.tipo || 'bilhete') === 'bilhete');
+  const roletaTodos = bilhetesCorrigidos.filter(b => b.tipo === 'roleta');
 
-  // Enriquece os bilhetes de tipo "bilhete" com nome do comprador (pra mostrar ao lado, como no site de referência)
+  // Esses dois lookups de usuário dependem de quem ganhou (resultado de cima), então precisam
+  // rodar depois — mas ainda dá pra rodar os dois AO MESMO TEMPO um com o outro.
   const usuarioIdsBilhetes = [...new Set(bilhetes.filter(b => b.status === 'reivindicada').map(b => b.usuario_id).filter(Boolean))];
-  const { data: usuariosBilhetes } = usuarioIdsBilhetes.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsBilhetes) : { data: [] };
+  const roletaGanhas = roletaTodos.filter(r => r.status === 'reivindicada');
+  const roletaDisponiveis = roletaTodos.filter(r => r.status !== 'reivindicada');
+  const usuarioIdsRoleta = [...new Set(roletaGanhas.map(r => r.usuario_id).filter(Boolean))];
+
+  const [{ data: usuariosBilhetes }, { data: usuariosRoleta }] = await Promise.all([
+    usuarioIdsBilhetes.length ? supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsBilhetes) : Promise.resolve({ data: [] }),
+    usuarioIdsRoleta.length ? supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsRoleta) : Promise.resolve({ data: [] })
+  ]);
   const usuarioMapBilhetes = (usuariosBilhetes || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
+  const usuarioMapRoleta = (usuariosRoleta || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
+
   // 🔒 Nunca expõe o número da cota de um bilhete premiado que AINDA NÃO SAIU — só depois de reivindicado
   // (mesma regra que já era aplicada certinho pra roleta). Enquanto está disponível, ninguém pode saber
   // qual é o número secreto, senão vira um jeito de tentar "caçar" a cota premiada antes de comprar.
@@ -459,11 +504,6 @@ async function getSorteioPublicData(slug, funilSlug) {
   }));
 
   // Roleta: nunca expõe o número do giro — só título/valor/nome de quem ganhou (igual ao site de referência)
-  const roletaGanhas = roletaTodos.filter(r => r.status === 'reivindicada');
-  const roletaDisponiveis = roletaTodos.filter(r => r.status !== 'reivindicada');
-  const usuarioIdsRoleta = [...new Set(roletaGanhas.map(r => r.usuario_id).filter(Boolean))];
-  const { data: usuariosRoleta } = usuarioIdsRoleta.length ? await supabase.from('usuarios').select('id, nome_completo').in('id', usuarioIdsRoleta) : { data: [] };
-  const usuarioMapRoleta = (usuariosRoleta || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
   const roleta_resultados = {
     total: roletaTodos.length,
     ganhas: roletaGanhas.length,
@@ -474,31 +514,16 @@ async function getSorteioPublicData(slug, funilSlug) {
     ]
   };
 
-  const { data: roleta_tiers } = sorteio.roleta_ativada
-    ? await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio.id).order('minimo_cotas', { ascending: true })
-    : { data: [] };
+  const funil = funilData || null;
 
-  let funil = null;
-  if (funilSlug) {
-    const { data: f } = await supabase.from('funis').select('*').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).eq('ativo', true).maybeSingle();
-    funil = f || null;
-  }
-
-  const meta = await getPublicMeta();
   const pixels = {
     facebook_pixel_id: sorteio.pixel_fb_override || meta.pixel_id || '',
     google_ads_id: sorteio.pixel_google_override || meta.pixel_google || '',
     tiktok_pixel_id: sorteio.pixel_tiktok_override || meta.pixel_tiktok || '',
     gtm_id: sorteio.pixel_gtm_override || meta.pixel_gtm || ''
   };
-  const nowISO2 = new Date().toISOString();
-  const { data: chancesDobroTodas } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true);
   const chance_dobro_ativa = (chancesDobroTodas || []).find(c => c.data_inicio <= nowISO2 && c.data_fim >= nowISO2) || null;
-
-  const { data: avisosTodos } = await supabase.from('avisos_urgencia').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true);
   const aviso_urgencia_ativo = (avisosTodos || []).find(a => a.data_inicio <= nowISO2 && a.data_fim >= nowISO2) || null;
-
-  const { data: promocoesAtivas } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true).order('quantidade_cotas', { ascending: true });
 
   return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo, promocoes: promocoesAtivas || [] };
 }
