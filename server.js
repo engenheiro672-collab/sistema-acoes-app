@@ -186,8 +186,15 @@ app.use(cookieParser());
 // Necessário no Render (e qualquer host atrás de proxy/HTTPS) pra sessão/cookies funcionarem certo
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
+// 🔒 Em produção, exige que SESSION_SECRET esteja configurado de verdade — nunca usa um valor
+// padrão conhecido, porque isso permitiria forjar sessões de admin se alguém descobrisse essa chave.
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('🚨 ERRO CRÍTICO: SESSION_SECRET não está configurado nas variáveis de ambiente. O servidor não vai iniciar até isso ser corrigido, por segurança.');
+  process.exit(1);
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'troque_esta_chave_secreta_agora',
+  secret: process.env.SESSION_SECRET || 'chave-apenas-para-desenvolvimento-local-nunca-use-em-producao',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -492,11 +499,11 @@ async function getSorteioPublicData(slug, funilSlug) {
   const usuarioMapBilhetes = (usuariosBilhetes || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
   const usuarioMapRoleta = (usuariosRoleta || []).reduce((a, u) => (a[u.id] = u.nome_completo, a), {});
 
-  // 🔒 Nunca expõe o número da cota de um bilhete premiado que AINDA NÃO SAIU — só depois de reivindicado
-  // (mesma regra que já era aplicada certinho pra roleta). Enquanto está disponível, ninguém pode saber
-  // qual é o número secreto, senão vira um jeito de tentar "caçar" a cota premiada antes de comprar.
+  // O Bilhete Premiado é pra aparecer mesmo, número e tudo — é a graça da funcionalidade, o cliente
+  // precisa saber qual cota procurar depois de comprar. A proteção de verdade é garantir que a cota
+  // só é sorteada/atribuída DEPOIS do pagamento confirmado (não antes, num pedido ainda pendente).
   const bilhetesComNome = bilhetes.map(b => ({
-    numero_cota: b.status === 'reivindicada' ? b.numero_cota : null,
+    numero_cota: b.numero_cota,
     premio_titulo: b.premio_titulo,
     status: b.status,
     ativo: b.ativo,

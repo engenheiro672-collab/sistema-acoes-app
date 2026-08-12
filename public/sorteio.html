@@ -736,7 +736,7 @@
             $('#contador-premiados').text(`${reivindicados}/${premiados.length}`);
             renderListaPaginada('#lista-premios', '#btn-mostrar-mais-premios', premiados, 5, premio => `
                 <div class="premio-item ${premio.status === 'reivindicada' ? '' : 'disponivel'}">
-                    <span class="premio-cota">${premio.status === 'reivindicada' ? premio.numero_cota : '🔒 ??????'}</span>
+                    <span class="premio-cota">${premio.numero_cota}</span>
                     <span class="premio-nome">${premio.premio_titulo}</span>
                     ${premio.status === 'reivindicada'
                         ? `<span class="premio-status">${premio.ganhador_nome ? nomeCurto(premio.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`

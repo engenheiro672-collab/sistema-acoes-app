@@ -2136,7 +2136,10 @@ function removerPremio(id) { api('DELETE', `/api/admin/premios/${id}`).then(() =
 function removerRoletaPremio(id) {
     confirmar('Excluir prêmio da roleta', 'Não pode ser desfeito.').then(yes => {
         if (!yes) return;
-        api('DELETE', `/api/admin/premios/${id}`).then(() => carregarRoleta(SORTEIO_ROLETA_ID));
+        api('DELETE', `/api/admin/premios/${id}`).then(() => {
+            notificar('Prêmio removido!', 'sucesso');
+            carregarRoleta(SORTEIO_ROLETA_ID);
+        }).catch(err => notificar(err.error || 'Erro ao excluir — verifique se o SQL foi atualizado.', 'erro'));
     });
 }
 
