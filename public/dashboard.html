@@ -1176,6 +1176,11 @@ function hideOverlay() { $('#overlay').hide(); }
 // 🔒 Protege contra código malicioso escondido em campos digitados pelo cliente (nome, etc.) que
 // aparecem no painel — sem isso, um "nome" malicioso na hora da compra poderia rodar código no
 // navegador do administrador quando ele visse esse nome na tela.
+// O painel roda num subdomínio separado (panthers.premiosderrets.com.br), que só serve login/painel.
+// Qualquer link que o painel gera pro CLIENTE (sorteio, checkout, webhook) tem que apontar pro
+// domínio de verdade do site, nunca pro endereço onde o próprio painel está sendo acessado.
+const DOMINIO_PUBLICO = 'https://premiosderrets.com.br';
+
 function escapeHtml(texto) {
     return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
@@ -1813,7 +1818,7 @@ function toggleMenuAcoes(id, slug, btnEl, e) {
     if (jaAbertoParaEsseId) return;
 
     $menu.data('id', id).html(`
-        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="navigator.clipboard.writeText('${window.location.origin}/sorteio/${slug}'); notificar('Link oficial copiado!','sucesso'); $('#menu-acoes-global').addClass('hidden');">🔗 Copiar link oficial do sorteio</a>
+        <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="navigator.clipboard.writeText('${DOMINIO_PUBLICO}/sorteio/${slug}'); notificar('Link oficial copiado!','sucesso'); $('#menu-acoes-global').addClass('hidden');">🔗 Copiar link oficial do sorteio</a>
         <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${id}/export?filtro=compradores'">📋 Baixar lista de compradores</a>
         <a class="block px-4 py-2 hover:bg-[var(--hover)] cursor-pointer" onclick="window.location='/api/admin/sorteios/${id}/export?filtro=expirados'">⏱️ Baixar pedidos expirados</a>
     `);
@@ -2672,8 +2677,8 @@ function carregarFunis(sorteioId) {
             return;
         }
         $('#lista-funis').html(funis.map(f => {
-            const link = `${window.location.origin}/sorteio/${sorteio.slug || ''}/${f.slug}?lk=funil-${f.slug}`;
-            const abLink = f.grupo_teste ? `${window.location.origin}/sorteio/${sorteio.slug || ''}/teste/${f.grupo_teste}` : null;
+            const link = `${DOMINIO_PUBLICO}/sorteio/${sorteio.slug || ''}/${f.slug}?lk=funil-${f.slug}`;
+            const abLink = f.grupo_teste ? `${DOMINIO_PUBLICO}/sorteio/${sorteio.slug || ''}/teste/${f.grupo_teste}` : null;
             const abBadge = f.grupo_teste ? `<span class="badge badge-ads">A/B: ${f.grupo_teste} (${f.peso_trafego || 100}%)</span>` : '';
             return `
                 <div class="funil-card">
@@ -3082,7 +3087,7 @@ function renderModalPedido() {
     const cotasHtml = visiveis.map(c => `<span class="chip">${c.numero_cota}</span>`).join(' ');
     const verMaisBtn = todasCotas.length > COTAS_MODAL_VISIVEIS
         ? `<button class="text-xs text-purple-300 mt-2" onclick="COTAS_MODAL_VISIVEIS += 20; renderModalPedido();"><i class="bi bi-chevron-down"></i> Ver mais (${todasCotas.length - COTAS_MODAL_VISIVEIS} restantes)</button>` : '';
-    const linkPagamento = `${window.location.origin}/checkout/${p.token}`;
+    const linkPagamento = `${DOMINIO_PUBLICO}/checkout/${p.token}`;
     const tel = p.usuarios?.telefone;
     const whatsappBtn = tel ? `<a href="https://wa.me/${tel}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white flex-1 rounded-lg py-2 text-center text-sm font-semibold"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : '';
 
@@ -3300,7 +3305,7 @@ function mudarGatewayTab(gw, el) {
 }
 
 function carregarGateway() {
-    $('#webhook-url').text(`${window.location.origin}/api/webhook/pagamento`);
+    $('#webhook-url').text(`${DOMINIO_PUBLICO}/api/webhook/pagamento`);
     api('GET', '/api/admin/configuracoes').then(cfg => {
         $('#conf-mercadopago-token').val(cfg.MERCADOPAGO_ACCESS_TOKEN || '');
         $('#conf-pay2m-id').val(cfg.PAY2M_CLIENT_ID || '');

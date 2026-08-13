@@ -488,6 +488,7 @@ function enviarSorteioComOg(res, sorteio, req) {
     .replaceAll('__OG_URL__', escaparAtributoHtml(urlCompleta));
 
   res.set('Content-Type', 'text/html');
+  res.set('Cache-Control', 'no-cache'); // nunca guarda em cache — sempre busca a versão certa (padrão ou funil) de novo
   return res.send(htmlComOg);
 }
 
@@ -508,11 +509,19 @@ app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
     const { data: sorteio } = await supabase.from('sorteios').select('id, nome, descricao, foto_url').eq('slug', slug).maybeSingle();
     if (sorteio) {
       const { data: funil } = await supabase.from('funis').select('arquivo_html').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).maybeSingle();
+      if (!funil) {
+        console.warn(`[funil] Nenhum funil encontrado com slug "${funilSlug}" pro sorteio "${slug}" — servindo a página padrão.`);
+      }
       const arquivo = funil?.arquivo_html || 'sorteio.html';
       // Arquivos customizados ficam em public/funis/; 'sorteio.html' é o layout padrão em public/
       if (arquivo && arquivo !== 'sorteio.html') {
         const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
-        if (fs.existsSync(customPath)) return res.sendFile(customPath);
+        if (fs.existsSync(customPath)) {
+          console.log(`[funil] Servindo arquivo customizado "${arquivo}" pro sorteio "${slug}" (funil slug: "${funilSlug}")`);
+          res.set('Cache-Control', 'no-cache');
+          return res.sendFile(customPath);
+        }
+        console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
       }
       return enviarSorteioComOg(res, sorteio, req);
     }
