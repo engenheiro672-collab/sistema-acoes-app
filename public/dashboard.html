@@ -1173,6 +1173,13 @@ let VENDAS_CHART_REL = null;
 function showOverlay() { $('#overlay').css('display','flex'); }
 function hideOverlay() { $('#overlay').hide(); }
 
+// 🔒 Protege contra código malicioso escondido em campos digitados pelo cliente (nome, etc.) que
+// aparecem no painel — sem isso, um "nome" malicioso na hora da compra poderia rodar código no
+// navegador do administrador quando ele visse esse nome na tela.
+function escapeHtml(texto) {
+    return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function api(method, url, data, isForm) {
     const opts = { method, credentials: 'include' };
     if (data) {
@@ -1736,7 +1743,7 @@ function renderPodio(containerId, resultados, valorFn, corClasse) {
                 <span style="font-size:1.8rem;">${medalhas[i]}</span>
                 <div>
                     <div class="text-xs opacity-60 font-bold">TOP ${i + 1}</div>
-                    <div class="font-semibold">${r.usuarios?.nome_completo || '—'}</div>
+                    <div class="font-semibold">${escapeHtml(r.usuarios?.nome_completo) || '—'}</div>
                     <div class="text-sm opacity-70">${mascararNumero(r.usuarios?.telefone)}</div>
                 </div>
             </div>
@@ -2100,7 +2107,7 @@ function renderGridBilhetesView() {
                     </div>
                     <span class="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0" style="background:${corBorda}; color:#fff;">${saiu ? 'JÁ SAIU' : 'DISPONÍVEL'}</span>
                 </div>
-                ${saiu ? `<div class="text-sm text-green-300 mt-2"><i class="bi bi-trophy-fill"></i> ${nome || 'Ganhador não identificado'}</div>` : ''}
+                ${saiu ? `<div class="text-sm text-green-300 mt-2"><i class="bi bi-trophy-fill"></i> ${escapeHtml(nome) || 'Ganhador não identificado'}</div>` : ''}
                 ${detalhesCompra}
                 ${whatsBtn}${verCompraBtn}
             </div>
@@ -2275,7 +2282,7 @@ function carregarRoleta(sorteioId) {
                 <div class="p-3 rounded-lg flex justify-between items-center flex-wrap gap-2${inativo}" style="background:#1a1f2b; border:1px solid ${corBorda};">
                     <div>
                         <div class="flex items-center gap-2"><b class="font-mono">${p.numero_cota}</b> <span class="text-gray-400">${p.premio_titulo || ''}</span> ${p.valor_premio ? `<span class="text-yellow-400 text-xs">${p.valor_premio}</span>` : ''}</div>
-                        ${saiu ? `<div class="text-xs text-green-400 mt-1"><i class="bi bi-trophy-fill"></i> ${p.ganhador_nome || 'Ganhador não identificado'}</div>` : ''}
+                        ${saiu ? `<div class="text-xs text-green-400 mt-1"><i class="bi bi-trophy-fill"></i> ${escapeHtml(p.ganhador_nome) || 'Ganhador não identificado'}</div>` : ''}
                         ${p.ativo === false ? '<span class="badge badge-outro mt-1 inline-block">Inativo</span>' : ''}
                     </div>
                     <div class="flex gap-2 items-center flex-shrink-0">
@@ -2347,7 +2354,7 @@ function carregarRoletaResultadosAdmin(sorteioId) {
             const tel = g.usuario?.telefone;
             const nome = g.usuario?.nome_completo || 'Ganhador não identificado';
             const whats = tel ? `<a href="https://wa.me/${tel}?text=${encodeURIComponent(`Olá ${nome}! Você ganhou na roleta: ${g.premio_titulo || ''}! 🎉`)}" target="_blank" class="btn-primary text-xs"><i class="bi bi-whatsapp"></i> Chamar</a>` : '';
-            return `<div class="pedido-card"><div><div class="font-semibold">${g.premio_titulo || 'Prêmio'}</div><div class="text-sm opacity-70">${nome} ${tel ? '· ' + tel : ''}</div>${g.valor_premio ? `<div class="text-yellow-400 text-sm font-semibold mt-1">${g.valor_premio}</div>` : ''}</div>${whats}</div>`;
+            return `<div class="pedido-card"><div><div class="font-semibold">${escapeHtml(g.premio_titulo) || 'Prêmio'}</div><div class="text-sm opacity-70">${escapeHtml(nome)} ${tel ? '· ' + escapeHtml(tel) : ''}</div>${g.valor_premio ? `<div class="text-yellow-400 text-sm font-semibold mt-1">${escapeHtml(g.valor_premio)}</div>` : ''}</div>${whats}</div>`;
         }).join('') || '<p class="opacity-60 text-sm">Nenhuma roleta sorteada ainda.</p>';
         $('#lista-roleta-resultados, #lista-roleta-resultados-view').html(html);
     });
@@ -3018,7 +3025,7 @@ function renderPedidosPagina() {
         return `
             <div class="pedido-card" style="cursor:pointer" onclick="abrirDetalhePedido('${p.id}')">
                 <div>
-                    <div class="font-semibold text-white">${p.usuarios?.nome_completo || '—'} ${funilTag}</div>
+                    <div class="font-semibold text-white">${escapeHtml(p.usuarios?.nome_completo) || '—'} ${funilTag}</div>
                     <div class="text-gray-400 text-sm">${p.sorteios?.nome || ''} · ${p.quantidade_cotas} cotas · ${formatBR(p.valor_total)}</div>
                     <div class="text-xs ${sv.cor} font-semibold">${sv.texto} <span class="text-gray-600 font-normal">· ${data_fmt}</span></div>
                 </div>
@@ -3068,7 +3075,7 @@ function renderModalPedido() {
 
     $('#detalhe-pedido-corpo').html(`
         <div class="space-y-2 text-sm">
-            <div><span class="opacity-60">Comprador:</span> <b>${p.usuarios?.nome_completo || '—'}</b></div>
+            <div><span class="opacity-60">Comprador:</span> <b>${escapeHtml(p.usuarios?.nome_completo) || '—'}</b></div>
             <div><span class="opacity-60">Telefone:</span> ${tel ? formatarTelefone(tel) : '—'}</div>
             ${p.usuarios?.cpf ? `<div><span class="opacity-60">CPF:</span> ${formatarCPF(p.usuarios.cpf)}</div>` : ''}
             <div><span class="opacity-60">Sorteio:</span> ${p.sorteios?.nome || '—'}</div>
@@ -3130,7 +3137,7 @@ function renderClientesPagina() {
         return `
         <div class="pedido-card" style="cursor:pointer;" onclick="abrirModalCliente('${c.id}')">
             <div>
-                <div class="flex items-center gap-2 flex-wrap"><span class="font-semibold">${c.nome_completo}</span> ${ativoBadge}</div>
+                <div class="flex items-center gap-2 flex-wrap"><span class="font-semibold">${escapeHtml(c.nome_completo)}</span> ${ativoBadge}</div>
                 <div class="text-gray-400 text-sm">${mascararNumero(c.telefone)}${c.cpf ? ' · CPF ' + mascararNumero(c.cpf) : ''}</div>
                 <div class="text-xs text-gray-500">Entrou em ${entrouTxt} · Última compra: ${ultimaCompraTxt}</div>
             </div>
@@ -3458,8 +3465,8 @@ function carregarNotificacoes(mostrarToast) {
                 const icone = n.tipo === 'roleta' ? '🎡' : '🎫';
                 const quando = n.reivindicada_em ? new Date(n.reivindicada_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
                 return `<div class="p-3 border-b border-[var(--border)] text-xs">
-                    <div class="font-semibold">${icone} ${n.premio_titulo || 'Prêmio'} ${n.numero_cota ? `— cota ${n.numero_cota}` : ''}</div>
-                    <div class="opacity-70">${n.ganhador?.nome_completo || 'Ganhador não identificado'} · ${n.sorteio_nome || ''}</div>
+                    <div class="font-semibold">${icone} ${escapeHtml(n.premio_titulo) || 'Prêmio'} ${n.numero_cota ? `— cota ${escapeHtml(n.numero_cota)}` : ''}</div>
+                    <div class="opacity-70">${escapeHtml(n.ganhador?.nome_completo) || 'Ganhador não identificado'} · ${escapeHtml(n.sorteio_nome) || ''}</div>
                     <div class="opacity-50">${quando}</div>
                 </div>`;
             }).join(''));
@@ -3480,7 +3487,7 @@ function marcarNotificacoesVistas() {
     });
 }
 function mostrarToastNotificacao(texto) {
-    const $toast = $(`<div style="position:fixed;bottom:20px;right:20px;z-index:200;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.4);max-width:320px;font-size:0.85rem;">${texto}</div>`);
+    const $toast = $(`<div style="position:fixed;bottom:20px;right:20px;z-index:200;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.4);max-width:320px;font-size:0.85rem;">${escapeHtml(texto)}</div>`);
     $('body').append($toast);
     setTimeout(() => $toast.fadeOut(400, () => $toast.remove()), 6000);
 }

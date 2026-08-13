@@ -199,6 +199,17 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// 🔒 Cabeçalhos de segurança que faltavam — protegem contra um tipo de golpe chamado "clickjacking"
+// (alguém colocar seu site escondido dentro de um iframe em outro site, tentando enganar o clique
+// da pessoa) e reforçam outras proteções básicas que o navegador já sabe fazer, se avisado.
+app.use((_req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cookieParser());
 // Necessário no Render (e qualquer host atrás de proxy/HTTPS) pra sessão/cookies funcionarem certo
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);

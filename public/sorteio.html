@@ -372,6 +372,11 @@
         let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
         let quantidadeCotas = 30;
 
+        // 🔒 Protege contra código malicioso escondido em textos configurados pelo administrador
+        // (nome do sorteio, título de promoção, etc.) que aparecem direto na tela do cliente.
+        function escapeHtml(texto) {
+            return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
         function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
         // Mostra o primeiro nome completo + só a inicial do segundo (evita nome grande vazando do card)
         function nomeCurto(nomeCompleto) {
@@ -717,7 +722,7 @@
                 }
             }
 
-            if (logo_url) $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
+            if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);
 
             $('#page-title').text(`${sorteio.nome || ''} - Sorteios`);
@@ -883,11 +888,11 @@
                 const qtd = quantidadeCotas;
                 const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === qtd);
                 if (CHANCE_DOBRO_ATIVA) {
-                    $('#checkout-confirm-text').html(`🔥 Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong> — e leva o <strong>DOBRO</strong>: <strong>${qtd * 2}</strong> título(s) no total, graças à promoção "${CHANCE_DOBRO_ATIVA.titulo || 'Chance em Dobro'}" ativa agora!`);
+                    $('#checkout-confirm-text').html(`🔥 Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${escapeHtml(nomeSorteio)}</strong> — e leva o <strong>DOBRO</strong>: <strong>${qtd * 2}</strong> título(s) no total, graças à promoção "${escapeHtml(CHANCE_DOBRO_ATIVA.titulo) || 'Chance em Dobro'}" ativa agora!`);
                 } else if (promoAtiva) {
-                    $('#checkout-confirm-text').html(`🏷️ Você está comprando com a promoção <strong>"${promoAtiva.titulo}"</strong>: <strong>${qtd}</strong> título(s) por apenas <strong>${formatarMoeda(promoAtiva.preco_promocional)}</strong> da campanha <strong>${nomeSorteio}</strong>`);
+                    $('#checkout-confirm-text').html(`🏷️ Você está comprando com a promoção <strong>"${escapeHtml(promoAtiva.titulo)}"</strong>: <strong>${qtd}</strong> título(s) por apenas <strong>${formatarMoeda(promoAtiva.preco_promocional)}</strong> da campanha <strong>${escapeHtml(nomeSorteio)}</strong>`);
                 } else {
-                    $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${nomeSorteio}</strong>`);
+                    $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${escapeHtml(nomeSorteio)}</strong>`);
                 }
                 $('#checkout-confirm-bar').removeClass('hidden');
 
