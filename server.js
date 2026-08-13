@@ -561,32 +561,39 @@ function escaparAtributoHtml(texto) {
 
 // Injeta os dados reais do sorteio (foto, título, descrição) no HTML antes de mandar — necessário porque
 // o WhatsApp/Instagram/Facebook NÃO executam o JavaScript da página, só leem o HTML puro que o servidor manda.
-function enviarSorteioComOg(res, sorteio, req) {
+function enviarSorteioComOg(res, dadosCompletos, req) {
   const html = fs.readFileSync(path.join(PUBLIC_DIR, 'sorteio.html'), 'utf-8');
+  const sorteio = dadosCompletos?.sorteio;
   const titulo = sorteio?.nome ? `${sorteio.nome} — Participe e concorra!` : 'Sorteio';
   const descricao = sorteio?.descricao ? String(sorteio.descricao).slice(0, 150) : 'Participe e concorra a prêmios incríveis!';
   const imagem = sorteio?.foto_url || '';
   const urlCompleta = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-  const htmlComOg = html
+  let htmlComOg = html
     .replaceAll('__OG_TITLE__', escaparAtributoHtml(titulo))
     .replaceAll('__OG_DESCRIPTION__', escaparAtributoHtml(descricao))
     .replaceAll('__OG_IMAGE__', escaparAtributoHtml(imagem))
     .replaceAll('__OG_URL__', escaparAtributoHtml(urlCompleta));
+
+  // ⚡ A parte que elimina a "ida e volta" pra buscar os dados: já manda os dados reais do sorteio
+  // DENTRO do HTML — assim que a página chega no navegador, não precisa mais esperar uma busca à
+  // parte pra mostrar a foto/preço/tudo. Só faz isso pro sorteio.html padrão (React) — funis
+  // customizados continuam com a lógica própria deles, sem serem afetados por essa mudança.
+  if (dadosCompletos) {
+    const dadosSeguro = JSON.stringify(dadosCompletos).replace(/</g, '\\u003c'); // evita fechar a tag <script> por acidente
+    htmlComOg = htmlComOg.replace('</head>', `<script>window.__DADOS_INICIAIS__ = ${dadosSeguro};</script></head>`);
+  }
 
   res.set('Content-Type', 'text/html');
   res.set('Cache-Control', 'no-cache'); // nunca guarda em cache — sempre busca a versão certa (padrão ou funil) de novo
   return res.send(htmlComOg);
 }
 
-// 🧪 Rota de teste isolada — versão React (protótipo), NÃO afeta a rota normal do sorteio.
-// Só existe pra você comparar lado a lado antes de decidirmos seguir com essa reconstrução.
-app.get('/spa-teste/sorteio/:slug', (_req, res) => sendPage(res, path.join('spa-teste', 'sorteio.html')));
-
 app.get('/sorteio/:slug', trackearAcesso, async (req, res) => {
   try {
-    const { data: sorteio } = await supabase.from('sorteios').select('nome, descricao, foto_url').eq('slug', req.params.slug).maybeSingle();
-    return enviarSorteioComOg(res, sorteio, req);
+    const dados = await getSorteioPublicData(req.params.slug, req.query.funil || null);
+    if (!dados) return res.status(404).send('Sorteio não encontrado');
+    return enviarSorteioComOg(res, dados, req);
   } catch (err) {
     console.error('Erro ao montar preview do sorteio', err);
     return sendPage(res, 'sorteio.html');
@@ -597,7 +604,7 @@ app.get('/sorteio/:slug', trackearAcesso, async (req, res) => {
 app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
   try {
     const { slug, funilSlug } = req.params;
-    const { data: sorteio } = await supabase.from('sorteios').select('id, nome, descricao, foto_url').eq('slug', slug).maybeSingle();
+    const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();
     if (sorteio) {
       const { data: funil } = await supabase.from('funis').select('arquivo_html').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).maybeSingle();
       if (!funil) {
@@ -614,7 +621,8 @@ app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
         }
         console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
       }
-      return enviarSorteioComOg(res, sorteio, req);
+      const dados = await getSorteioPublicData(slug, funilSlug);
+      return enviarSorteioComOg(res, dados, req);
     }
   } catch (err) { console.error('Erro ao resolver arquivo do funil', err); }
   return sendPage(res, 'sorteio.html');

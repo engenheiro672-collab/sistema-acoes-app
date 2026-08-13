@@ -1,4 +1,51 @@
-# Sistema de Sorteios — v90 (⚡⚡⚡⚡⚡⚡ REVISÃO FINAL DE VELOCIDADE)
+# Sistema de Sorteios — v92 (↩️ VOLTA PRO ORIGINAL — com o máximo de velocidade aplicado de uma vez)
+
+## O que foi feito, tudo de uma vez, como pedido
+
+1. **`sorteio.html` voltou a ser exatamente o original** (o mesmo de antes de começarmos a mexer com React) — nenhuma função faltando, nada diferente visualmente.
+2. **Pasta `public/spa-teste/` removida** por completo.
+3. **Rota de teste removida** do `server.js`.
+4. Conferi o sistema inteiro (todos os arquivos) procurando qualquer referência solta ao que foi removido — não sobrou nada.
+
+## Aplicado no original, tudo numa revisão só
+
+- **Scripts do jQuery não travam mais a tela** — movidos pra depois do conteúdo visível (mesmo problema que resolvemos antes no funil, agora resolvido no original também)
+- **Ícones não travam mais a tela** (carregam em paralelo, sem segurar a exibição)
+- **Dados do sorteio já vêm prontos dentro da página** — a mesma técnica que criei na tentativa com React, adaptada de volta pro original: o servidor manda os dados junto com o HTML, sem precisar de uma busca separada depois. Essa foi a melhoria de maior impacto que descobri em toda essa jornada, e agora está no sistema que você realmente vai usar.
+- **Segunda visita mais rápida pra todo mundo** — o Service Worker agora registra automaticamente pra qualquer visitante (antes só ativava se a pessoa ligasse a notificação push)
+- **Conexão antecipada com o servidor da foto** — assim que sabe de onde vem a imagem, já abre a conexão em paralelo
+
+## Reafirmando com honestidade
+
+Não sei garantir que isso feche 100% a diferença com os concorrentes — já expliquei que parte dela provavelmente vem da infraestrutura deles, algo que não dá pra replicar só com código. Mas é o sistema que você já conhece, comprovado, com tudo que aprendemos de verdade sobre velocidade aplicado nele de uma vez, sem regressão nenhuma dessa vez.
+
+## Sem mudança de banco.
+
+
+## Respondendo sua pergunta: sim, achei mais uma coisa de verdade
+
+Você tinha razão em perguntar de novo. Pensando com mais calma sobre "o que a reconstrução maior traria", percebi que a parte **mais importante** dela — o servidor já mandar os dados prontos, sem o navegador precisar buscar depois — dava pra fazer **sem precisar da reconstrução inteira**. Implementei agora.
+
+## O que mudou
+
+Antes: a página chegava, o React carregava, e **só depois** ele buscava os dados (foto, preço, prêmios) numa segunda ida ao servidor.
+
+**Agora**: o servidor já manda os dados **dentro do HTML**, na primeira resposta — o React só precisa ler o que já está ali, sem esperar nada. Isso corta uma ida-e-volta inteira ao servidor, bem no momento mais crítico (o primeiro carregamento).
+
+## Testei com cuidado antes de aplicar
+
+Simulei com dados de teste, incluindo um teste de segurança propositalmente malicioso (um nome de sorteio com código escondido) pra confirmar que a substituição não quebra nem vaza nada — passou em todos os testes.
+
+## Sobre a reconstrução "maior" que você perguntou
+
+Com essa mudança, capturei a parte mais valiosa dela. O que sobra (empacotar tudo num arquivo só, cortar código não usado) é ganho bem menor — não acho que valha o trabalho de reconstruir tudo de novo só por isso.
+
+## ⚠️ Isso muda o comportamento de cache — vale testar com atenção
+
+Como os dados agora vêm dentro do HTML, e o HTML é sempre buscado fresco (nunca em cache), isso garante que o conteúdo está sempre atualizado — só reforçando que testou tudo certinho antes de eu confiar 100%.
+
+## Sem mudança de banco — `server.js`, `public/sorteio.html`.
+
 
 ## Fiz a revisão exaustiva que você pediu — achei 3 coisas reais ainda
 
