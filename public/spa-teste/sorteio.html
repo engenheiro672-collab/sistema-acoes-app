@@ -13,50 +13,68 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        html { touch-action: pan-y; }
-        body { background-color: #20242e; color: #fff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; margin: 0; }
+        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; margin: 0; }
         .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
-        .main-image { width: 100%; height: 310px; object-fit: cover; background-color: #111; filter: contrast(1.08) saturate(1.12) brightness(1.02); }
-        .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); min-height: 88px; justify-content: flex-end; }
-        .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; }
-        .cota-btn { background-color: #000; border: 1px solid #000; border-radius: 8px; padding: 0.75rem 1rem; text-align: center; cursor: pointer; transition: background-color 0.15s; }
-        .cota-btn.selecionado { background-color: #1a8754; }
+        #logo-box img { max-height: 40px; max-width: 280px; }
+        .title-bar { color: #fff; }
+        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 500; font-size: 0.8125rem; padding: 8px 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-transform: uppercase; border: none; }
+        .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
+        @media (max-width: 480px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; padding: 0.75rem; } .cota-num { font-size: 1.6rem !important; } .cota-label { font-size: 0.7rem !important; } }
+        .cota-num { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cota-btn { background-color: #000; border-radius: 4px; padding: 0.75rem 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; border: none; position: relative; }
+        .cota-btn.popular { background-color: #c8facd; }
+        .cota-btn.popular .cota-num { color: rgba(0,0,0,.87); }
+        .cota-btn.popular .cota-label { color: rgba(0,0,0,.87); }
+        .cota-btn.selecionado { box-shadow: 0 0 0 2px #1a8754; }
+        .cota-badge { font-size: 0.875em; font-weight: 400; background-color: #1a8754; color: #ffffff; padding: 0 7px; border-radius: 5px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
         .cota-num { font-size: 2.25rem; font-weight: 500; color: #fff; }
         .cota-label { font-size: 0.85rem; font-weight: 300; color: rgba(160,174,192,0.75); }
-        .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #1a1a1a; border-radius: 8px; padding: 0.4rem; }
+        .purchase-grid { display: grid; grid-template-columns: 2fr 3fr; gap: 0.6rem; padding: 0 1rem 1rem 1rem; align-items: stretch; }
+        .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #2a303c; border-radius: 8px; padding: 0.4rem; }
         .manual-selector button { font-size: 1.4rem; font-weight: 300; color: #a0aec0; width: 36px; height: 36px; flex-shrink: 0; background: none; border: none; }
-        .manual-selector input { width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600; color: #fff; background: none; border: none; outline: none; }
-        .btn-participar { background: linear-gradient(90deg, #1a8754, #5be584); color: #fff; font-weight: 700; border-radius: 10px; padding: 0.9rem; text-align: center; width: 100%; border: none; font-size: 1.05rem; cursor: pointer; }
-        .skeleton { background: linear-gradient(90deg, #2a303c 25%, #363d4a 37%, #2a303c 63%); background-size: 400% 100%; animation: skeleton-loading 1.4s ease infinite; border-radius: 8px; }
-        @keyframes skeleton-loading { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-        .skeleton-foto { height: 310px; }
-        .skeleton-linha-titulo { height: 20px; width: 70%; margin-bottom: 12px; }
-        .skeleton-linha-sub { height: 14px; width: 40%; }
-        .skeleton-cota { height: 76px; }
-        .nav-full-width { width: 100%; }
-        .logo-img { height: 32px; }
-        .icone-menu { font-size: 2rem; }
-        .caption-overlay { position: absolute; left: 0; right: 0; bottom: 0; }
-        .titulo-sorteio { font-size: 1.4rem; font-weight: 700; margin: 0; }
-        .title-bar { color: #fff; background-color: #1a1a1a; padding: 10px 1rem; }
-        .preco-texto { margin: 0; font-weight: 600; font-size: 12.3px; }
-        .subtitulo-chances { font-weight: 400; }
+        .manual-selector input { width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600; color: #fff; background: none; border: none; outline: none; min-width: 0; }
+        .btn-participar { background-color: #1a8754; color: #fff; width: 100%; height: 100%; border-radius: 8px; padding: 3px 12px; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; border: none; cursor: pointer; }
+        .btn-participar i { font-size: 1.2rem; margin-right: 0.25rem; flex-shrink: 0; }
+        .btn-participar span:nth-child(2) { flex: 1; text-align: left; }
+        .btn-participar-price { font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
+        .titulos-premiados { padding: 1.5rem 1rem; }
+        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; margin-bottom: 6px; border-radius: 8px; background-color: #1a8754; box-shadow: rgba(0,0,0,0.2) 0px 0px 2px 0px, rgba(0,0,0,0.12) 0px 12px 24px -4px; }
+        .premio-item.disponivel { background-color: #161c24; }
+        .premio-cota { height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background-color: #fff; color: #000; min-width: 20%; max-width: 40%; text-align: center; white-space: nowrap; }
+        .premio-item.disponivel .premio-cota { background-color: #919eab; color: #fff; }
+        .premio-nome { font-weight: 400; color: #fff; flex-grow: 1; text-align: center; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .premio-status { font-weight: 400; color: #fff; font-size: 14px; text-align: right; white-space: nowrap; max-width: 30%; overflow: hidden; text-overflow: ellipsis; }
+        .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
+        .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); min-height: 88px; justify-content: flex-end; }
+        .caption-header h1 { font-weight: 500; font-size: 1.4rem; line-height: 1.25; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
+        .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 10px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
+        .countdown-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
+        .countdown-subtitle { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin: 0; }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
+        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 100%; overflow: visible; cursor: pointer; }
+        .combo-pulse { animation: pulse-opacity 2.5s infinite; }
+        .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
+        @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        .carrossel { position: relative; overflow: hidden; height: 310px; max-height: 310px; margin-top: -1px; }
+        .carrossel img { width: 100%; height: 310px; max-height: 310px; object-fit: cover; display: block; filter: contrast(1.08) saturate(1.12) brightness(1.02); }
+        .carrossel-dots { position: absolute; bottom: 8px; left: 0; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 10; }
+        .carrossel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; border: none; }
+        .carrossel-dot.active { background: #fff; }
+        .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
+        .menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 16px; color: #e6edf3; font-size: 0.9rem; background: none; border: none; cursor: pointer; }
+        .regulamento-btn { width: 100%; display: flex; justify-content: space-between; align-items: center; background-color: #2a303c; border-radius: 8px; padding: 12px 16px; text-align: left; border: none; color: #fff; cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="root">
-        <div id="aviso-carregando-libs" style="padding:2rem; text-align:center; color:#fff; font-family:sans-serif;">Carregando...</div>
+        <div style="padding:2rem; text-align:center; color:#fff; font-family:sans-serif;">Carregando...</div>
     </div>
 
     <script>
-        // Mostra qualquer erro de JavaScript diretamente na tela — evita ficar tudo preto sem
-        // nenhuma explicação, o que dificultava descobrir o que estava acontecendo.
         window.addEventListener('error', function(e) {
             const detalhes = (e.error && e.error.stack) ? e.error.stack : (e.message || String(e));
             document.getElementById('root').innerHTML =
-                '<div style="padding:2rem; color:#ff8080; font-family:monospace; font-size:0.85rem; white-space:pre-wrap;">' +
-                '⚠️ Erro na página de teste:\n\n' + detalhes + '\n\nArquivo: ' + (e.filename || '?') + ' linha ' + (e.lineno || '?') +
-                '</div>';
+                '<div style="padding:2rem; color:#ff8080; font-family:monospace; font-size:0.85rem; white-space:pre-wrap;">⚠️ Erro na página de teste:\n\n' + detalhes + '\n\nArquivo: ' + (e.filename || '?') + ' linha ' + (e.lineno || '?') + '</div>';
         });
     </script>
 
@@ -65,53 +83,138 @@
     <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js" crossorigin="anonymous"></script>
     <script>
         if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof htm === 'undefined') {
-            document.getElementById('root').innerHTML =
-                '<div style="padding:2rem; color:#ff8080; font-family:monospace;">⚠️ Não consegui carregar React/htm — provavelmente um bloqueio de rede ou anúncio impedindo o CDN.</div>';
+            document.getElementById('root').innerHTML = '<div style="padding:2rem; color:#ff8080; font-family:monospace;">⚠️ Não consegui carregar React/htm.</div>';
             throw new Error('React/ReactDOM/htm não carregaram');
         }
         const html = htm.bind(React.createElement);
         const { useState, useEffect } = React;
 
-        function formatarMoeda(valor) {
-            return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        function formatarMoeda(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+        function nomeCurto(nome) {
+            if (!nome) return '';
+            const partes = nome.trim().split(/\s+/);
+            return partes.length > 1 ? `${partes[0]} ${partes[1][0]}.` : partes[0];
         }
 
-        // Esqueleto de carregamento — aparece na hora, antes mesmo dos dados chegarem,
-        // pra pessoa já ver "algo acontecendo" imediatamente (mesma ideia do site de referência).
         function TelaCarregando() {
             return html`
                 <div>
                     <div class="header-bar"></div>
-                    <div class="skeleton skeleton-foto"></div>
+                    <div class="skeleton" style=${{height:'310px'}}></div>
                     <div class="p-4">
-                        <div class="skeleton skeleton-linha-titulo"></div>
-                        <div class="skeleton skeleton-linha-sub"></div>
+                        <div class="skeleton" style=${{height:'20px', width:'70%', marginBottom:'12px'}}></div>
+                        <div class="skeleton" style=${{height:'14px', width:'40%'}}></div>
                     </div>
                     <div class="cota-grid">
-                        ${[1,2,3,4,5,6].map(i => html`<div key=${i} class="skeleton skeleton-cota"></div>`)}
+                        ${[1,2,3,4,5,6].map(i => html`<div key=${i} class="skeleton" style=${{height:'76px'}}></div>`)}
                     </div>
                 </div>
             `;
         }
 
-        function SeletorCota({ sorteio, quantidade, setQuantidade }) {
-            const opcoes = [100, 500, 1000, 2000, 5000, 10000];
+        function Carrossel({ fotos }) {
+            const [indice, setIndice] = useState(0);
+            const lista = fotos && fotos.length ? fotos : [''];
+            return html`
+                <div class="carrossel">
+                    <img src=${lista[indice]} alt="Foto do prêmio" />
+                    ${lista.length > 1 && html`
+                        <div class="carrossel-dots">
+                            ${lista.map((_, i) => html`<button key=${i} class=${'carrossel-dot' + (i === indice ? ' active' : '')} onClick=${() => setIndice(i)}></button>`)}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function SeletorCota({ quantidade, setQuantidade }) {
+            const padrao = [
+                { qtd: 100, label: '+100' }, { qtd: 500, label: '+500', popular: true }, { qtd: 1000, label: '+1000' },
+                { qtd: 2000, label: '+2000' }, { qtd: 5000, label: '+5000' }, { qtd: 10000, label: '+10000' },
+            ];
             return html`
                 <div class="cota-grid">
-                    ${opcoes.map(qtd => html`
-                        <div key=${qtd}
-                             class=${'cota-btn' + (quantidade === qtd ? ' selecionado' : '')}
-                             onClick=${() => setQuantidade(qtd)}>
-                            <div class="cota-num">+${qtd >= 1000 ? (qtd/1000) + 'mil' : qtd}</div>
+                    ${padrao.map(op => html`
+                        <button key=${op.qtd}
+                             class=${'cota-btn' + (op.popular ? ' popular' : '') + (quantidade === op.qtd ? ' selecionado' : '')}
+                             onClick=${() => setQuantidade(op.qtd)}>
+                            ${op.popular && html`<span class="cota-badge">Mais popular</span>`}
+                            <div class="cota-num">${op.label}</div>
                             <div class="cota-label">SELECIONAR</div>
-                        </div>
+                        </button>
                     `)}
                 </div>
-                <div class="mx-4 mb-4 manual-selector">
-                    <button onClick=${() => setQuantidade(Math.max(1, quantidade - 1))}>−</button>
-                    <input type="number" value=${quantidade} onChange=${e => setQuantidade(Number(e.target.value) || 1)} />
-                    <button onClick=${() => setQuantidade(quantidade + 1)}>+</button>
+            `;
+        }
+
+        function BannerUrgencia({ aviso }) {
+            if (!aviso) return null;
+            return html`
+                <div class="mx-4 mt-4 countdown-card">
+                    <p class="countdown-title">${aviso.titulo || '⏰ Atenção!'}</p>
+                    ${aviso.subtitulo && html`<p class="countdown-subtitle">${aviso.subtitulo}</p>`}
                 </div>
+            `;
+        }
+
+        function SecaoPromocoes({ promocoes, onEscolher }) {
+            if (!promocoes || !promocoes.length) return null;
+            return html`
+                <section class="mt-6 px-1">
+                    <h3 class="text-xl font-semibold mb-3 px-3">🏷️ Promoção <span class="text-sm text-gray-400 font-normal">combos</span></h3>
+                    <div class="space-y-3 px-3">
+                        ${promocoes.map(p => html`
+                            <div key=${p.id} class="combo-roleta combo-pulse" onClick=${() => onEscolher(p.quantidade_cotas)}>
+                                <div style=${{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%', gap:'0.5rem', flexWrap:'wrap'}}>
+                                    <div>
+                                        <div class="text-xs text-green-100">🏷️ ${p.titulo}</div>
+                                        <div class="text-lg font-bold text-white">${p.quantidade_cotas} títulos</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-bold text-white">${formatarMoeda(p.preco_promocional)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `)}
+                    </div>
+                </section>
+            `;
+        }
+
+        function SecaoRegulamento({ texto }) {
+            const [aberto, setAberto] = useState(false);
+            if (!texto) return null;
+            return html`
+                <div class="mx-4 mt-4">
+                    <button class="regulamento-btn" onClick=${() => setAberto(!aberto)}>
+                        <span class="font-semibold"><i class="bi bi-file-earmark-text"></i> Regulamento</span>
+                        <i class=${aberto ? 'bi bi-chevron-up' : 'bi bi-chevron-down'}></i>
+                    </button>
+                    ${aberto && html`<div class="bg-[#20242e] border border-[#2a303c] rounded-b-lg px-4 py-3 text-sm text-gray-400" style=${{whiteSpace:'pre-line'}}>${texto}</div>`}
+                </div>
+            `;
+        }
+
+        function SecaoBilhetesPremiados({ bilhetes }) {
+            if (!bilhetes || !bilhetes.length) return null;
+            const reivindicados = bilhetes.filter(b => b.status === 'reivindicada').length;
+            const ordenados = [...bilhetes].sort((a, b) => (b.status === 'reivindicada') - (a.status === 'reivindicada'));
+            return html`
+                <section class="titulos-premiados">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xl font-semibold">🎫 Títulos Premiados <span class="text-sm text-gray-400 font-normal">instantâneos</span></h3>
+                        <span class="text-gray-100 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">${reivindicados}/${bilhetes.length}</span>
+                    </div>
+                    ${ordenados.slice(0, 8).map((p, i) => html`
+                        <div key=${i} class=${'premio-item' + (p.status === 'reivindicada' ? '' : ' disponivel')}>
+                            <span class="premio-cota">${p.status === 'reivindicada' ? p.numero_cota : '🔒 ??????'}</span>
+                            <span class="premio-nome">${p.premio_titulo}</span>
+                            ${p.status === 'reivindicada'
+                                ? html`<span class="premio-status">${p.ganhador_nome ? nomeCurto(p.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                                : html`<span class="premio-status">Disponível</span>`}
+                        </div>
+                    `)}
+                </section>
             `;
         }
 
@@ -119,10 +222,9 @@
             const [dados, setDados] = useState(null);
             const [erro, setErro] = useState(null);
             const [quantidade, setQuantidade] = useState(30);
+            const [menuAberto, setMenuAberto] = useState(false);
 
             useEffect(() => {
-                // Endereço é /spa-teste/sorteio/:slug (um pedaço a mais que a página normal),
-                // então o slug fica na posição 2, não na 1.
                 const partes = window.location.pathname.split('/').filter(Boolean);
                 const slug = partes[2] || '';
                 fetch(`/api/public/sorteio/${slug}`)
@@ -140,38 +242,58 @@
 
             const s = dados.sorteio;
             const preco = Number(s.preco_cota || 0);
+            const fotos = [s.foto_url, ...(s.fotos_galeria || [])].filter(Boolean);
 
             return html`
                 <div>
-                    <header class="header-bar">
-                        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center nav-full-width">
-                            <div class="text-2xl font-bold text-white">${dados.logo_url ? html`<img src=${dados.logo_url} class="logo-img" />` : 'LOGO'}</div>
-                            <i class="bi bi-list text-gray-300 icone-menu"></i>
+                    <header class="header-bar" style=${{position:'relative'}}>
+                        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center" style=${{width:'100%'}}>
+                            <div id="logo-box" class="text-2xl font-bold text-white">${dados.logo_url ? html`<img src=${dados.logo_url} />` : 'LOGO'}</div>
+                            <button onClick=${() => setMenuAberto(!menuAberto)} style=${{background:'none', border:'none', color:'#d1d5db', fontSize:'2rem', padding:'8px'}}>
+                                <i class="bi bi-list"></i>
+                            </button>
                         </nav>
+                        ${menuAberto && html`
+                            <div class="menu-dropdown">
+                                <button><i class="bi bi-cart3"></i> Meus Títulos</button>
+                            </div>
+                        `}
                     </header>
 
                     <main class="container mx-auto max-w-2xl">
-                        <div class="relative">
-                            <img class="main-image" src=${s.foto_url || ''} alt=${s.nome} />
-                            <div class="caption-header caption-overlay">
-                                <h1 class="titulo-sorteio">${s.nome}</h1>
+                        <${Carrossel} fotos=${fotos} />
+                        <div class="caption-header" style=${{marginTop:'-88px', position:'relative', zIndex:1}}>
+                            <h1>${s.nome}</h1>
+                        </div>
+
+                        <button class="btn-meus-titulos-full"><i class="bi bi-cart3"></i> Meus Títulos</button>
+
+                        <div class="title-bar flex justify-center items-center" style=${{padding:'10px 1rem'}}>
+                            <h6 style=${{margin:0, fontWeight:600, fontSize:'12.3px'}}>Por apenas ${formatarMoeda(preco)}</h6>
+                        </div>
+
+                        <${BannerUrgencia} aviso=${dados.aviso_urgencia_ativo} />
+
+                        <p class="text-center text-gray-400 my-4" style=${{fontWeight:400}}>Quanto mais títulos, mais chances de ganhar!</p>
+
+                        <${SeletorCota} quantidade=${quantidade} setQuantidade=${setQuantidade} />
+
+                        <div class="purchase-grid">
+                            <div class="manual-selector">
+                                <button onClick=${() => setQuantidade(Math.max(1, quantidade - 1))}>−</button>
+                                <input type="number" value=${quantidade} onChange=${e => setQuantidade(Number(e.target.value) || 1)} />
+                                <button onClick=${() => setQuantidade(quantidade + 1)}>+</button>
                             </div>
-                        </div>
-
-                        <div class="title-bar flex justify-center items-center">
-                            <h6 class="preco-texto">Por apenas ${formatarMoeda(preco)}</h6>
-                        </div>
-
-                        <p class="text-center text-gray-400 my-4 subtitulo-chances">Quanto mais títulos, mais chances de ganhar!</p>
-
-                        <${SeletorCota} sorteio=${s} quantidade=${quantidade} setQuantidade=${setQuantidade} />
-
-                        <div class="px-4 pb-8">
-                            <div class="text-center text-xl font-bold mb-3">${formatarMoeda(quantidade * preco)}</div>
-                            <button class="btn-participar" onClick=${() => alert('Aqui entraria o fluxo de checkout — próximo passo depois de validar essa base.')}>
-                                Quero Participar
+                            <button class="btn-participar" onClick=${() => alert('Próximo passo: conectar com o fluxo real de checkout.')}>
+                                <i class="bi bi-check-circle"></i>
+                                <span>Quero Participar</span>
+                                <span class="btn-participar-price">${formatarMoeda(quantidade * preco)}</span>
                             </button>
                         </div>
+
+                        <${SecaoRegulamento} texto=${s.regulamento || s.descricao} />
+                        <${SecaoPromocoes} promocoes=${dados.promocoes} onEscolher=${setQuantidade} />
+                        <${SecaoBilhetesPremiados} bilhetes=${dados.bilhetes_premiados} />
                     </main>
                 </div>
             `;
