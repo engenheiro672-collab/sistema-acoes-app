@@ -15,6 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { stringify as csvStringify } from 'csv-stringify/sync';
@@ -181,7 +182,23 @@ function gerarCpfValido() {
 // ⚙️ SETUP SERVIDOR
 // ==================================================================
 
-app.use(cors({ origin: true, credentials: true }));
+// 🔒 Antes, qualquer site da internet podia fazer pedido pro seu sistema levando os cookies de quem
+// estivesse logado (e ainda ler a resposta) — "origin: true" aceitava literalmente qualquer origem.
+// Agora só os domínios que você realmente usa têm permissão.
+const ORIGENS_PERMITIDAS = [
+  'https://premiosderrets.com.br',
+  'https://www.premiosderrets.com.br',
+  'https://panthers.premiosderrets.com.br',
+  'https://sistema-acoes-app.onrender.com'
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Sem "origin" = pedido do próprio servidor (webhook, curl, etc.) — sempre permite.
+    if (!origin || ORIGENS_PERMITIDAS.includes(origin)) return callback(null, true);
+    return callback(new Error('Origem não permitida'));
+  },
+  credentials: true
+}));
 app.use(cookieParser());
 // Necessário no Render (e qualquer host atrás de proxy/HTTPS) pra sessão/cookies funcionarem certo
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
@@ -234,7 +251,16 @@ if (!process.env.SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 const supabase = createClient(process.env.SUPABASE_URL, SUPABASE_KEY);
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+// 🔒 Antes aceitava qualquer tipo de arquivo (mesmo sendo o upload só pra fotos) — agora só imagens de verdade.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (tiposPermitidos.includes(file.mimetype)) return cb(null, true);
+    return cb(new Error('Só é permitido enviar imagens (JPEG, PNG, WEBP ou GIF).'));
+  }
+});
 
 function ok(res, payload = {}) { return res.json({ status: 'success', ...payload }); }
 function fail(res, message = 'Erro interno', code = 500) { return res.status(code).json({ status: 'error', error: message }); }
@@ -329,6 +355,16 @@ const limiteLoginAdmin = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { status: 'error', error: 'Muitas tentativas de login. Aguarde alguns minutos e tente de novo.' }
+});
+
+// 🔒 Trava genérica pra endpoints públicos sensíveis — evita alguém "varrer" telefones em massa
+// tentando descobrir quem é cliente, ou martelar criação de pedidos sem parar.
+const limitePublicoSensivel = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { status: 'error', error: 'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.' }
 });
 
 app.get('/api/admin/session', (req, res) => {
@@ -747,7 +783,7 @@ app.post('/api/public/meus-bilhetes', async (req, res) => {
 });
 
 // Verifica se um telefone já é de um comprador conhecido (pra pular nome/CPF/etc no checkout)
-app.post('/api/public/usuarios/verificar', async (req, res) => {
+app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, res) => {
   try {
     const telefone = String(req.body?.telefone || '').replace(/\D/g, '');
     if (!telefone) return fail(res, 'Telefone é obrigatório', 400);
@@ -1060,7 +1096,7 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
 }
 
 // --- API PEDIDOS PUBLIC (com suporte a funil_id) ---
-app.post('/api/public/pedidos/iniciar', async (req, res) => {
+app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) => {
   try {
     const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
@@ -2516,6 +2552,31 @@ app.post('/api/gateway/create-payment', async (req, res) => {
   }
 });
 
+// 🔒 Confirma que a notificação de pagamento realmente veio do Mercado Pago (e não de alguém
+// mandando uma requisição forjada tentando marcar um pedido como "pago" sem ter pago de verdade).
+// Segue exatamente o algoritmo oficial deles: https://www.mercadopago.com.br/developers/.../webhooks
+function verificarAssinaturaWebhookMP(req, dataId) {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) return { valido: null }; // ainda não configurado — ver aviso no changelog
+
+  const assinatura = req.headers['x-signature'];
+  const requestId = req.headers['x-request-id'];
+  if (!assinatura || !requestId || !dataId) return { valido: false };
+
+  const partes = String(assinatura).split(',').reduce((acc, parte) => {
+    const [chave, valor] = parte.split('=');
+    if (chave && valor) acc[chave.trim()] = valor.trim();
+    return acc;
+  }, {});
+  const ts = partes.ts;
+  const v1 = partes.v1;
+  if (!ts || !v1) return { valido: false };
+
+  const template = `id:${dataId};request-id:${requestId};ts:${ts};`;
+  const calculada = crypto.createHmac('sha256', secret).update(template).digest('hex');
+  return { valido: calculada === v1 };
+}
+
 app.post('/api/webhook/pagamento', async (req, res) => {
   try {
     let payload = req.body;
@@ -2524,6 +2585,15 @@ app.post('/api/webhook/pagamento', async (req, res) => {
     }
     const paymentId = payload.id || payload.data?.id || payload['collection_id'] || null;
     if (!paymentId) return res.status(400).json({ error: 'no id found' });
+
+    const { valido } = verificarAssinaturaWebhookMP(req, String(paymentId));
+    if (valido === false) {
+      console.warn('🚨 Webhook de pagamento com assinatura INVÁLIDA — recusado. paymentId:', paymentId);
+      return res.status(401).json({ error: 'assinatura inválida' });
+    }
+    if (valido === null) {
+      console.warn('⚠️ MP_WEBHOOK_SECRET não configurado — webhook aceito sem verificar assinatura (configure a variável de ambiente pra fechar essa brecha).');
+    }
 
     const { data: pedido } = await supabase.from('pedidos').select('*').eq('gateway_payment_id', String(paymentId)).maybeSingle();
 
@@ -2656,6 +2726,15 @@ app.post('/api/admin/push/disparar', ensureAdminAuth, async (req, res) => {
     await supabase.from('push_disparos').update({ total_enviado: enviados }).eq('id', disparo.id);
     return ok(res, { disparo_id: disparo.id, enviados, total_inscritos: (inscricoes || []).length });
   } catch (e) { console.error('push/disparar', e); return fail(res); }
+});
+
+// Trata erros de upload (tipo de arquivo errado, arquivo grande demais) com uma mensagem clara,
+// em vez de estourar um erro genérico de servidor.
+app.use((err, _req, res, next) => {
+  if (err && (err.name === 'MulterError' || /imagens \(JPEG/.test(err.message || ''))) {
+    return res.status(400).json({ status: 'error', error: err.message || 'Erro no arquivo enviado.' });
+  }
+  return next(err);
 });
 
 app.listen(PORT, () => {
