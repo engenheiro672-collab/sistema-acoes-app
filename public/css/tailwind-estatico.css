@@ -119,6 +119,8 @@ img, svg { display: block; vertical-align: middle; max-width: 100%; }
 /* ---------- Cores de texto ---------- */
 .text-white { color: #fff; }
 .text-black { color: #000; }
+.text-gray-100 { color: #f3f4f6; }
+.text-gray-200 { color: #e5e7eb; }
 .text-gray-300 { color: #d1d5db; }
 .text-gray-400 { color: #9ca3af; }
 .text-gray-500 { color: #6b7280; }
