@@ -579,6 +579,10 @@ function enviarSorteioComOg(res, sorteio, req) {
   return res.send(htmlComOg);
 }
 
+// 🧪 Rota de teste isolada — versão React (protótipo), NÃO afeta a rota normal do sorteio.
+// Só existe pra você comparar lado a lado antes de decidirmos seguir com essa reconstrução.
+app.get('/spa-teste/sorteio/:slug', (_req, res) => sendPage(res, path.join('spa-teste', 'sorteio.html')));
+
 app.get('/sorteio/:slug', trackearAcesso, async (req, res) => {
   try {
     const { data: sorteio } = await supabase.from('sorteios').select('nome, descricao, foto_url').eq('slug', req.params.slug).maybeSingle();

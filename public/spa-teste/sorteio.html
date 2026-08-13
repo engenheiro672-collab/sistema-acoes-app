@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sorteio (versão de teste — React)</title>
+    <link rel="stylesheet" href="/css/tailwind-estatico.css?v=2">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"></noscript>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html { touch-action: pan-y; }
+        body { background-color: #20242e; color: #fff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; margin: 0; }
+        .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
+        .main-image { width: 100%; height: 310px; object-fit: cover; background-color: #111; filter: contrast(1.08) saturate(1.12) brightness(1.02); }
+        .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); min-height: 88px; justify-content: flex-end; }
+        .title-bar { color: #fff; background-color: #1a1a1a; }
+        .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; }
+        .cota-btn { background-color: #000; border: 1px solid #000; border-radius: 8px; padding: 0.75rem 1rem; text-align: center; cursor: pointer; transition: background-color 0.15s; }
+        .cota-btn.selecionado { background-color: #1a8754; }
+        .cota-num { font-size: 2.25rem; font-weight: 500; color: #fff; }
+        .cota-label { font-size: 0.85rem; font-weight: 300; color: rgba(160,174,192,0.75); }
+        .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #1a1a1a; border-radius: 8px; padding: 0.4rem; }
+        .manual-selector button { font-size: 1.4rem; font-weight: 300; color: #a0aec0; width: 36px; height: 36px; flex-shrink: 0; background: none; border: none; }
+        .manual-selector input { width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600; color: #fff; background: none; border: none; outline: none; }
+        .btn-participar { background: linear-gradient(90deg, #1a8754, #5be584); color: #fff; font-weight: 700; border-radius: 10px; padding: 0.9rem; text-align: center; width: 100%; border: none; font-size: 1.05rem; cursor: pointer; }
+        .skeleton { background: linear-gradient(90deg, #2a303c 25%, #363d4a 37%, #2a303c 63%); background-size: 400% 100%; animation: skeleton-loading 1.4s ease infinite; border-radius: 8px; }
+        @keyframes skeleton-loading { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+    <script>
+        const html = htm.bind(React.createElement);
+        const { useState, useEffect } = React;
+
+        function formatarMoeda(valor) {
+            return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Esqueleto de carregamento — aparece na hora, antes mesmo dos dados chegarem,
+        // pra pessoa já ver "algo acontecendo" imediatamente (mesma ideia do site de referência).
+        function TelaCarregando() {
+            return html`
+                <div>
+                    <div class="header-bar"></div>
+                    <div class="skeleton" style="height:310px;"></div>
+                    <div class="p-4">
+                        <div class="skeleton" style="height:20px; width:70%; margin-bottom:12px;"></div>
+                        <div class="skeleton" style="height:14px; width:40%;"></div>
+                    </div>
+                    <div class="cota-grid">
+                        ${[1,2,3,4,5,6].map(i => html`<div key=${i} class="skeleton" style="height:76px;"></div>`)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function SeletorCota({ sorteio, quantidade, setQuantidade }) {
+            const opcoes = [100, 500, 1000, 2000, 5000, 10000];
+            return html`
+                <div class="cota-grid">
+                    ${opcoes.map(qtd => html`
+                        <div key=${qtd}
+                             class=${'cota-btn' + (quantidade === qtd ? ' selecionado' : '')}
+                             onClick=${() => setQuantidade(qtd)}>
+                            <div class="cota-num">+${qtd >= 1000 ? (qtd/1000) + 'mil' : qtd}</div>
+                            <div class="cota-label">SELECIONAR</div>
+                        </div>
+                    `)}
+                </div>
+                <div class="mx-4 mb-4 manual-selector">
+                    <button onClick=${() => setQuantidade(Math.max(1, quantidade - 1))}>−</button>
+                    <input type="number" value=${quantidade} onChange=${e => setQuantidade(Number(e.target.value) || 1)} />
+                    <button onClick=${() => setQuantidade(quantidade + 1)}>+</button>
+                </div>
+            `;
+        }
+
+        function PaginaSorteio() {
+            const [dados, setDados] = useState(null);
+            const [erro, setErro] = useState(null);
+            const [quantidade, setQuantidade] = useState(30);
+
+            useEffect(() => {
+                const partes = window.location.pathname.split('/').filter(Boolean);
+                const slug = partes[1] || '';
+                fetch(`/api/public/sorteio/${slug}`)
+                    .then(r => r.json())
+                    .then(resp => {
+                        if (resp.status === 'error') { setErro(resp.error); return; }
+                        setDados(resp);
+                        setQuantidade(Number(resp.sorteio?.minimo_visivel_seletor || 30));
+                    })
+                    .catch(() => setErro('Erro ao carregar o sorteio.'));
+            }, []);
+
+            if (erro) return html`<div class="p-8 text-center text-red-400">${erro}</div>`;
+            if (!dados) return html`<${TelaCarregando} />`;
+
+            const s = dados.sorteio;
+            const preco = Number(s.preco_cota || 0);
+
+            return html`
+                <div>
+                    <header class="header-bar">
+                        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center" style="width:100%;">
+                            <div class="text-2xl font-bold text-white">${dados.logo_url ? html`<img src=${dados.logo_url} style="height:32px;" />` : 'LOGO'}</div>
+                            <i class="bi bi-list text-gray-300" style="font-size:2rem;"></i>
+                        </nav>
+                    </header>
+
+                    <main class="container mx-auto max-w-2xl">
+                        <div class="relative">
+                            <img class="main-image" src=${s.foto_url || ''} alt=${s.nome} />
+                            <div class="caption-header" style="position:absolute; left:0; right:0; bottom:0;">
+                                <h1 style="font-size:1.4rem; font-weight:700; margin:0;">${s.nome}</h1>
+                            </div>
+                        </div>
+
+                        <div class="title-bar flex justify-center items-center" style="padding:10px 1rem;">
+                            <h6 style="margin:0; font-weight:600; font-size:12.3px;">Por apenas ${formatarMoeda(preco)}</h6>
+                        </div>
+
+                        <p class="text-center text-gray-400 my-4" style="font-weight:400;">Quanto mais títulos, mais chances de ganhar!</p>
+
+                        <${SeletorCota} sorteio=${s} quantidade=${quantidade} setQuantidade=${setQuantidade} />
+
+                        <div class="px-4 pb-8">
+                            <div class="text-center text-xl font-bold mb-3">${formatarMoeda(quantidade * preco)}</div>
+                            <button class="btn-participar" onClick=${() => alert('Aqui entraria o fluxo de checkout — próximo passo depois de validar essa base.')}>
+                                Quero Participar
+                            </button>
+                        </div>
+                    </main>
+                </div>
+            `;
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(html`<${PaginaSorteio} />`);
+    </script>
+</body>
+</html>
