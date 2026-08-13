@@ -1357,13 +1357,17 @@ function padraoBotoesRapidos() {
 }
 
 // ---------------- SESSÃO / LOGOUT ----------------
+// No subdomínio (panthers.premiosderrets.com.br), os caminhos são "limpos" (/login, /logout);
+// no link secreto antigo, continua com o número na frente. Detecta sozinho qual é o caso.
+const BASE_PAINEL = (window.location.hostname === 'panthers.premiosderrets.com.br') ? '' : '/88652715';
+
 function logout() {
-    api('POST', '/88652715/logout').then(d => window.location.href = d.redirect || '/88652715/login');
+    api('POST', `${BASE_PAINEL}/logout`).then(d => window.location.href = d.redirect || `${BASE_PAINEL}/login`);
 }
 
 function checkSession() {
     return fetch('/api/admin/session', { credentials: 'include' }).then(r => {
-        if (!r.ok) { window.location.href = '/88652715/login'; throw new Error('not authenticated'); }
+        if (!r.ok) { window.location.href = `${BASE_PAINEL}/login`; throw new Error('not authenticated'); }
         return r.json();
     });
 }

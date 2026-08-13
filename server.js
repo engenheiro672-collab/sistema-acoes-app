@@ -284,7 +284,10 @@ function ensureAdminAuth(req, res, next) {
 // 🔒 Bloqueia acesso direto ao dashboard.html pelo nome do arquivo — só passa por aqui quem entrar
 // pelo caminho secreto do painel (que exige login). Sem isso, qualquer um que soubesse o nome do
 // arquivo conseguia ver o código inteiro do painel, mesmo sem estar logado.
-app.get('/dashboard.html', (req, res) => res.redirect(`${PAINEL_URL}/login`));
+app.get('/dashboard.html', (req, res) => {
+  const veioDoSubdominio = (req.hostname || '').toLowerCase() === 'panthers.premiosderrets.com.br';
+  return res.redirect(veioDoSubdominio ? '/login' : `${PAINEL_URL}/login`);
+});
 
 app.use(express.static(PUBLIC_DIR, {
   index: false,
@@ -341,6 +344,48 @@ app.get('/api/admin/session', (req, res) => {
 });
 
 app.get(PAINEL_URL, ensureAdminAuth, (_req, res) => sendPage(res, 'dashboard.html'));
+
+// ==================================================================
+// 🔐 ACESSO TAMBÉM VIA SUBDOMÍNIO (panthers.premiosderrets.com.br)
+// Funciona em paralelo com o link secreto de cima — as duas portas continuam
+// exigindo login de verdade, nenhuma das duas mostra nada sem senha certa.
+// ==================================================================
+const SUBDOMINIO_PAINEL = 'panthers.premiosderrets.com.br';
+function ehSubdominioPainel(req) {
+  return (req.hostname || '').toLowerCase() === SUBDOMINIO_PAINEL;
+}
+
+app.get('/', (req, res, next) => {
+  if (!ehSubdominioPainel(req)) return next();
+  if (req.session?.admin?.email) return sendPage(res, 'dashboard.html');
+  return res.redirect('/login');
+});
+
+app.get('/login', (req, res, next) => {
+  if (!ehSubdominioPainel(req)) return next();
+  return sendPage(res, 'login.html');
+});
+
+app.post('/login', limiteLoginAdmin, async (req, res, next) => {
+  if (!ehSubdominioPainel(req)) return next();
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) return fail(res, 'Email e senha obrigatórios', 400);
+    const { data: user } = await supabase.from('admin_users').select('*').eq('email', email).maybeSingle();
+    const credenciaisInvalidas = () => fail(res, 'E-mail ou senha incorretos.', 401);
+    if (!user) return credenciaisInvalidas();
+    if (user.status === 'suspended') return fail(res, 'Conta suspensa', 403);
+    const okPass = await bcrypt.compare(password, user.password_hash || '');
+    if (!okPass) return credenciaisInvalidas();
+    req.session.admin = { id: user.id, email: user.email, name: user.name || 'Admin' };
+    return ok(res, { redirect: '/' });
+  } catch (err) { console.error('admin login error (subdomínio)', err); return fail(res, 'Erro no login'); }
+});
+
+app.post('/logout', (req, res, next) => {
+  if (!ehSubdominioPainel(req)) return next();
+  return req.session.destroy(() => ok(res, { redirect: '/login' }));
+});
 
 // ==================================================================
 // 🌐 PÁGINAS PÚBLICAS (servem HTML estático; dados vêm via /api/public/*)

@@ -25,6 +25,10 @@
     </div>
 
     <script>
+        // No subdomínio (panthers.premiosderrets.com.br), os caminhos são "limpos" (/login, /);
+        // no link secreto antigo, continua com o número na frente. Detecta sozinho qual é o caso.
+        const BASE_PAINEL = (window.location.hostname === 'panthers.premiosderrets.com.br') ? '' : '/88652715';
+
         document.getElementById('form-login').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
@@ -34,7 +38,7 @@
             const btn = document.getElementById('login-btn');
             btn.disabled = true; btn.textContent = 'Entrando...';
             try {
-                const resp = await fetch('/88652715/login', {
+                const resp = await fetch(`${BASE_PAINEL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -46,7 +50,7 @@
                     btn.disabled = false; btn.textContent = 'Entrar';
                     return;
                 }
-                window.location.href = data.redirect || '/88652715';
+                window.location.href = data.redirect || BASE_PAINEL || '/';
             } catch (err) {
                 $err.textContent = 'Erro de conexão. Tente novamente.';
                 $err.classList.remove('hidden');
