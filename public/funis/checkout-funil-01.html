@@ -12,7 +12,7 @@
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"></noscript>
 
     <style>
-        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
+        html { touch-action: pan-y; } body { background-color: #eef0f2; color: #212b36; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
         .sino-balancando { animation: balancar-sino 1.8s ease-in-out infinite; transform-origin: top center; display: inline-block; }
         @keyframes balancar-sino { 0%, 100% { transform: rotate(0deg); } 10% { transform: rotate(-15deg); } 20% { transform: rotate(12deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 50% { transform: rotate(-4deg); } 60%, 100% { transform: rotate(0deg); } }
         .banner-push-pulse { animation: pulsar-gradiente-verde 3s ease-in-out infinite; }
@@ -20,8 +20,8 @@
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 100%; overflow: visible; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
-        .header-bar { background-color: #1a1a1a; padding: 1rem; }
-        .card { background-color: #2b2b2b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
+        .header-bar { background-color: #000; padding: 1rem; }
+        .card { background-color: #ffffff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
         .aguardando-icon { font-size: 2.5rem; color: #f7b731; }
         .aguardando-title { font-size: 1.5rem; font-weight: 700; }
         .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; }
@@ -30,7 +30,7 @@
         .instrucao-numero { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background-color: #16A34A; color: white; font-weight: 700; font-size: 0.875rem; text-align: center; line-height: 24px; margin-right: 12px; }
         .instrucao-texto { color: #a0aec0; }
         .copia-cola-wrapper { display: flex; width: 100%; border: 1px solid #4a5568; border-radius: 8px; overflow: hidden; }
-        .copia-cola-input { flex-grow: 1; background-color: #20242e; color: #a0aec0; padding: 0.75rem; border: none; outline: none; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .copia-cola-input { flex-grow: 1; background-color: #f4f6f8; color: #4a5568; padding: 0.75rem; border: none; outline: none; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .copia-cola-btn { background-color: #16A34A; color: white; font-weight: 700; padding: 0.75rem 1.25rem; cursor: pointer; transition: background-color 0.2s; }
         .copia-cola-btn:hover { background-color: #15803D; }
         .btn-mostrar-qr { background: none; border: none; color: #a0aec0; font-weight: 600; margin-top: 1rem; cursor: pointer; }
@@ -61,7 +61,7 @@
         .bonus-tag { display: inline-block; background: #f59e0b; color: #1a1a1a; font-weight: 700; padding: 0.35rem 1rem; border-radius: 9999px; margin-top: 0.75rem; font-size: 0.9rem; }
         .btn-grupo-vip { background-color: #25d366; color: white; font-weight: 700; font-size: 1.125rem; padding: 0.75rem 1.5rem; border-radius: 8px; margin-top: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; text-decoration: none; transition: background-color 0.2s; }
         .btn-grupo-vip:hover { background-color: #1ebe5a; }
-        .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
+        .skeleton { background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 37%,#e2e8f0 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
         @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
     </style>
 </head>
@@ -82,7 +82,7 @@
             <i class="bi bi-hourglass-split aguardando-icon"></i>
             <div>
                 <h2 class="aguardando-title">Aguardando pagamento!</h2>
-                <p class="text-gray-400">Realize o pagamento</p>
+                <p class="text-gray-500">Realize o pagamento</p>
             </div>
         </div>
 
@@ -90,7 +90,7 @@
             <i class="bi bi-x-circle-fill text-red-500 aguardando-icon"></i>
             <div>
                 <h2 class="aguardando-title text-red-500">Pagamento expirado!</h2>
-                <p class="text-gray-400">Seu pagamento foi expirado</p>
+                <p class="text-gray-500">Seu pagamento foi expirado</p>
             </div>
         </div>
 
@@ -98,14 +98,14 @@
             <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:#22c55e;"></i>
             <div>
                 <h2 id="pos-pagamento-titulo" class="aguardando-title" style="color:#22c55e;">Pagamento identificado!</h2>
-                <p id="pos-pagamento-mensagem" class="text-gray-400">Seus números já foram gerados. Boa sorte!</p>
+                <p id="pos-pagamento-mensagem" class="text-gray-500">Seus números já foram gerados. Boa sorte!</p>
             </div>
         </div>
         <div id="bonus-tag-box" class="text-center"></div>
 
         <div id="banner-ativar-push" class="hidden my-4 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
             <div class="sino-balancando" style="font-size:3rem;">🔔</div>
-            <h3 class="text-white font-black text-xl mt-2">Ative as notificações</h3>
+            <h3 class="text-gray-800 font-black text-xl mt-2">Ative as notificações</h3>
             <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Para receber promoções exclusivas, ative a notificação!</p>
             <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
                 <i class="bi bi-bell-fill"></i> Ativar Notificação
@@ -114,7 +114,7 @@
 
         <div id="banner-grupo-vip-novo" class="hidden my-4" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
             <div style="font-size:3rem;">👥</div>
-            <h3 class="text-white font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
+            <h3 class="text-gray-800 font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
             <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
             <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-4 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
                 <i class="bi bi-whatsapp"></i> Entrar no Grupo
@@ -149,7 +149,7 @@
 
             <div id="qr-code-container" class="hidden text-center">
                 <img id="qr-code-img" src="" alt="QR Code PIX">
-                <p class="text-sm text-gray-400 mt-2">Escaneie o QR Code acima</p>
+                <p class="text-sm text-gray-500 mt-2">Escaneie o QR Code acima</p>
             </div>
         </div>
 
@@ -177,8 +177,8 @@
 
         <div class="card">
             <div class="flex items-center mb-4">
-                <i class="bi bi-info-circle text-gray-400 mr-2"></i>
-                <h3 class="font-semibold text-white">Detalhes da sua compra</h3>
+                <i class="bi bi-info-circle text-gray-500 mr-2"></i>
+                <h3 class="font-semibold text-gray-800">Detalhes da sua compra</h3>
             </div>
             <p id="detalhe-token" class="detalhe-id mb-4"></p>
 
@@ -196,9 +196,9 @@
                 <div class="detalhe-item"><span class="detalhe-label">Total:</span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
                 <div class="detalhe-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
                     <span class="detalhe-label">Títulos:</span>
-                    <span id="detalhe-titulos-status" class="detalhe-valor text-gray-400">Após o pagamento</span>
+                    <span id="detalhe-titulos-status" class="detalhe-valor text-gray-500">Após o pagamento</span>
                     <div id="cotas-geradas" class="flex flex-wrap gap-2 w-full"></div>
-                    <button id="btn-ver-mais-titulos" class="text-center text-gray-400 font-semibold hover:text-white hidden text-sm">
+                    <button id="btn-ver-mais-titulos" class="text-center text-gray-500 font-semibold hover:text-gray-900 hidden text-sm">
                         <i class="bi bi-chevron-down"></i> Ver mais títulos
                     </button>
                 </div>
@@ -206,17 +206,17 @@
         </div>
 
         <div id="secao-combos-roleta-checkout" class="card hidden text-left">
-            <h3 class="text-lg font-semibold text-white mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-400 font-normal">combos — segunda compra</span></h3>
+            <h3 class="text-lg font-semibold text-gray-800 mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-500 font-normal">combos — segunda compra</span></h3>
             <p class="text-xs text-gray-500 mb-3">Compre mais títulos agora e ganhe roletas extras pra tentar de novo!</p>
             <div id="lista-combos-roleta-checkout" class="space-y-3"></div>
         </div>
 
         <div id="secao-roletas-checkout" class="card hidden text-left">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-xl font-semibold text-white"><i class="bi bi-lightning-fill text-yellow-400"></i> Roletas</h3>
-                <span id="contador-roletas-checkout" class="text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm">0/0</span>
+                <h3 class="text-xl font-semibold text-gray-800"><i class="bi bi-lightning-fill text-yellow-400"></i> Roletas</h3>
+                <span id="contador-roletas-checkout" class="text-gray-600 bg-gray-800 px-3 py-1 rounded-full text-sm">0/0</span>
             </div>
-            <button id="btn-girar-todas" class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2 rounded-lg mb-3">GIRAR TODAS</button>
+            <button id="btn-girar-todas" class="w-full bg-green-700 hover:bg-green-800 text-gray-800 font-bold py-2 rounded-lg mb-3">GIRAR TODAS</button>
             <div id="lista-giros-checkout" class="space-y-2"></div>
         </div>
     </main>
@@ -224,10 +224,10 @@
 
     <!-- Modal da roleta girando -->
     <div id="modal-roleta" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 p-4">
-        <div class="bg-[#1f2430] rounded-2xl p-6 max-w-sm w-full text-center relative">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center relative">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-white font-semibold">Roleta <span id="roleta-indice">1 de 1</span></h3>
-                <button id="close-modal-roleta" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                <h3 class="text-gray-800 font-semibold">Roleta <span id="roleta-indice">1 de 1</span></h3>
+                <button id="close-modal-roleta" class="text-gray-500 hover:text-gray-900 text-2xl">&times;</button>
             </div>
             <div class="relative mx-auto" style="width:260px;height:260px;">
                 <div id="ponteiro-roleta" style="position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 4px; z-index:10; font-size:1.6rem; transition: transform .08s;">📍</div>
@@ -236,10 +236,10 @@
                     <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;z-index:5;">GIRAR</div>
                 </div>
             </div>
-            <p id="resultado-roleta" class="text-white font-semibold mt-4 min-h-[1.5rem]">Gire e tente a sorte</p>
+            <p id="resultado-roleta" class="text-gray-800 font-semibold mt-4 min-h-[1.5rem]">Gire e tente a sorte</p>
             <div class="flex justify-between mt-4 gap-2">
-                <button id="btn-roleta-anterior" class="flex-1 border border-gray-600 text-gray-300 rounded-lg py-2">← Anterior</button>
-                <button id="btn-roleta-proxima" class="flex-1 bg-green-600 text-white rounded-lg py-2">Próxima →</button>
+                <button id="btn-roleta-anterior" class="flex-1 border border-gray-600 text-gray-600 rounded-lg py-2">← Anterior</button>
+                <button id="btn-roleta-proxima" class="flex-1 bg-green-600 text-gray-800 rounded-lg py-2">Próxima →</button>
             </div>
         </div>
     </div>
@@ -462,7 +462,7 @@
                 TODAS_COTAS = cotas;
                 renderCotasPagina();
             } else {
-                $('#cotas-geradas').html('<p class="text-sm text-gray-400">Seus números estão sendo gerados...</p>');
+                $('#cotas-geradas').html('<p class="text-sm text-gray-500">Seus números estão sendo gerados...</p>');
                 setTimeout(() => {
                     $.get(`/api/public/pedidos/${TOKEN}/status`).done(function(d2) {
                         if (d2.cotas && d2.cotas.length > 0) { TODAS_COTAS = d2.cotas; renderCotasPagina(); }
@@ -526,9 +526,9 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
                         <div style="min-width:0;">
                             <div class="text-sm text-green-100" style="line-height:1.1;">A cada</div>
-                            <div class="text-xl font-bold text-white" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
+                            <div class="text-xl font-bold text-gray-800" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
                         </div>
-                        <div class="text-lg font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
+                        <div class="text-lg font-bold text-gray-800 text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
                     </div>
                     <div class="text-xs text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
                 </div>
@@ -546,9 +546,9 @@
                 if (g.girado) {
                     const texto = g.ganhou ? (g.valor_premio || g.premio_titulo || 'Prêmio!') : 'Tente Denovo';
                     const cor = g.ganhou ? 'bg-yellow-600' : 'bg-gray-700';
-                    return `<div class="${cor} rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>${texto}</b></div>`;
+                    return `<div class="${cor} rounded-lg px-4 py-3 flex justify-between items-center text-gray-800"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>${texto}</b></div>`;
                 }
-                return `<div class="bg-green-700 rounded-lg px-4 py-3 flex justify-between items-center text-white">
+                return `<div class="bg-green-700 rounded-lg px-4 py-3 flex justify-between items-center text-gray-800">
                     <span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span>
                     <button class="btn-girar-uma bg-black bg-opacity-30 px-4 py-1 rounded font-bold" data-idx="${i}">GIRAR</button>
                 </div>`;

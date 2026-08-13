@@ -700,6 +700,13 @@
         function renderPagina(data) {
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
+            try {
+                const origemFoto = new URL(sorteio.foto_url).origin;
+                const link = document.createElement('link');
+                link.rel = 'preconnect';
+                link.href = origemFoto;
+                document.head.appendChild(link);
+            } catch (e) {}
             CHANCE_DOBRO_ATIVA = data.chance_dobro_ativa || null;
             PROMOCOES_ATIVAS = data.promocoes || [];
             PUSH_ATIVO_GLOBAL = data.push_ativo === true;
@@ -795,6 +802,16 @@
         }
 
         function carregarSorteio() {
+            // ⚡ Se o servidor já mandou os dados prontos dentro da página, usa direto — sem
+            // esperar essa busca.
+            if (window.__DADOS_INICIAIS__) {
+                try { renderPagina(window.__DADOS_INICIAIS__); }
+                catch (e) {
+                    console.error('Erro ao renderizar página do sorteio', e);
+                    notificar('Ocorreu um erro ao carregar a página. Tente recarregar.', 'erro');
+                }
+                return;
+            }
             const url = FUNIL_SLUG
                 ? `/api/public/sorteio/${SORTEIO_SLUG}/funil/${FUNIL_SLUG}`
                 : `/api/public/sorteio/${SORTEIO_SLUG}`;

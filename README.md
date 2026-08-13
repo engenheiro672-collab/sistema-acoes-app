@@ -1,4 +1,29 @@
-# Sistema de Sorteios — v92 (↩️ VOLTA PRO ORIGINAL — com o máximo de velocidade aplicado de uma vez)
+# Sistema de Sorteios — v93 (⚡ Velocidade replicada em tudo + checkout branco pro Funil 01)
+
+## Otimizações de velocidade aplicadas em cada página
+
+| Página | O que foi corrigido |
+|---|---|
+| `index.html` | jQuery não trava mais a tela, ícones carregam sem travar, Service Worker registrado pra todo visitante |
+| `checkout.html` | Mesmo conjunto — com cuidado extra por envolver pagamento real (a página do checkout em si nunca fica em cache, só as bibliotecas) |
+| `funil-01.html` | Dados agora vêm prontos dentro da página (mesma técnica de maior impacto aplicada no sorteio original), conexão antecipada com o servidor da foto |
+
+## 🐛 Bug real encontrado e corrigido: funis customizados nunca recebiam os dados certos
+
+Descobri que o `funil-01.html` tinha os "marcadores" (título, foto pra prévia do WhatsApp) mas a rota do servidor nunca preenchia eles — mandava o arquivo cru. Corrigido: agora **qualquer** arquivo de funil customizado passa pelo mesmo processo do sorteio original, incluindo a prévia bonita no WhatsApp e os dados já embutidos pra carregar mais rápido.
+
+## ✅ Novo: Checkout com tema claro pro Funil 01
+
+Criei `public/funis/checkout-funil-01.html` — mesma estrutura e função do checkout de sempre, só que com fundo claro, combinando com o Funil 01. Já pode selecionar ele no painel.
+
+## Como conectar no painel
+
+1. Vai em **Editar Sorteio** → **Funis**
+2. No funil que já criou (ou um novo), o campo **"Arquivo HTML — Checkout"** agora já mostra `checkout-funil-01.html` na lista (aparece sozinho, sem precisar de mais nada)
+3. Seleciona e salva
+
+## Sem mudança de banco — só arquivos.
+
 
 ## O que foi feito, tudo de uma vez, como pedido
 

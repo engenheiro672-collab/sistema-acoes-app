@@ -561,8 +561,8 @@ function escaparAtributoHtml(texto) {
 
 // Injeta os dados reais do sorteio (foto, título, descrição) no HTML antes de mandar — necessário porque
 // o WhatsApp/Instagram/Facebook NÃO executam o JavaScript da página, só leem o HTML puro que o servidor manda.
-function enviarSorteioComOg(res, dadosCompletos, req) {
-  const html = fs.readFileSync(path.join(PUBLIC_DIR, 'sorteio.html'), 'utf-8');
+function enviarSorteioComOg(res, dadosCompletos, req, nomeArquivo = 'sorteio.html') {
+  const html = fs.readFileSync(path.join(PUBLIC_DIR, nomeArquivo), 'utf-8');
   const sorteio = dadosCompletos?.sorteio;
   const titulo = sorteio?.nome ? `${sorteio.nome} — Participe e concorra!` : 'Sorteio';
   const descricao = sorteio?.descricao ? String(sorteio.descricao).slice(0, 150) : 'Participe e concorra a prêmios incríveis!';
@@ -616,8 +616,8 @@ app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
         const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
         if (fs.existsSync(customPath)) {
           console.log(`[funil] Servindo arquivo customizado "${arquivo}" pro sorteio "${slug}" (funil slug: "${funilSlug}")`);
-          res.set('Cache-Control', 'no-cache');
-          return res.sendFile(customPath);
+          const dados = await getSorteioPublicData(slug, funilSlug);
+          return enviarSorteioComOg(res, dados, req, path.join('funis', arquivo));
         }
         console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
       }
