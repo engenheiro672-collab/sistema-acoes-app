@@ -18,6 +18,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import sharp from 'sharp';
 import { stringify as csvStringify } from 'csv-stringify/sync';
 import webPush from 'web-push';
 import rateLimit from 'express-rate-limit';
@@ -272,6 +273,28 @@ const upload = multer({
     return cb(new Error('Só é permitido enviar imagens (JPEG, PNG, WEBP ou GIF).'));
   }
 });
+
+// ⚡ Comprime e redimensiona toda foto enviada, ANTES de guardar — isso é o que mais pesa na
+// velocidade do site pro cliente. Uma foto de celular chega com uns 3-8MB; depois disso, fica
+// girando em torno de 100-250KB, sem perda visível de qualidade numa tela de celular.
+async function comprimirImagem(buffer, mimetype, larguraMaxima = 1280) {
+  try {
+    if (mimetype === 'image/gif') return { buffer, mimetype, extensao: 'gif' }; // GIF (pode ser animado) fica como está
+    if (mimetype === 'image/png') {
+      // PNG geralmente é logo/tem fundo transparente — mantém o formato, só redimensiona e comprime.
+      const comprimida = await sharp(buffer).resize({ width: larguraMaxima, withoutEnlargement: true }).png({ quality: 82, compressionLevel: 9 }).toBuffer();
+      return { buffer: comprimida, mimetype: 'image/png', extensao: 'png' };
+    }
+    const comprimida = await sharp(buffer)
+      .resize({ width: larguraMaxima, withoutEnlargement: true })
+      .jpeg({ quality: 78, mozjpeg: true })
+      .toBuffer();
+    return { buffer: comprimida, mimetype: 'image/jpeg', extensao: 'jpg' };
+  } catch (e) {
+    console.error('Erro ao comprimir imagem, usando original', e);
+    return { buffer, mimetype, extensao: null };
+  }
+}
 
 function ok(res, payload = {}) { return res.json({ status: 'success', ...payload }); }
 function fail(res, message = 'Erro interno', code = 500) { return res.status(code).json({ status: 'error', error: message }); }
@@ -1951,9 +1974,11 @@ app.post('/api/admin/upload-logo', ensureAdminAuth, upload.single('logo'), async
   try {
     const file = req.file;
     if (!file) return fail(res, 'Arquivo não enviado', 400);
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
+    const { buffer: bufferComprimido, mimetype: mimeComprimido, extensao } = await comprimirImagem(file.buffer, file.mimetype, 400);
+    const nomeBase = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_').replace(/\.[^.]+$/, '');
+    const safeName = extensao ? `${nomeBase}.${extensao}` : file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
     const dest = `logos/${Date.now()}-${safeName}`;
-    const { error } = await supabase.storage.from('logos').upload(dest, file.buffer, { contentType: file.mimetype, upsert: true });
+    const { error } = await supabase.storage.from('logos').upload(dest, bufferComprimido, { contentType: mimeComprimido, upsert: true });
     if (error) return fail(res, error.message);
     const { data: pub } = supabase.storage.from('logos').getPublicUrl(dest);
     const publicURL = pub?.publicUrl;
@@ -2019,9 +2044,11 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
     // galeria — nunca substituem a principal sem o usuário pedir isso explicitamente.
     let primeiraFotoDefinida = !!foto_url;
     for (const file of files) {
-      const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
+      const { buffer: bufferComprimido, mimetype: mimeComprimido, extensao } = await comprimirImagem(file.buffer, file.mimetype);
+      const nomeBase = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_').replace(/\.[^.]+$/, '');
+      const safeName = extensao ? `${nomeBase}.${extensao}` : file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
       const dest = `${isEditing ? body.sorteio_id : 'new'}/${Date.now()}-${safeName}`;
-      const { error } = await supabase.storage.from('sorteios').upload(dest, file.buffer, { contentType: file.mimetype, upsert: true });
+      const { error } = await supabase.storage.from('sorteios').upload(dest, bufferComprimido, { contentType: mimeComprimido, upsert: true });
       if (!error) {
         const { data: pub } = supabase.storage.from('sorteios').getPublicUrl(dest);
         const publicURL = pub?.publicUrl;
