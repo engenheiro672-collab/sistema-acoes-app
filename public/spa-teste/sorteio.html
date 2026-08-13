@@ -41,16 +41,17 @@
         // Mostra qualquer erro de JavaScript diretamente na tela — evita ficar tudo preto sem
         // nenhuma explicação, o que dificultava descobrir o que estava acontecendo.
         window.addEventListener('error', function(e) {
+            const detalhes = (e.error && e.error.stack) ? e.error.stack : (e.message || String(e));
             document.getElementById('root').innerHTML =
                 '<div style="padding:2rem; color:#ff8080; font-family:monospace; font-size:0.85rem; white-space:pre-wrap;">' +
-                '⚠️ Erro na página de teste:\n\n' + (e.message || e) + '\n\nArquivo: ' + (e.filename || '?') + ' linha ' + (e.lineno || '?') +
+                '⚠️ Erro na página de teste:\n\n' + detalhes + '\n\nArquivo: ' + (e.filename || '?') + ' linha ' + (e.lineno || '?') +
                 '</div>';
         });
     </script>
 
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js" crossorigin="anonymous"></script>
     <script>
         if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof htm === 'undefined') {
             document.getElementById('root').innerHTML =
