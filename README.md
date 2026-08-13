@@ -1,4 +1,27 @@
-# Sistema de Sorteios — v93 (⚡ Velocidade replicada em tudo + checkout branco pro Funil 01)
+# Sistema de Sorteios — v94 (Link cravado, botão verde, modal mais espaçoso)
+
+## 1. Link "cravado" — atribuição não se perde mais
+
+Antes: se a pessoa clicasse num link de funil/rastreamento e depois navegasse pra outra página (início, sorteio normal) e voltasse, a atribuição do link original se perdia.
+
+**Corrigido**: agora, assim que um link com rastreamento é clicado, o código fica guardado no navegador da pessoa por **7 dias** — mesmo que ela navegue por outras páginas, feche o navegador e volte depois, a compra continua sendo atribuída ao link certo. Aplicado no `sorteio.html` e no `funil-01.html`.
+
+## 2. Botão "Buscar Meus Títulos" — roxo virou verde
+
+Corrigido nos dois arquivos. No Funil 01 (fundo branco), o texto também virou branco (já que agora está em cima de um botão verde, não do fundo branco da página).
+
+## 3. Modal de "Finalizar Pedido" — mais espaçoso e organizado
+
+- O ícone de confirmação (✓) agora fica alinhado no topo quando o texto quebra em várias linhas (antes ficava "flutuando" estranho no meio)
+- Mais espaçamento interno, texto mais respirado
+- O modal ganhou altura máxima com rolagem, então nunca fica cortado
+
+## Ainda pendente — feature grande, vou continuar
+
+A função **"Criar Novo Pedido"** no painel (selecionar sorteio, preencher dados do cliente, aplicar promoção/chance em dobro, valor customizado) é grande o bastante pra merecer sua própria rodada, sem misturar com essas correções rápidas. Continuo nela a seguir.
+
+## Sem mudança de banco nessa entrega.
+
 
 ## Otimizações de velocidade aplicadas em cada página
 

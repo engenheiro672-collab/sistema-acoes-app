@@ -88,8 +88,8 @@
         .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
         .input-com-icon { padding-left: 3rem !important; width: 100%; }
         .erro-msg { color: #f87171; font-size: 0.875rem; margin-top: 0.25rem; }
-        .confirm-bar { display: flex; align-items: center; background-color: #2f855a; color: #fff; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; }
-        .confirm-bar-icon { display: inline-block; background-color: #fff; color: #2f855a; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; margin-right: 0.75rem; font-weight: bold; }
+        .confirm-bar { display: flex; align-items: flex-start; background-color: #2f855a; color: #fff; padding: 1rem 1.1rem; border-radius: 10px; margin-bottom: 1.5rem; font-weight: 600; line-height: 1.5; }
+        .confirm-bar-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background-color: #fff; color: #2f855a; border-radius: 50%; width: 26px; height: 26px; margin-right: 0.75rem; margin-top: 2px; font-weight: bold; }
         .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
         @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
         /* Carrossel de imagens */
@@ -261,7 +261,7 @@
             <form id="form-meus-bilhetes">
                 <label class="block text-sm mb-2 text-gray-300" for="phone-input-modal">Digite seu telefone (com DDD):</label>
                 <input id="phone-input-modal" type="tel" class="w-full p-2 rounded bg-[#1a1a1a] text-white border border-gray-600" placeholder="(11) 99999-9999" required>
-                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-4">
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4">
                     Buscar
                 </button>
             </form>
@@ -270,7 +270,7 @@
     </div>
 
     <div id="modal-checkout" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="modal-content bg-[#2b2b2b] p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95">
+        <div class="modal-content bg-[#2b2b2b] p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95" style="max-height:90vh; overflow-y:auto;">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-white">Finalizar Pedido</h3>
                 <button id="close-modal-checkout" class="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -361,7 +361,20 @@
         const SORTEIO_SLUG = pathParts[1] || '';
         const FUNIL_SLUG = pathParts[2] || null;
         const URL_PARAMS = new URLSearchParams(window.location.search);
-        const LINK_CODIGO = URL_PARAMS.get('lk') || null;
+        // ⭐ "Crava" o link de origem: se veio um ?lk= novo na URL, guarda ele por 7 dias (mesmo
+        // que a pessoa navegue pra outras páginas, feche o navegador e volte depois). Se não veio
+        // nenhum novo, usa o que já estava guardado de antes — a atribuição nunca se perde.
+        const LK_DA_URL = URL_PARAMS.get('lk');
+        if (LK_DA_URL) {
+            try { localStorage.setItem('lk_cravado', JSON.stringify({ codigo: LK_DA_URL, expira: Date.now() + 7 * 24 * 60 * 60 * 1000 })); } catch (e) {}
+        }
+        const LINK_CODIGO = LK_DA_URL || (function() {
+            try {
+                const salvo = JSON.parse(localStorage.getItem('lk_cravado') || 'null');
+                if (salvo && salvo.expira > Date.now()) return salvo.codigo;
+            } catch (e) {}
+            return null;
+        })();
 
         let SORTEIO_DATA = {};
         let CHANCE_DOBRO_ATIVA = null;
