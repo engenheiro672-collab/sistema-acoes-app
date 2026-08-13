@@ -40,7 +40,7 @@ async function main() {
     if (error) { console.error('❌ Erro ao criar:', error.message); process.exit(1); }
     console.log(`✅ Admin criado: ${email}`);
   }
-  console.log('Agora é só entrar em /88652715/login com esse email e senha.');
+  console.log('Agora é só entrar em https://panthers.premiosderrets.com.br/login com esse email e senha.');
   process.exit(0);
 }
 

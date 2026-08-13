@@ -729,7 +729,7 @@
             const textoCompleto = [sorteio.descricao, sorteio.regulamento].filter(t => t && t.trim()).join('\n\n');
             if (textoCompleto) {
                 $('#secao-regulamento').removeClass('hidden');
-                $('#corpo-regulamento').text(textoCompleto);
+                $('#corpo-regulamento').text(textoCompleto).removeClass('hidden').hide();
             } else {
                 $('#secao-regulamento').addClass('hidden');
             }
@@ -846,7 +846,7 @@
             $('#checkout-cpf').mask('000.000.000-00');
 
             $('#btn-toggle-regulamento').on('click', function() {
-                $('#corpo-regulamento').removeClass('hidden').slideToggle(200);
+                $('#corpo-regulamento').slideToggle(200);
                 $('#icone-regulamento').toggleClass('bi-chevron-down bi-chevron-up');
             });
 

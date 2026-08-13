@@ -27,10 +27,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// 🔒 Caminho secreto do painel administrativo — em vez de "/admin" e "/dashboard" (fácil de adivinhar),
-// usa essa palavra. Pra trocar no futuro, é só mudar essa linha (e pedir pra mim trocar, se preferir).
-const PAINEL_URL = '/88652715';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ==================================================================
@@ -275,7 +271,7 @@ async function getPublicMeta() {
 function ensureAdminAuth(req, res, next) {
   if (req.session?.admin?.email) return next();
   if (req.path.startsWith('/api/admin')) return res.status(401).json({ error: 'Unauthorized' });
-  return res.redirect(`${PAINEL_URL}/login`);
+  return res.redirect('https://panthers.premiosderrets.com.br/login');
 }
 
 // ==================================================================
@@ -286,7 +282,7 @@ function ensureAdminAuth(req, res, next) {
 // arquivo conseguia ver o código inteiro do painel, mesmo sem estar logado.
 app.get('/dashboard.html', (req, res) => {
   const veioDoSubdominio = (req.hostname || '').toLowerCase() === 'panthers.premiosderrets.com.br';
-  return res.redirect(veioDoSubdominio ? '/login' : `${PAINEL_URL}/login`);
+  return res.redirect(veioDoSubdominio ? '/login' : 'https://panthers.premiosderrets.com.br/login');
 });
 
 app.use(express.static(PUBLIC_DIR, {
@@ -307,9 +303,9 @@ function sendPage(res, file) {
 }
 
 // ==================================================================
-// 🔐 LOGIN ADMIN
+// 🔐 LOGIN ADMIN — só existe pelo subdomínio (panthers.premiosderrets.com.br) agora.
+// O link numérico antigo foi desativado por completo, a pedido.
 // ==================================================================
-app.get(`${PAINEL_URL}/login`, (_req, res) => sendPage(res, 'login.html'));
 
 // Trava contra força bruta: no máximo 8 tentativas de login por IP a cada 15 minutos.
 const limiteLoginAdmin = rateLimit({
@@ -320,30 +316,10 @@ const limiteLoginAdmin = rateLimit({
   message: { status: 'error', error: 'Muitas tentativas de login. Aguarde alguns minutos e tente de novo.' }
 });
 
-app.post(`${PAINEL_URL}/login`, limiteLoginAdmin, async (req, res) => {
-  try {
-    const { email, password } = req.body || {};
-    if (!email || !password) return fail(res, 'Email e senha obrigatórios', 400);
-    const { data: user } = await supabase.from('admin_users').select('*').eq('email', email).maybeSingle();
-    // Mensagem sempre igual, exista ou não o e-mail — evita que alguém descubra quais contas existem no sistema
-    const credenciaisInvalidas = () => fail(res, 'E-mail ou senha incorretos.', 401);
-    if (!user) return credenciaisInvalidas();
-    if (user.status === 'suspended') return fail(res, 'Conta suspensa', 403);
-    const okPass = await bcrypt.compare(password, user.password_hash || '');
-    if (!okPass) return credenciaisInvalidas();
-    req.session.admin = { id: user.id, email: user.email, name: user.name || 'Admin' };
-    return ok(res, { redirect: PAINEL_URL });
-  } catch (err) { console.error('admin login error', err); return fail(res, 'Erro no login'); }
-});
-
-app.post(`${PAINEL_URL}/logout`, (req, res) => { req.session.destroy(() => ok(res, { redirect: `${PAINEL_URL}/login` })); });
-
 app.get('/api/admin/session', (req, res) => {
   if (req.session?.admin?.email) return ok(res, { authenticated: true, admin: req.session.admin });
   return res.status(401).json({ status: 'error', authenticated: false });
 });
-
-app.get(PAINEL_URL, ensureAdminAuth, (_req, res) => sendPage(res, 'dashboard.html'));
 
 // ==================================================================
 // 🔐 ACESSO TAMBÉM VIA SUBDOMÍNIO (panthers.premiosderrets.com.br)
