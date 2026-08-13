@@ -3,7 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sorteio (versão de teste — React)</title>
+    <title id="page-title">__OG_TITLE__</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:description" content="__OG_DESCRIPTION__">
+    <meta property="og:image" content="__OG_IMAGE__">
+    <meta property="og:url" content="__OG_URL__">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="__OG_TITLE__">
+    <meta name="twitter:description" content="__OG_DESCRIPTION__">
+    <meta name="twitter:image" content="__OG_IMAGE__">
     <link rel="stylesheet" href="/css/tailwind-estatico.css?v=2">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://unpkg.com">
@@ -63,6 +72,10 @@
         .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
         .menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 16px; color: #e6edf3; font-size: 0.9rem; background: none; border: none; cursor: pointer; }
         .regulamento-btn { width: 100%; display: flex; justify-content: space-between; align-items: center; background-color: #2a303c; border-radius: 8px; padding: 12px 16px; text-align: left; border: none; color: #fff; cursor: pointer; }
+        .carrossel-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: #fff; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; border: none; }
+        .carrossel-arrow.prev { left: 8px; }
+        .carrossel-arrow.next { right: 8px; }
+        .preco-badge { margin-left: 8px; min-height: 26px; padding: 4px 10px; border-radius: 6px; background: #000; color: #fff; font-weight: 700; font-size: 1rem; white-space: nowrap; display: inline-flex; align-items: center; line-height: 1; }
     </style>
 </head>
 <body>
@@ -115,10 +128,19 @@
         function Carrossel({ fotos }) {
             const [indice, setIndice] = useState(0);
             const lista = fotos && fotos.length ? fotos : [''];
+
+            useEffect(() => {
+                if (lista.length <= 1) return;
+                const timer = setInterval(() => setIndice(i => (i + 1) % lista.length), 3000);
+                return () => clearInterval(timer);
+            }, [lista.length]);
+
             return html`
                 <div class="carrossel">
                     <img src=${lista[indice]} alt="Foto do prêmio" />
                     ${lista.length > 1 && html`
+                        <button class="carrossel-arrow prev" onClick=${() => setIndice((indice - 1 + lista.length) % lista.length)}><i class="bi bi-chevron-left"></i></button>
+                        <button class="carrossel-arrow next" onClick=${() => setIndice((indice + 1) % lista.length)}><i class="bi bi-chevron-right"></i></button>
                         <div class="carrossel-dots">
                             ${lista.map((_, i) => html`<button key=${i} class=${'carrossel-dot' + (i === indice ? ' active' : '')} onClick=${() => setIndice(i)}></button>`)}
                         </div>
@@ -207,7 +229,7 @@
                     </div>
                     ${ordenados.slice(0, 8).map((p, i) => html`
                         <div key=${i} class=${'premio-item' + (p.status === 'reivindicada' ? '' : ' disponivel')}>
-                            <span class="premio-cota">${p.status === 'reivindicada' ? p.numero_cota : '🔒 ??????'}</span>
+                            <span class="premio-cota">${p.numero_cota}</span>
                             <span class="premio-nome">${p.premio_titulo}</span>
                             ${p.status === 'reivindicada'
                                 ? html`<span class="premio-status">${p.ganhador_nome ? nomeCurto(p.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
@@ -218,16 +240,84 @@
             `;
         }
 
+        function ModalCompra({ sorteio, quantidade, preco, onFechar }) {
+            const [nome, setNome] = useState('');
+            const [telefone, setTelefone] = useState('');
+            const [cpf, setCpf] = useState('');
+            const [email, setEmail] = useState('');
+            const [endereco, setEndereco] = useState('');
+            const [enviando, setEnviando] = useState(false);
+            const [erro, setErro] = useState('');
+
+            function enviar(e) {
+                e.preventDefault();
+                const telLimpo = telefone.replace(/\D/g, '');
+                if (telLimpo.length < 10) { setErro('Digite um telefone válido, com DDD.'); return; }
+                if (!nome || nome.trim().split(' ').length < 2) { setErro('Digite seu nome completo.'); return; }
+                if (sorteio.coletar_cpf && cpf.replace(/\D/g, '').length !== 11) { setErro('Digite um CPF válido.'); return; }
+                if (sorteio.coletar_email && !email) { setErro('Digite seu e-mail.'); return; }
+                if (sorteio.coletar_endereco && !endereco) { setErro('Digite seu endereço.'); return; }
+                setErro(''); setEnviando(true);
+
+                fetch('/api/public/pedidos/iniciar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sorteio_id: sorteio.id, quantidade, nome_completo: nome, telefone: telLimpo,
+                        cpf: cpf || null, email: email || null, endereco: endereco || null,
+                    })
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.status === 'error' || !resp.redirect) { setErro(resp.error || 'Erro ao iniciar o checkout.'); setEnviando(false); return; }
+                    window.location.href = resp.redirect;
+                })
+                .catch(() => { setErro('Erro ao iniciar o checkout. Tente novamente.'); setEnviando(false); });
+            }
+
+            return html`
+                <div style=${{position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:100, display:'flex', alignItems:'flex-end'}} onClick=${onFechar}>
+                    <div style=${{background:'#2a303c', width:'100%', borderRadius:'16px 16px 0 0', padding:'1.5rem', maxHeight:'85vh', overflowY:'auto'}} onClick=${e => e.stopPropagation()}>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-white">Finalizar participação</h3>
+                            <button onClick=${onFechar} style=${{background:'none', border:'none', color:'#a0aec0', fontSize:'1.5rem'}}>×</button>
+                        </div>
+                        <p class="text-gray-300 mb-4">${quantidade} título(s) — <b>${formatarMoeda(preco * quantidade)}</b></p>
+                        <form onSubmit=${enviar} class="space-y-3">
+                            <input class="w-full p-3 rounded bg-white text-gray-800" placeholder="Nome completo" value=${nome} onChange=${e => setNome(e.target.value)} />
+                            <input class="w-full p-3 rounded bg-white text-gray-800" placeholder="Telefone com DDD" value=${telefone} onChange=${e => setTelefone(e.target.value)} />
+                            ${sorteio.coletar_cpf && html`<input class="w-full p-3 rounded bg-white text-gray-800" placeholder="CPF" value=${cpf} onChange=${e => setCpf(e.target.value)} />`}
+                            ${sorteio.coletar_email && html`<input class="w-full p-3 rounded bg-white text-gray-800" placeholder="E-mail" value=${email} onChange=${e => setEmail(e.target.value)} />`}
+                            ${sorteio.coletar_endereco && html`<input class="w-full p-3 rounded bg-white text-gray-800" placeholder="Endereço" value=${endereco} onChange=${e => setEndereco(e.target.value)} />`}
+                            ${erro && html`<div class="erro-msg">${erro}</div>`}
+                            <button type="submit" class="btn-participar" disabled=${enviando} style=${{justifyContent:'center'}}>
+                                ${enviando ? 'Processando...' : 'Confirmar e ir pro pagamento'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
         function PaginaSorteio() {
+        useEffect(() => {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/sw.js').catch(function(e) { console.warn('SW não registrado', e); });
+                }
+            }, []);
+
             const [dados, setDados] = useState(null);
             const [erro, setErro] = useState(null);
             const [quantidade, setQuantidade] = useState(30);
             const [menuAberto, setMenuAberto] = useState(false);
+            const [modalAberto, setModalAberto] = useState(false);
 
             useEffect(() => {
                 const partes = window.location.pathname.split('/').filter(Boolean);
-                const slug = partes[2] || '';
-                fetch(`/api/public/sorteio/${slug}`)
+                const slug = partes[1] || '';
+                const funilSlug = partes[2] || null;
+                const url = funilSlug ? `/api/public/sorteio/${slug}/funil/${funilSlug}` : `/api/public/sorteio/${slug}`;
+                fetch(url)
                     .then(r => r.json())
                     .then(resp => {
                         if (resp.status === 'error') { setErro(resp.error); return; }
@@ -269,7 +359,8 @@
                         <button class="btn-meus-titulos-full"><i class="bi bi-cart3"></i> Meus Títulos</button>
 
                         <div class="title-bar flex justify-center items-center" style=${{padding:'10px 1rem'}}>
-                            <h6 style=${{margin:0, fontWeight:600, fontSize:'12.3px'}}>Por apenas ${formatarMoeda(preco)}</h6>
+                            <h6 style=${{margin:0, fontWeight:600, fontSize:'12.3px', color:'#fff'}}>Por apenas</h6>
+                            <span class="preco-badge">${formatarMoeda(preco)}</span>
                         </div>
 
                         <${BannerUrgencia} aviso=${dados.aviso_urgencia_ativo} />
@@ -284,7 +375,7 @@
                                 <input type="number" value=${quantidade} onChange=${e => setQuantidade(Number(e.target.value) || 1)} />
                                 <button onClick=${() => setQuantidade(quantidade + 1)}>+</button>
                             </div>
-                            <button class="btn-participar" onClick=${() => alert('Próximo passo: conectar com o fluxo real de checkout.')}>
+                            <button class="btn-participar" onClick=${() => setModalAberto(true)}>
                                 <i class="bi bi-check-circle"></i>
                                 <span>Quero Participar</span>
                                 <span class="btn-participar-price">${formatarMoeda(quantidade * preco)}</span>
@@ -295,6 +386,7 @@
                         <${SecaoPromocoes} promocoes=${dados.promocoes} onEscolher=${setQuantidade} />
                         <${SecaoBilhetesPremiados} bilhetes=${dados.bilhetes_premiados} />
                     </main>
+                    ${modalAberto && html`<${ModalCompra} sorteio=${s} quantidade=${quantidade} preco=${preco} onFechar=${() => setModalAberto(false)} />`}
                 </div>
             `;
         }

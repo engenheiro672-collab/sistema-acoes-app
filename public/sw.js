@@ -14,7 +14,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-const HOSTS_SEGUROS_PRA_CACHE = ['code.jquery.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
+const HOSTS_SEGUROS_PRA_CACHE = ['code.jquery.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com', 'unpkg.com'];
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
