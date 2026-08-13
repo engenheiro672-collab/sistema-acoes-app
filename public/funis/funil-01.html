@@ -17,12 +17,11 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://code.jquery.com">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"></noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
 
     <style>
         html { touch-action: pan-y; } body { background-color: #eef0f2; color: #212b36; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; }
@@ -354,6 +353,8 @@
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
     <script>
         // --- Lê slug do sorteio e (opcionalmente) slug do funil pela URL ---
         // Suporta: /sorteio/:slug  e  /sorteio/:slug/:funilSlug
@@ -837,6 +838,13 @@
         })();
 
         $(document).ready(function() {
+            // ⚡ Registra o Service Worker pra TODO visitante (não só quem ativa notificação push) —
+            // é ele que guarda jQuery/ícones/fontes no celular da pessoa, deixando a segunda visita
+            // bem mais rápida. Envolvido em try/catch pra nunca travar o resto da página se falhar.
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(function(e) { console.warn('SW não registrado', e); });
+            }
+
             carregarSorteio();
 
             var SPMaskBehavior = function (val) {
