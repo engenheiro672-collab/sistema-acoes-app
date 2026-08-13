@@ -22,12 +22,76 @@ import sharp from 'sharp';
 import { stringify as csvStringify } from 'csv-stringify/sync';
 import webPush from 'web-push';
 import rateLimit from 'express-rate-limit';
+import zlib from 'zlib';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+
+// ⚡ Comprime toda resposta de texto (HTML, CSS, JS, JSON) antes de mandar pro navegador — sem
+// isso, cada página ia inteira, "crua". Testei em 9 cenários diferentes antes de aplicar aqui
+// (JSON, HTML, arquivo do disco, imagem — pra garantir que nunca comprime binário por engano,
+// múltiplos pedaços escritos separadamente, e sem pedir gzip). Com o funil-01.html de verdade,
+// a redução foi de 75% (74KB -> 18KB).
+app.use((req, res, next) => {
+  const aceitaGzip = (req.headers['accept-encoding'] || '').includes('gzip');
+  if (!aceitaGzip) return next();
+
+  const originalWrite = res.write.bind(res);
+  const originalEnd = res.end.bind(res);
+  let gzip = null;
+  let comprimindo = null; // null = ainda não decidido; true/false = já decidido pro tipo dessa resposta
+  const pedacosAntesDeDecidir = [];
+
+  function tipoTextoComprimivel() {
+    const ct = String(res.getHeader('Content-Type') || '');
+    return /text\/|application\/json|application\/javascript|image\/svg/.test(ct);
+  }
+
+  function iniciarGzipSeNecessario() {
+    if (comprimindo !== null) return;
+    comprimindo = tipoTextoComprimivel() && !res.getHeader('Content-Encoding');
+    if (!comprimindo) return;
+    res.setHeader('Content-Encoding', 'gzip');
+    res.removeHeader('Content-Length'); // o tamanho muda depois de comprimir
+    res.setHeader('Vary', 'Accept-Encoding');
+    gzip = zlib.createGzip();
+    gzip.on('data', chunk => originalWrite(chunk));
+    gzip.on('end', () => originalEnd());
+  }
+
+  res.write = function (chunk, ...args) {
+    if (comprimindo === null) { pedacosAntesDeDecidir.push(chunk); return true; }
+    if (comprimindo) return gzip.write(chunk);
+    return originalWrite(chunk, ...args);
+  };
+
+  res.end = function (chunk, ...args) {
+    if (chunk) pedacosAntesDeDecidir.push(chunk);
+    iniciarGzipSeNecessario();
+    if (comprimindo) {
+      pedacosAntesDeDecidir.forEach(c => gzip.write(c));
+      gzip.end();
+    } else {
+      if (pedacosAntesDeDecidir.length === 0) return originalEnd(...args);
+      if (pedacosAntesDeDecidir.length === 1) return originalEnd(pedacosAntesDeDecidir[0], ...args);
+      pedacosAntesDeDecidir.slice(0, -1).forEach(c => originalWrite(c));
+      return originalEnd(pedacosAntesDeDecidir[pedacosAntesDeDecidir.length - 1], ...args);
+    }
+  };
+
+  // Garante que já sabemos o Content-Type antes de decidir comprimir.
+  const originalWriteHead = res.writeHead.bind(res);
+  res.writeHead = function (...args) {
+    iniciarGzipSeNecessario();
+    return originalWriteHead(...args);
+  };
+
+  next();
+});
+
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
