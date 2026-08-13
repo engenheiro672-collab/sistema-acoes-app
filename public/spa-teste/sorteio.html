@@ -18,7 +18,6 @@
         .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
         .main-image { width: 100%; height: 310px; object-fit: cover; background-color: #111; filter: contrast(1.08) saturate(1.12) brightness(1.02); }
         .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); min-height: 88px; justify-content: flex-end; }
-        .title-bar { color: #fff; background-color: #1a1a1a; }
         .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; }
         .cota-btn { background-color: #000; border: 1px solid #000; border-radius: 8px; padding: 0.75rem 1rem; text-align: center; cursor: pointer; transition: background-color 0.15s; }
         .cota-btn.selecionado { background-color: #1a8754; }
@@ -30,6 +29,18 @@
         .btn-participar { background: linear-gradient(90deg, #1a8754, #5be584); color: #fff; font-weight: 700; border-radius: 10px; padding: 0.9rem; text-align: center; width: 100%; border: none; font-size: 1.05rem; cursor: pointer; }
         .skeleton { background: linear-gradient(90deg, #2a303c 25%, #363d4a 37%, #2a303c 63%); background-size: 400% 100%; animation: skeleton-loading 1.4s ease infinite; border-radius: 8px; }
         @keyframes skeleton-loading { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        .skeleton-foto { height: 310px; }
+        .skeleton-linha-titulo { height: 20px; width: 70%; margin-bottom: 12px; }
+        .skeleton-linha-sub { height: 14px; width: 40%; }
+        .skeleton-cota { height: 76px; }
+        .nav-full-width { width: 100%; }
+        .logo-img { height: 32px; }
+        .icone-menu { font-size: 2rem; }
+        .caption-overlay { position: absolute; left: 0; right: 0; bottom: 0; }
+        .titulo-sorteio { font-size: 1.4rem; font-weight: 700; margin: 0; }
+        .title-bar { color: #fff; background-color: #1a1a1a; padding: 10px 1rem; }
+        .preco-texto { margin: 0; font-weight: 600; font-size: 12.3px; }
+        .subtitulo-chances { font-weight: 400; }
     </style>
 </head>
 <body>
@@ -71,13 +82,13 @@
             return html`
                 <div>
                     <div class="header-bar"></div>
-                    <div class="skeleton" style="height:310px;"></div>
+                    <div class="skeleton skeleton-foto"></div>
                     <div class="p-4">
-                        <div class="skeleton" style="height:20px; width:70%; margin-bottom:12px;"></div>
-                        <div class="skeleton" style="height:14px; width:40%;"></div>
+                        <div class="skeleton skeleton-linha-titulo"></div>
+                        <div class="skeleton skeleton-linha-sub"></div>
                     </div>
                     <div class="cota-grid">
-                        ${[1,2,3,4,5,6].map(i => html`<div key=${i} class="skeleton" style="height:76px;"></div>`)}
+                        ${[1,2,3,4,5,6].map(i => html`<div key=${i} class="skeleton skeleton-cota"></div>`)}
                     </div>
                 </div>
             `;
@@ -133,25 +144,25 @@
             return html`
                 <div>
                     <header class="header-bar">
-                        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center" style="width:100%;">
-                            <div class="text-2xl font-bold text-white">${dados.logo_url ? html`<img src=${dados.logo_url} style="height:32px;" />` : 'LOGO'}</div>
-                            <i class="bi bi-list text-gray-300" style="font-size:2rem;"></i>
+                        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center nav-full-width">
+                            <div class="text-2xl font-bold text-white">${dados.logo_url ? html`<img src=${dados.logo_url} class="logo-img" />` : 'LOGO'}</div>
+                            <i class="bi bi-list text-gray-300 icone-menu"></i>
                         </nav>
                     </header>
 
                     <main class="container mx-auto max-w-2xl">
                         <div class="relative">
                             <img class="main-image" src=${s.foto_url || ''} alt=${s.nome} />
-                            <div class="caption-header" style="position:absolute; left:0; right:0; bottom:0;">
-                                <h1 style="font-size:1.4rem; font-weight:700; margin:0;">${s.nome}</h1>
+                            <div class="caption-header caption-overlay">
+                                <h1 class="titulo-sorteio">${s.nome}</h1>
                             </div>
                         </div>
 
-                        <div class="title-bar flex justify-center items-center" style="padding:10px 1rem;">
-                            <h6 style="margin:0; font-weight:600; font-size:12.3px;">Por apenas ${formatarMoeda(preco)}</h6>
+                        <div class="title-bar flex justify-center items-center">
+                            <h6 class="preco-texto">Por apenas ${formatarMoeda(preco)}</h6>
                         </div>
 
-                        <p class="text-center text-gray-400 my-4" style="font-weight:400;">Quanto mais títulos, mais chances de ganhar!</p>
+                        <p class="text-center text-gray-400 my-4 subtitulo-chances">Quanto mais títulos, mais chances de ganhar!</p>
 
                         <${SeletorCota} sorteio=${s} quantidade=${quantidade} setQuantidade=${setQuantidade} />
 
