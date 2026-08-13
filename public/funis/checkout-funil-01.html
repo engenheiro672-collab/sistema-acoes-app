@@ -205,12 +205,6 @@
             </div>
         </div>
 
-        <div id="secao-combos-roleta-checkout" class="card hidden text-left">
-            <h3 class="text-lg font-semibold text-gray-800 mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-500 font-normal">combos — segunda compra</span></h3>
-            <p class="text-xs text-gray-500 mb-3">Compre mais títulos agora e ganhe roletas extras pra tentar de novo!</p>
-            <div id="lista-combos-roleta-checkout" class="space-y-3"></div>
-        </div>
-
         <div id="secao-roletas-checkout" class="card hidden text-left">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-xl font-semibold text-gray-800"><i class="bi bi-lightning-fill text-yellow-400"></i> Roletas</h3>
@@ -220,6 +214,18 @@
             <div id="lista-giros-checkout" class="space-y-2"></div>
         </div>
     </main>
+
+    <!-- Popup dos combos de roleta — só aparece depois que a pessoa gira e não ganha, ou clicando em "Tentar novamente" -->
+    <div id="popup-combos-roleta" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50 p-4">
+        <div style="background:#ffffff; border-radius:16px; padding:1.5rem; max-width:420px; width:100%; max-height:85vh; overflow-y:auto;">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-500 font-normal">combos</span></h3>
+                <button id="close-popup-combos-roleta" style="background:none; border:none; color:#6b7280; font-size:1.5rem;">×</button>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">Compre mais títulos agora e ganhe roletas extras pra tentar de novo!</p>
+            <div id="lista-combos-roleta-checkout" class="space-y-3"></div>
+        </div>
+    </div>
 
 
     <!-- Modal da roleta girando -->
@@ -516,23 +522,32 @@
         }
 
         let ROLETA_TIERS_GLOBAL = [];
+        let TEM_COMBOS_ROLETA = false;
         let SORTEIO_SLUG_GLOBAL = '';
 
         function renderCombosRoleta(tiers, sorteioSlug) {
-            if (!tiers || tiers.length === 0) { $('#secao-combos-roleta-checkout').addClass('hidden'); return; }
-            $('#secao-combos-roleta-checkout').removeClass('hidden');
+            TEM_COMBOS_ROLETA = !!(tiers && tiers.length > 0);
+            if (!TEM_COMBOS_ROLETA) return;
             $('#lista-combos-roleta-checkout').html(tiers.map(t => `
                 <div class="combo-roleta combo-pulse" style="cursor:pointer;" onclick="irComprarComCombo(${t.minimo_cotas}, ${t.quantidade_giros}, '${sorteioSlug}')">
                     <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
                         <div style="min-width:0;">
                             <div class="text-sm text-green-100" style="line-height:1.1;">A cada</div>
-                            <div class="text-xl font-bold text-gray-800" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
+                            <div class="text-xl font-bold text-white" style="line-height:1.15;">${t.minimo_cotas} títulos</div>
                         </div>
-                        <div class="text-lg font-bold text-gray-800 text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
+                        <div class="text-lg font-bold text-white text-right" style="min-width:0;">Receba ${t.quantidade_giros} Roletas 🎯</div>
                     </div>
                     <div class="text-xs text-green-100 mt-1">${t.quantidade_giros} chances de contemplação na Roleta Instantânea</div>
                 </div>
             `).join(''));
+        }
+        function abrirPopupCombosRoleta() {
+            if (!TEM_COMBOS_ROLETA) return;
+            $('#popup-combos-roleta').removeClass('hidden').css('display', 'flex');
+        }
+        function fecharPopupCombosRoleta() {
+            $('#popup-combos-roleta').addClass('hidden').css('display', '');
+            renderListaGiros();
         }
         function irComprarComCombo(qtd, giros, sorteioSlug) {
             let funilSlug = null;
@@ -549,10 +564,18 @@
             $('#contador-roletas-checkout').text(`${GIROS.length - restantes}/${GIROS.length}`);
             $('#btn-girar-todas').toggle(restantes > 0);
             $('#lista-giros-checkout').html(GIROS.map((g, i) => {
-                if (g.girado) {
-                    const texto = g.ganhou ? (g.valor_premio || g.premio_titulo || 'Prêmio!') : 'Tente Denovo';
-                    const cor = g.ganhou ? 'bg-yellow-600' : 'bg-gray-700';
-                    return `<div class="${cor} rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>${texto}</b></div>`;
+                if (g.girado && g.ganhou) {
+                    const texto = g.valor_premio || g.premio_titulo || 'Prêmio!';
+                    return `<div class="bg-yellow-600 rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>${texto}</b></div>`;
+                }
+                if (g.girado && !g.ganhou) {
+                    if (TEM_COMBOS_ROLETA) {
+                        return `<div class="bg-gray-700 rounded-lg px-4 py-3 flex justify-between items-center text-white">
+                            <span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span>
+                            <button class="btn-tentar-novamente bg-green-700 hover:bg-green-800 px-4 py-1 rounded font-bold">Tentar novamente</button>
+                        </div>`;
+                    }
+                    return `<div class="bg-gray-700 rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>Não foi dessa vez</b></div>`;
                 }
                 return `<div class="bg-green-700 rounded-lg px-4 py-3 flex justify-between items-center text-white">
                     <span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span>
@@ -652,13 +675,25 @@
                     giro.ganhou = resultado.ganhou;
                     giro.premio_titulo = resultado.premio_titulo;
                     giro.valor_premio = resultado.valor_premio;
-                    $('#resultado-roleta').text(giro.ganhou ? (giro.valor_premio || giro.premio_titulo || 'Prêmio!') : 'Tente Denovo');
-                    renderListaGiros();
+                    $('#resultado-roleta').text(giro.ganhou ? (giro.valor_premio || giro.premio_titulo || 'Prêmio!') : 'Não foi dessa vez!');
+
+                    if (giro.ganhou) {
+                        renderListaGiros();
+                    } else {
+                        setTimeout(() => {
+                            $('#modal-roleta').addClass('hidden').css('display', '');
+                            renderListaGiros();
+                            abrirPopupCombosRoleta();
+                        }, 1400);
+                    }
                 }, duracaoMs);
             });
         }
 
         $('#lista-giros-checkout').on('click', '.btn-girar-uma', function() { abrirModalRoleta(Number($(this).data('idx'))); });
+        $('#lista-giros-checkout').on('click', '.btn-tentar-novamente', function() { abrirPopupCombosRoleta(); });
+        $('#close-popup-combos-roleta').on('click', fecharPopupCombosRoleta);
+        $('#popup-combos-roleta').on('click', function(e) { if (e.target === this) fecharPopupCombosRoleta(); });
         $('#close-modal-roleta').on('click', function() { $('#modal-roleta').addClass('hidden').css('display', ''); });
         $('#roda-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
         $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; montarLabelsRoleta(); atualizarModalRoleta(); } });

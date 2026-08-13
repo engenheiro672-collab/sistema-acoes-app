@@ -1,4 +1,32 @@
-# Sistema de Sorteios — v97 (✅ Criar Novo Pedido — completo, incluindo puxar cota específica)
+# Sistema de Sorteios — v98 (✅ Novo fluxo da roleta — lista fechada!)
+
+## O fluxo agora funciona exatamente como você descreveu
+
+1. Cliente paga → tem uma roleta pra girar. Os combos **não aparecem** enquanto ela ainda não girou.
+2. Gira e **não ganha** → aparece "Não foi dessa vez!" na roleta, ela fecha sozinha depois de um instante, e **abre automaticamente um popup** com os combos pra comprar mais títulos e tentar de novo.
+3. Fecha o popup (no X ou clicando fora) → volta pra tela de compras normal, e no lugar de "GIRAR" agora aparece **"Tentar novamente"**.
+4. Clica em "Tentar novamente" → abre o popup dos combos de novo.
+
+Implementado igualzinho nos dois checkouts — o normal e o do Funil 01 (esse último com o visual clarinho combinando).
+
+## Bônus: achei mais um texto invisível enquanto mexia aqui
+
+O combo de roleta (aquele card verde) no checkout do Funil 01 tinha o mesmo bug de texto escuro em fundo escuro que já corrigimos em outros lugares — corrigido também.
+
+---
+
+## 🎉 Essa foi a última peça da lista grande que você pediu
+
+Recapitulando tudo que ficou pronto nessa sequência de mensagens:
+1. ✅ Cabeçalho escondido (reversível)
+2. ✅ Link "cravado" de verdade (bug real corrigido)
+3. ✅ Textos corrigidos no checkout do Funil 01
+4. ✅ Clique rápido no +/- corrigido (bug real corrigido)
+5. ✅ Criar Novo Pedido completo, com opção de puxar cota específica
+6. ✅ Novo fluxo da roleta (combos só depois de perder, "Tentar novamente")
+
+Recomendo testar tudo com calma, sorteio por sorteio, função por função, antes de considerar liberado pra valer.
+
 
 ## A funcionalidade está pronta, ponta a ponta
 
