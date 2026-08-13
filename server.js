@@ -281,6 +281,11 @@ function ensureAdminAuth(req, res, next) {
 // ==================================================================
 // 📁 ARQUIVOS ESTÁTICOS (front-end 100% HTML/JS)
 // ==================================================================
+// 🔒 Bloqueia acesso direto ao dashboard.html pelo nome do arquivo — só passa por aqui quem entrar
+// pelo caminho secreto do painel (que exige login). Sem isso, qualquer um que soubesse o nome do
+// arquivo conseguia ver o código inteiro do painel, mesmo sem estar logado.
+app.get('/dashboard.html', (req, res) => res.redirect(`${PAINEL_URL}/login`));
+
 app.use(express.static(PUBLIC_DIR, {
   index: false,
   setHeaders: (res, filePath) => {
