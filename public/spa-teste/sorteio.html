@@ -33,12 +33,30 @@
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div id="aviso-carregando-libs" style="padding:2rem; text-align:center; color:#fff; font-family:sans-serif;">Carregando...</div>
+    </div>
+
+    <script>
+        // Mostra qualquer erro de JavaScript diretamente na tela — evita ficar tudo preto sem
+        // nenhuma explicação, o que dificultava descobrir o que estava acontecendo.
+        window.addEventListener('error', function(e) {
+            document.getElementById('root').innerHTML =
+                '<div style="padding:2rem; color:#ff8080; font-family:monospace; font-size:0.85rem; white-space:pre-wrap;">' +
+                '⚠️ Erro na página de teste:\n\n' + (e.message || e) + '\n\nArquivo: ' + (e.filename || '?') + ' linha ' + (e.lineno || '?') +
+                '</div>';
+        });
+    </script>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
     <script>
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof htm === 'undefined') {
+            document.getElementById('root').innerHTML =
+                '<div style="padding:2rem; color:#ff8080; font-family:monospace;">⚠️ Não consegui carregar React/htm — provavelmente um bloqueio de rede ou anúncio impedindo o CDN.</div>';
+            throw new Error('React/ReactDOM/htm não carregaram');
+        }
         const html = htm.bind(React.createElement);
         const { useState, useEffect } = React;
 
@@ -91,8 +109,10 @@
             const [quantidade, setQuantidade] = useState(30);
 
             useEffect(() => {
+                // Endereço é /spa-teste/sorteio/:slug (um pedaço a mais que a página normal),
+                // então o slug fica na posição 2, não na 1.
                 const partes = window.location.pathname.split('/').filter(Boolean);
-                const slug = partes[1] || '';
+                const slug = partes[2] || '';
                 fetch(`/api/public/sorteio/${slug}`)
                     .then(r => r.json())
                     .then(resp => {
