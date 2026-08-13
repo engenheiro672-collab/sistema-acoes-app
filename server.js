@@ -250,6 +250,11 @@ function gerarCpfValido() {
 // 🔒 Antes, qualquer site da internet podia fazer pedido pro seu sistema levando os cookies de quem
 // estivesse logado (e ainda ler a resposta) — "origin: true" aceitava literalmente qualquer origem.
 // Agora só os domínios que você realmente usa têm permissão.
+// 🔒 O painel roda num subdomínio separado (panthers.premiosderrets.com.br). Qualquer link que o
+// SERVIDOR gera pro cliente (não só o painel) tem que apontar pro domínio de verdade do site,
+// nunca pro endereço de onde a requisição chegou (que, vindo do painel, seria o subdomínio errado).
+const DOMINIO_PUBLICO_SERVIDOR = 'https://premiosderrets.com.br';
+
 const ORIGENS_PERMITIDAS = [
   'https://premiosderrets.com.br',
   'https://www.premiosderrets.com.br',
@@ -1466,7 +1471,7 @@ app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
       const caminho = link.funis?.slug ? `/sorteio/${sorteio?.slug || ''}/${link.funis.slug}` : `/sorteio/${sorteio?.slug || ''}`;
       resultados.push({
         ...link,
-        url: link.codigo.startsWith('auto-') ? null : `${req.protocol}://${req.get('host')}${caminho}?lk=${link.codigo}`,
+        url: link.codigo.startsWith('auto-') ? null : `${DOMINIO_PUBLICO_SERVIDOR}${caminho}?lk=${link.codigo}`,
         cliques: link.cliques || 0,
         pedidos_pagos: pagos.length,
         total_pedidos,
@@ -1532,8 +1537,8 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
       let url = null;
       const slug = link.sorteios?.slug;
       if (slug) {
-        if (link.codigo === 'auto-direto') url = `${req.protocol}://${req.get('host')}/sorteio/${slug}`;
-        else if (!link.codigo.startsWith('auto-')) url = `${req.protocol}://${req.get('host')}/sorteio/${slug}?lk=${link.codigo}`;
+        if (link.codigo === 'auto-direto') url = `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${slug}`;
+        else if (!link.codigo.startsWith('auto-')) url = `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${slug}?lk=${link.codigo}`;
       }
       resultados.push({ ...link, url, cliques, pedidos_pagos: pagos.length, expirados, faturamento, pendente, ticket_medio, conversao });
     }

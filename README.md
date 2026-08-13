@@ -1,4 +1,29 @@
-# Sistema de Sorteios — v98 (✅ Novo fluxo da roleta — lista fechada!)
+# Sistema de Sorteios — v99 (🐛 3 bugs reais corrigidos + formatação no Criar Novo Pedido)
+
+## 1. Promoções não apareciam no Criar Novo Pedido — achei a causa
+
+A resposta da API vinha no formato `{ lista: [...] }`, mas meu código estava procurando `{ data: [...] }` — nunca batia, por isso sempre aparecia vazio. Corrigido.
+
+## 2. 🚨 O bug do domínio "Panthers" voltou — achei a causa raiz de verdade dessa vez
+
+Da última vez, corrigi isso só no **painel** (frontend). Mas descobri que o **próprio servidor** também gerava links usando o endereço de onde a requisição chegou — e como toda requisição do painel agora vem do subdomínio, o servidor também passou a gerar link errado, em 3 lugares diferentes (lista de funis, comparativo de links). Corrigido todos, usando sempre o domínio de verdade agora, travado, não importa de onde a requisição veio.
+
+## 3. Links "recuperados" — explicação, não bug
+
+Alguns links (os que têm "(automático)" no nome) são recriados sozinhos toda vez que alguém acessa por aquele canal — isso é de propósito, pra nunca perder rastreio de tráfego orgânico. Se quiser, posso desativar essa recriação automática — só me avisa.
+
+## 4. Formatação corrigida no Criar Novo Pedido
+
+- Telefone: máscara automática (fixo ou celular) igual ao site público
+- CPF: máscara automática (000.000.000-00)
+- Valor: máscara de reais (R$ 0,00), convertido certinho pro servidor antes de enviar
+
+## Sobre a compra que deu problema
+
+Muito provavelmente foi o link com o domínio errado (item 2) — resolvido agora.
+
+## Sem mudança de banco.
+
 
 ## O fluxo agora funciona exatamente como você descreveu
 

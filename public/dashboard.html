@@ -192,7 +192,7 @@
                 <label class="text-xs text-gray-400">Quantidade de títulos</label>
                 <input id="cnp-quantidade" type="number" min="1" class="input-dark mt-1" placeholder="Ex: 100">
                 <p class="text-xs text-gray-500 mt-1">Ou, se preferir, define um valor direto (deixa a quantidade em branco):</p>
-                <input id="cnp-valor-customizado" type="number" step="0.01" class="input-dark mt-1" placeholder="Ex: 50.00">
+                <input id="cnp-valor-customizado" type="text" inputmode="numeric" class="input-dark mt-1 mascara-real" placeholder="R$ 0,00">
             </div>
 
             <div>
@@ -3053,6 +3053,10 @@ function abrirModalCriarPedido() {
     $('#cnp-campos-extras').empty();
     $('#cnp-btn-salvar').prop('disabled', true);
     $('#modal-criar-pedido').removeClass('hidden').addClass('flex');
+
+    // Máscara de telefone (mesma usada no site público) — dá pra digitar fixo ou celular
+    const spMask = function (val) { return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009'; };
+    $('#cnp-telefone').mask(spMask, { onKeyPress: function(val, e, field, options) { field.mask(spMask.apply({}, arguments), options); } });
 }
 function fecharModalCriarPedido() {
     $('#modal-criar-pedido').addClass('hidden').removeClass('flex');
@@ -3070,10 +3074,11 @@ function onSorteioCriarPedidoChange() {
     if (sorteio?.coletar_email) camposExtras += `<div><label class="text-xs text-gray-400">E-mail</label><input id="cnp-email" class="input-dark mt-1" placeholder="email@exemplo.com"></div>`;
     if (sorteio?.coletar_endereco) camposExtras += `<div class="col-span-2"><label class="text-xs text-gray-400">Endereço</label><input id="cnp-endereco" class="input-dark mt-1" placeholder="Endereço completo"></div>`;
     $('#cnp-campos-extras').html(camposExtras);
+    if (sorteio?.coletar_cpf) $('#cnp-cpf').mask('000.000.000-00');
 
     // Busca as promoções ativas desse sorteio pra popular o seletor
     api('GET', `/api/admin/sorteios/${sorteioId}/promocoes`).then(promos => {
-        const lista = Array.isArray(promos) ? promos : (promos?.data || []);
+        const lista = promos?.lista || [];
         $('#cnp-promocao').html('<option value="">Nenhuma</option>' +
             lista.filter(p => p.ativo).map(p => `<option value="${p.id}">${p.titulo} (${p.quantidade_cotas} títulos — ${formatBR(p.preco_promocional)})</option>`).join(''));
     }).catch(() => $('#cnp-promocao').html('<option value="">Nenhuma</option>'));
@@ -3088,11 +3093,11 @@ function salvarPedidoManual() {
 
     const payload = {
         sorteio_id, nome_completo, telefone,
-        cpf: $('#cnp-cpf').val() || null,
+        cpf: $('#cnp-cpf').val()?.replace(/\D/g, '') || null,
         email: $('#cnp-email').val() || null,
         endereco: $('#cnp-endereco').val() || null,
         quantidade: $('#cnp-quantidade').val() || null,
-        valor_total_customizado: $('#cnp-valor-customizado').val() || null,
+        valor_total_customizado: $('#cnp-valor-customizado').val() ? valorMoedaParaNumero($('#cnp-valor-customizado').val()) : null,
         promocao_id: $('#cnp-promocao').val() || null,
         aplicar_chance_dobro: $('#cnp-chance-dobro').is(':checked'),
         cota_especifica: $('#cnp-usar-cota-especifica').is(':checked') ? $('#cnp-cota-especifica').val()?.trim() : null,
