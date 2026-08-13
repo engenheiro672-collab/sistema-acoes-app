@@ -1029,7 +1029,7 @@ async function criarPagamentoGateway(pedido, usuario) {
 
 // --- GERAÇÃO DE COTAS (com padCota e suporte a bônus de funil) ---
 
-async function gerarCotasUnicas(pedido) {
+async function gerarCotasUnicas(pedido, opcoes = {}) {
   try {
     const { sorteio_id } = pedido;
     let user_id = pedido.user_id;
@@ -1050,13 +1050,17 @@ async function gerarCotasUnicas(pedido) {
       bonusCotas = Number(funil?.bonus_cotas_extra || 0);
     }
 
-    // Chance em Dobro: se o pedido foi feito dentro de uma janela ativa, dobra a quantidade de cotas
-    try {
-      const { data: chancesDobro } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true);
-      const criadoEm = pedido.created_at || new Date().toISOString();
-      const teveChanceDobro = (chancesDobro || []).some(c => criadoEm >= c.data_inicio && criadoEm <= c.data_fim);
-      if (teveChanceDobro) bonusCotas += Number(pedido.quantidade_cotas || 0);
-    } catch (err) { console.error('Erro ao checar chance em dobro', err); }
+    // Chance em Dobro: se o pedido foi feito dentro de uma janela ativa, dobra a quantidade de cotas.
+    // Pedidos criados manualmente pelo admin já decidem isso na hora (opcoes.pularChanceDobroAutomatica),
+    // pra não correr o risco de dobrar duas vezes sem querer.
+    if (!opcoes.pularChanceDobroAutomatica) {
+      try {
+        const { data: chancesDobro } = await supabase.from('chance_dobro').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true);
+        const criadoEm = pedido.created_at || new Date().toISOString();
+        const teveChanceDobro = (chancesDobro || []).some(c => criadoEm >= c.data_inicio && criadoEm <= c.data_fim);
+        if (teveChanceDobro) bonusCotas += Number(pedido.quantidade_cotas || 0);
+      } catch (err) { console.error('Erro ao checar chance em dobro', err); }
+    }
 
     const totalCotas = Number(sorteio.total_cotas) || 1000000;
     const nowISO = new Date().toISOString();
@@ -2217,6 +2221,118 @@ app.delete('/api/admin/pedidos/expirados', ensureAdminAuth, async (_req, res) =>
     if (error) return fail(res, error.message);
     return ok(res, { removidos: ids.length });
   } catch (e) { return fail(res); }
+});
+
+// 🆕 Cria um pedido manualmente pelo painel — pra vendas feitas fora do sistema (dinheiro na mão,
+// combinado por fora, etc.) que o admin quer registrar como se tivesse sido uma compra normal.
+// Já entra como "pago" na hora, com as cotas geradas de verdade.
+// 🎯 Puxa uma cota específica pro pedido informado — se ela já pertencer a outro pedido, dá pra
+// esse outro pedido um número novo aleatório no lugar (mantém a quantidade dele igual, só troca
+// qual número representa uma das cotas). Devolve o número formatado que ficou pertencendo ao pedido.
+async function puxarCotaEspecificaParaPedido(sorteioId, numeroCotaDesejado, pedidoDestino, totalCotas) {
+  const numeroFormatado = padCota(numeroCotaDesejado, totalCotas);
+
+  const { data: cotaExistente } = await supabase.from('cotas').select('*').eq('sorteio_id', sorteioId).eq('numero_cota', numeroFormatado).maybeSingle();
+
+  if (cotaExistente) {
+    if (cotaExistente.pedido_id === pedidoDestino.id) return numeroFormatado; // já é dele mesmo, nada a fazer
+    // Já pertence a outro pedido — gera um número novo aleatório só pra essa cota específica dele,
+    // liberando o número desejado.
+    const { data: todasCotas } = await supabase.from('cotas').select('numero_cota').eq('sorteio_id', sorteioId);
+    const { data: bloqueadas } = await supabase.from('cotas_bloqueadas').select('numero_cota').eq('sorteio_id', sorteioId);
+    const ocupados = new Set([...(todasCotas || []).map(c => c.numero_cota), ...(bloqueadas || []).map(c => c.numero_cota)]);
+    let novoNumero = null;
+    let tentativas = 0;
+    while (!novoNumero && tentativas < 5000) {
+      tentativas++;
+      const candidato = padCota(Math.floor(Math.random() * totalCotas), totalCotas);
+      if (!ocupados.has(candidato)) novoNumero = candidato;
+    }
+    if (novoNumero) {
+      await supabase.from('cotas').update({ numero_cota: novoNumero }).eq('id', cotaExistente.id);
+    }
+  }
+
+  // Pega uma das cotas recém-geradas do pedido atual e troca ela pro número desejado
+  const { data: cotasDoNovoPedido } = await supabase.from('cotas').select('id').eq('pedido_id', pedidoDestino.id).limit(1);
+  if (cotasDoNovoPedido && cotasDoNovoPedido.length > 0) {
+    await supabase.from('cotas').update({ numero_cota: numeroFormatado }).eq('id', cotasDoNovoPedido[0].id);
+  }
+  return numeroFormatado;
+}
+
+app.post('/api/admin/pedidos/criar-manual', ensureAdminAuth, async (req, res) => {
+  try {
+    const { sorteio_id, nome_completo, telefone, cpf, email, endereco, quantidade, valor_total_customizado, promocao_id, aplicar_chance_dobro, cota_especifica } = req.body || {};
+    if (!sorteio_id || !nome_completo || !telefone) return fail(res, 'Sorteio, nome e telefone são obrigatórios', 400);
+
+    const { data: sorteio } = await supabase.from('sorteios').select('*').eq('id', sorteio_id).maybeSingle();
+    if (!sorteio) return fail(res, 'Sorteio não encontrado', 404);
+
+    if (sorteio.coletar_cpf && !cpf) return fail(res, 'CPF é obrigatório para este sorteio', 400);
+    if (sorteio.coletar_email && !email) return fail(res, 'E-mail é obrigatório para este sorteio', 400);
+    if (sorteio.coletar_endereco && !endereco) return fail(res, 'Endereço é obrigatório para este sorteio', 400);
+
+    // Acha ou cria o usuário/comprador, igual no fluxo normal de compra
+    const telefoneLimpo = String(telefone).replace(/\D/g, '');
+    const cpfLimpo = cpf ? String(cpf).replace(/\D/g, '') : null;
+    const { data: usuarioExistente } = await supabase.from('usuarios').select('*').eq('telefone', telefoneLimpo).maybeSingle();
+    let usuario = usuarioExistente;
+    if (!usuario) {
+      const { data: novo, error: nErr } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo, email: email || null, cpf: cpfLimpo, endereco: endereco || null }).select().single();
+      if (nErr) return fail(res, 'Erro ao criar usuário');
+      usuario = novo;
+    }
+
+    // Calcula quantidade de cotas e valor — pode vir por quantidade OU por valor customizado
+    let quantidadeCotas = Number(quantidade || 0);
+    let valorTotal;
+    let promocaoTitulo = null;
+
+    if (promocao_id) {
+      const { data: promo } = await supabase.from('promocoes').select('*').eq('id', promocao_id).eq('sorteio_id', sorteio_id).maybeSingle();
+      if (!promo) return fail(res, 'Promoção não encontrada', 404);
+      quantidadeCotas = Number(promo.quantidade_cotas);
+      valorTotal = Number(promo.preco_promocional);
+      promocaoTitulo = promo.titulo;
+    } else if (valor_total_customizado !== undefined && valor_total_customizado !== null && valor_total_customizado !== '') {
+      valorTotal = Number(valor_total_customizado);
+      if (!quantidadeCotas) quantidadeCotas = Math.max(1, Math.round(valorTotal / Number(sorteio.preco_cota || 1)));
+    } else {
+      if (!quantidadeCotas) return fail(res, 'Informe a quantidade de títulos ou um valor', 400);
+      valorTotal = quantidadeCotas * Number(sorteio.preco_cota || 0);
+    }
+
+    // Chance em Dobro: se o admin marcou pra aplicar nesse pedido, já soma aqui — direto, sem
+    // depender de nenhuma verificação automática de data (evita duplicar o bônus sem querer).
+    if (aplicar_chance_dobro) quantidadeCotas *= 2;
+
+    const token = uuidv4();
+    const { data: pedido, error: pedErro } = await supabase.from('pedidos').insert({
+      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidadeCotas, valor_total: valorTotal,
+      status: 'pago', promocao_titulo: promocaoTitulo, criado_manualmente_admin: true, created_at: new Date().toISOString()
+    }).select().single();
+    if (pedErro || !pedido) return fail(res, 'Erro ao criar pedido');
+
+    const numerosGerados = await gerarCotasUnicas(pedido, { pularChanceDobroAutomatica: true });
+
+    let numerosFinais = numerosGerados.map(c => c.numero_cota);
+    let cotaEspecificaAplicada = null;
+    if (cota_especifica && numerosGerados.length > 0) {
+      try {
+        cotaEspecificaAplicada = await puxarCotaEspecificaParaPedido(sorteio_id, cota_especifica, pedido, Number(sorteio.total_cotas) || 1000000);
+        if (cotaEspecificaAplicada) {
+          // Atualiza a lista em memória com o número que realmente ficou — importante pra checagem
+          // de prêmio da roleta logo abaixo já considerar a cota certa, não a aleatória antiga.
+          numerosFinais = [cotaEspecificaAplicada, ...numerosFinais.slice(1)];
+        }
+      } catch (err) { console.error('Erro ao puxar cota específica', err); }
+    }
+
+    try { await atribuirGirosRoleta(sorteio_id, pedido, usuario.id, numerosFinais); } catch (err) { console.error('Erro ao atribuir giros de roleta (pedido manual)', err); }
+
+    return ok(res, { pedido, cotas_geradas: numerosGerados.length, cota_especifica_aplicada: cotaEspecificaAplicada });
+  } catch (e) { console.error('Erro ao criar pedido manual', e); return fail(res); }
 });
 
 app.get('/api/admin/pedidos', ensureAdminAuth, async (req, res) => {

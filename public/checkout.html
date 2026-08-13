@@ -535,7 +535,16 @@
             `).join(''));
         }
         function irComprarComCombo(qtd, giros, sorteioSlug) {
-            window.location.href = `/sorteio/${sorteioSlug}?qtd=${qtd}&giros=${giros}`;
+            // Se a pessoa veio de um funil específico (link do WhatsApp, funil customizado, etc.),
+            // volta pra esse mesmo funil — não pro sorteio "puro" — mantendo a experiência e o
+            // rastreamento certinhos.
+            let funilSlug = null;
+            try {
+                const salvo = JSON.parse(localStorage.getItem('funil_cravado_' + sorteioSlug) || 'null');
+                if (salvo && salvo.expira > Date.now()) funilSlug = salvo.funilSlug;
+            } catch (e) {}
+            const caminho = funilSlug ? `/sorteio/${sorteioSlug}/${funilSlug}` : `/sorteio/${sorteioSlug}`;
+            window.location.href = `${caminho}?qtd=${qtd}&giros=${giros}`;
         }
 
         function renderListaGiros() {
@@ -700,7 +709,15 @@
 
             if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);
-            $('#voltar-link').attr('href', `/sorteio/${pedido.sorteios?.slug || ''}`);
+            (function() {
+                const slugAtual = pedido.sorteios?.slug || '';
+                let funilSlug = null;
+                try {
+                    const salvo = JSON.parse(localStorage.getItem('funil_cravado_' + slugAtual) || 'null');
+                    if (salvo && salvo.expira > Date.now()) funilSlug = salvo.funilSlug;
+                } catch (e) {}
+                $('#voltar-link').attr('href', funilSlug ? `/sorteio/${slugAtual}/${funilSlug}` : `/sorteio/${slugAtual}`);
+            })();
 
             $('#pixCopiaCola').val(pedido.pix_copia_cola || '');
             $('#qr-code-img').attr('src', pedido.pix_qr_code_base64 || '');

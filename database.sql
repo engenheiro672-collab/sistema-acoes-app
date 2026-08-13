@@ -435,6 +435,7 @@ alter table pedidos add column if not exists pix_qr_code_base64 text;
 alter table pedidos add column if not exists updated_at timestamptz default now();
 alter table pedidos add column if not exists promocao_titulo text;
 alter table pedidos add column if not exists veio_de_combo_roleta boolean default false;
+alter table pedidos add column if not exists criado_manualmente_admin boolean default false;
 
 alter table bilhetes_premiados add column if not exists valor_premio text;
 alter table bilhetes_premiados add column if not exists tipo text default 'bilhete';

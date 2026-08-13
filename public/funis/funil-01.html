@@ -112,7 +112,7 @@
 </head>
 <body class="pb-8">
 
-    <header class="header-bar shadow-lg sticky top-0 z-50 relative">
+    <header class="header-bar shadow-lg sticky top-0 z-50 relative hidden">
         <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
             <a href="/" id="logo-link"><div id="logo-box" class="text-2xl font-bold text-white">LOGO</div></a>
             <button id="btn-menu" class="text-gray-300 hover:text-white" style="font-size:2rem; padding:8px;"><i class="bi bi-list"></i></button>
@@ -373,6 +373,9 @@
             } catch (e) {}
             return null;
         })();
+        if (FUNIL_SLUG) {
+            try { localStorage.setItem('funil_cravado_' + SORTEIO_SLUG, JSON.stringify({ funilSlug: FUNIL_SLUG, expira: Date.now() + 7 * 24 * 60 * 60 * 1000 })); } catch (e) {}
+        }
 
         let SORTEIO_DATA = {};
         let CHANCE_DOBRO_ATIVA = null;
@@ -840,12 +843,22 @@
 
         
         // Bloqueia o zoom por toque duplo (o navegador ignora "user-scalable=no" em telas recentes)
+        // — só quando é o MESMO lugar sendo tocado de novo rapidinho (o gesto real de zoom).
+        // Cliques rápidos em botões DIFERENTES (tipo os de mais/menos cota) continuam funcionando normal.
         (function() {
             let ultimoToque = 0;
+            let ultimaPosX = 0;
+            let ultimaPosY = 0;
             document.addEventListener('touchend', function(e) {
                 const agora = Date.now();
-                if (agora - ultimoToque <= 350) { e.preventDefault(); }
+                const toque = e.changedTouches && e.changedTouches[0];
+                const posX = toque ? toque.clientX : 0;
+                const posY = toque ? toque.clientY : 0;
+                const distancia = Math.hypot(posX - ultimaPosX, posY - ultimaPosY);
+                if (agora - ultimoToque <= 350 && distancia < 30) { e.preventDefault(); }
                 ultimoToque = agora;
+                ultimaPosX = posX;
+                ultimaPosY = posY;
             }, { passive: false });
             document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
         })();

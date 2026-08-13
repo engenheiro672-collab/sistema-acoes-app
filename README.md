@@ -1,4 +1,69 @@
-# Sistema de Sorteios — v94 (Link cravado, botão verde, modal mais espaçoso)
+# Sistema de Sorteios — v97 (✅ Criar Novo Pedido — completo, incluindo puxar cota específica)
+
+## A funcionalidade está pronta, ponta a ponta
+
+Na aba **Pedidos** do painel, novo botão verde **"Criar Novo Pedido"**. Ao clicar:
+
+1. Seleciona o sorteio primeiro
+2. Aparecem os campos: nome, telefone (sempre), e CPF/e-mail/endereço **só se esse sorteio pedir** essas informações
+3. Quantidade de títulos **ou** um valor direto (um dos dois, o sistema calcula o outro)
+4. Opção de incluir numa **promoção** já cadastrada nesse sorteio
+5. Opção de aplicar **Chance em Dobro** manualmente nesse pedido
+6. **Puxar uma cota específica**: digita o número que quer, e o sistema já traz ela pro pedido — se ela já pertencer a outro pedido, esse outro pedido recebe um número novo aleatório no lugar (a quantidade dele continua igual, só troca qual número representa uma das cotas dele)
+
+O pedido já entra como **pago**, com as cotas geradas de verdade — inclusive testando corretamente se bateu com algum prêmio da roleta (útil pra você testar os bilhetes premiados, como pediu).
+
+## ⚠️ Lembrete: já tinha pedido pra rodar o SQL numa entrega anterior
+
+Se ainda não rodou, é hora — tem uma coluna nova (`criado_manualmente_admin`) que esse recurso usa.
+
+## Ainda falta o último item grande
+
+O novo fluxo da roleta no checkout (esconder combos na hora de girar, "não foi dessa vez", botão "Tentar novamente"). Continuo nele a seguir.
+
+
+## 1. Cabeçalho escondido (teste)
+
+Feito nos dois arquivos (`sorteio.html` e `funil-01.html`) — só **escondi**, não apaguei, então é fácil trazer de volta se não gostar. O botão "Meus Títulos" continua funcionando normal (tem um botão dedicado logo abaixo da foto, não dependia só do menu do cabeçalho).
+
+## 2. 🐛 O bug real do link "cravado" — achei a causa de verdade
+
+O problema não era a atribuição em si (isso já tínhamos corrigido) — era que, quando o checkout mandava a pessoa **de volta** pro sorteio (comprando mais roleta, ou clicando "voltar"), ele sempre usava o link "puro", sem o funil, **mesmo se a pessoa tivesse vindo de um funil específico**. Corrigido nos 4 arquivos (sorteio, funil-01, checkout, checkout-funil-01) — agora ele lembra de qual funil a pessoa veio e leva ela de volta pro mesmo lugar.
+
+## 3. Textos corrigidos no checkout do Funil 01
+
+- "Comprador" (nos detalhes da compra) — estava branco, invisível
+- Roleta (título, "Tente Denovo", botões "GIRAR"/"GIRAR TODAS"/"Próxima") — mesmo problema, texto escuro em cima de fundo colorido escuro
+
+## 4. 🐛 Botão de mais/menos cota não respondia a cliques rápidos — achei a causa
+
+Era o código que bloqueia zoom por toque duplo — ele bloqueava **qualquer** dois toques rápidos na tela inteira, não só toques repetidos no mesmo lugar (que é o gesto real de zoom). Corrigido: agora só bloqueia se for realmente no mesmo pontinho — cliques rápidos em botões diferentes (como ir aumentando a quantidade rapidamente) funcionam normal.
+
+## Ainda faltam os dois itens grandes
+
+1. Finalizar a tela de "Criar Novo Pedido" no painel + a opção de puxar uma cota específica
+2. O novo fluxo da roleta no checkout (não mostrar os combos na hora de girar, mensagem "não foi dessa vez", botão "Tentar novamente")
+
+Continuo neles a seguir.
+
+
+## O que está pronto nessa parte
+
+O "motor" da funcionalidade de criar pedido manual pelo painel:
+
+- **Novo endpoint**: `POST /api/admin/pedidos/criar-manual`
+- Reaproveita toda a lógica que já existe e já é comprovada: cadastro/busca de comprador, geração de cotas de verdade, atribuição de giro de roleta se estiver ativa
+- Aceita: sorteio, nome, telefone (sempre), CPF/e-mail/endereço (só se configurado pro sorteio), quantidade de títulos OU valor customizado, aplicar numa promoção existente, e ativar Chance em Dobro manualmente pra esse pedido específico
+- O pedido já entra como **pago**, com as cotas geradas de verdade na hora
+
+## ⚠️ Precisa rodar o SQL de novo
+
+Nova coluna `criado_manualmente_admin` na tabela `pedidos` — só pra identificar depois quais pedidos foram criados manualmente vs. compra normal.
+
+## Ainda falta — a parte visual
+
+A tela no painel (botão, formulário, seleção de sorteio) — vem na próxima entrega, continuando direto na mesma linha.
+
 
 ## 1. Link "cravado" — atribuição não se perde mais
 
