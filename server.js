@@ -209,6 +209,21 @@ app.use((req, _res, next) => {
   next();
 });
 
+// 🔒 Trava o subdomínio do painel (panthers.premiosderrets.com.br) pra só responder o que é
+// realmente do painel — nada de site público, nada de arquivo estático solto. Se alguém acessar
+// qualquer outro caminho por esse endereço (ex: /inicio, /sorteio/algo), recebe 404, como se
+// aquele caminho nem existisse ali. O painel não depende de nenhum arquivo local pra funcionar
+// (CSS/JS vêm de CDN externo, a logo vem do Supabase), então dá pra travar sem quebrar nada.
+app.use((req, res, next) => {
+  const ehSubdominioDoPainel = (req.hostname || '').toLowerCase() === 'panthers.premiosderrets.com.br';
+  if (!ehSubdominioDoPainel) return next();
+
+  const caminhosPermitidos = ['/', '/login', '/logout'];
+  const ehPermitido = caminhosPermitidos.includes(req.path) || req.path.startsWith('/api/admin');
+  if (!ehPermitido) return res.status(404).send('Not found');
+  return next();
+});
+
 app.use('/api/webhook/pagamento', express.raw({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '20mb' }));
