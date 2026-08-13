@@ -2706,6 +2706,19 @@ function onFunilSorteioChange(id) {
     $('#box-add-funil').toggleClass('opacity-50 pointer-events-none', !id);
     if (id) carregarFunis(id); else $('#lista-funis').empty();
 }
+// Busca os arquivos de verdade que existem em public/funis/ no servidor, e preenche os dois
+// seletores (página do sorteio + checkout) — assim nunca fica desatualizado.
+function carregarArquivosDeFunilDisponiveis() {
+    api('GET', '/api/admin/funis/arquivos-disponiveis').then(d => {
+        const arquivos = d.arquivos || [];
+        const optsHtml = ['<option value="sorteio.html">sorteio.html (padrão)</option>']
+            .concat(arquivos.filter(a => a !== 'sorteio.html').map(a => `<option value="${a}">${a}</option>`));
+        const optsCheckout = ['<option value="checkout.html">checkout.html (padrão)</option>']
+            .concat(arquivos.filter(a => a !== 'checkout.html').map(a => `<option value="${a}">${a}</option>`));
+        $('#funil-arquivo-html').html(optsHtml.join(''));
+        $('#funil-arquivo-checkout').html(optsCheckout.join(''));
+    });
+}
 function criarFunil() {
     if (!SORTEIO_FUNIL_ID) return notificar('Selecione o sorteio primeiro.', 'erro');
     const nome = $('#funil-nome').val();
@@ -3512,6 +3525,7 @@ $(document).ready(function() {
         PERIODO_ESTADO.dash.de = p0.de; PERIODO_ESTADO.dash.ate = p0.ate;
         PERIODO_ESTADO.rel.de = p0.de; PERIODO_ESTADO.rel.ate = p0.ate;
         carregarSorteios();
+        carregarArquivosDeFunilDisponiveis();
         const ultimaPagina = localStorage.getItem('dashboard_ultima_pagina');
         if (ultimaPagina && ultimaPagina !== 'dashboard' && $('#page-' + ultimaPagina).length) {
             navTo(ultimaPagina);

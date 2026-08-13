@@ -378,6 +378,17 @@ const limitePublicoSensivel = rateLimit({
   message: { status: 'error', error: 'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.' }
 });
 
+// Lista os arquivos HTML customizados que existem em public/funis/ — assim o painel sempre mostra
+// os arquivos de verdade que estão no servidor, sem precisar editar código toda vez que adiciona um novo.
+app.get('/api/admin/funis/arquivos-disponiveis', ensureAdminAuth, (_req, res) => {
+  try {
+    const pastaFunis = path.join(PUBLIC_DIR, 'funis');
+    if (!fs.existsSync(pastaFunis)) return ok(res, { arquivos: [] });
+    const arquivos = fs.readdirSync(pastaFunis).filter(f => f.toLowerCase().endsWith('.html'));
+    return ok(res, { arquivos });
+  } catch (e) { return fail(res); }
+});
+
 app.get('/api/admin/session', (req, res) => {
   if (req.session?.admin?.email) return ok(res, { authenticated: true, admin: req.session.admin });
   return res.status(401).json({ status: 'error', authenticated: false });
