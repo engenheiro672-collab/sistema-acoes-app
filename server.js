@@ -1789,7 +1789,12 @@ app.post('/api/admin/sorteios/:id/roleta-ativada', ensureAdminAuth, async (req, 
 });
 app.post('/api/admin/sorteios/:id/roleta-giros-por-compra', ensureAdminAuth, async (req, res) => {
   try {
-    const valor = Math.max(0, parseInt(req.body?.roleta_giros_por_compra) || 0);
+    const bruto = req.body?.roleta_giros_por_compra;
+    const valor = parseInt(bruto);
+    // 🐛 Antes, se o valor não viesse certinho, salvava 0 silenciosamente — e 0 giros garantidos
+    // quebra a promessa de "todo mundo que compra tem direito a pelo menos 1 giro". Agora recusa
+    // valores inválidos em vez de corromper o dado sem avisar.
+    if (isNaN(valor) || valor < 0) return fail(res, 'Digite um número válido (0 ou mais).', 400);
     const { error } = await supabase.from('sorteios').update({ roleta_giros_por_compra: valor }).eq('id', req.params.id);
     if (error) return fail(res, error.message);
     return ok(res);

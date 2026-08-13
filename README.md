@@ -1,4 +1,29 @@
-# Sistema de Sorteios — v99 (🐛 3 bugs reais corrigidos + formatação no Criar Novo Pedido)
+# Sistema de Sorteios — v100 (🐛 3 bugs reais corrigidos — banco, redirecionamento, roleta)
+
+## 1. Erro ao excluir link ("violates foreign key constraint") — corrigido
+
+Achei a causa: a tabela `pedidos` tinha uma trava que impedia excluir um link se algum pedido já tivesse usado ele. Corrigido — agora o pedido continua com todo o histórico, só perde o vínculo direto com o link excluído.
+
+## 2. Link/funil não ficava salvo se a pessoa digitasse o site direto
+
+Achei a explicação: até agora, o sistema só "lembrava" o funil na hora de criar o pedido — mas se a pessoa acessasse a página normal (digitando o site, ou vindo da página inicial), ela via a versão errada (a escura, não o Funil 01), mesmo já tendo um funil salvo.
+
+**Corrigido**: agora, se alguém cair na página "pura" do sorteio mas já tiver um funil salvo de antes, o sistema já leva ela automaticamente pra experiência certa — sem precisar clicar de novo no link original.
+
+## 3. 🐛 Roleta não aparecendo — achei uma causa real e concreta
+
+O campo "Giros garantidos por compra" (na aba Roleta do painel) tinha uma falha: se o valor não chegasse certinho na hora de salvar, o sistema gravava **zero** silenciosamente, sem avisar nada — e com zero configurado, ninguém ganha giro nenhum, mesmo a roleta estando "ativada".
+
+**Corrigido**: agora, se o valor não for válido, o sistema recusa salvar e avisa, em vez de gravar 0 escondido.
+
+## ⚠️ Ação que você precisa fazer
+
+Vai na aba **Roleta** do painel, seleciona o sorteio afetado, e confere o campo **"Giros garantidos por compra"** — se estiver mostrando **0**, muda pra **1** (ou o número que você quiser) e salva de novo. É bem provável que seja exatamente isso.
+
+## ⚠️ Precisa rodar o SQL de novo
+
+Tem a correção da trava do banco.
+
 
 ## 1. Promoções não apareciam no Criar Novo Pedido — achei a causa
 

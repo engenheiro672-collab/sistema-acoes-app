@@ -359,8 +359,22 @@
         // Suporta: /sorteio/:slug  e  /sorteio/:slug/:funilSlug
         const pathParts = window.location.pathname.split('/').filter(Boolean); // ['sorteio', slug, funilSlug?]
         const SORTEIO_SLUG = pathParts[1] || '';
-        const FUNIL_SLUG = pathParts[2] || null;
+        let FUNIL_SLUG = pathParts[2] || null;
         const URL_PARAMS = new URLSearchParams(window.location.search);
+
+        // ⭐ Se a pessoa chegou aqui pelo endereço "puro" (sem funil na URL — ex: digitou direto,
+        // ou veio da página inicial), mas já tinha um funil salvo de antes pra ESSE sorteio, manda
+        // ela direto pra experiência certa (mesmo visual, mesmo rastreio), sem precisar clicar de
+        // novo no link original. Só não faz isso se a URL já veio com um funil explícito.
+        if (!FUNIL_SLUG && SORTEIO_SLUG) {
+            try {
+                const funilSalvo = JSON.parse(localStorage.getItem('funil_cravado_' + SORTEIO_SLUG) || 'null');
+                if (funilSalvo && funilSalvo.expira > Date.now() && funilSalvo.funilSlug) {
+                    const novaUrl = `/sorteio/${SORTEIO_SLUG}/${funilSalvo.funilSlug}${window.location.search}`;
+                    window.location.replace(novaUrl);
+                }
+            } catch (e) {}
+        }
         // ⭐ "Crava" o link de origem: se veio um ?lk= novo na URL, guarda ele por 7 dias (mesmo
         // que a pessoa navegue pra outras páginas, feche o navegador e volte depois). Se não veio
         // nenhum novo, usa o que já estava guardado de antes — a atribuição nunca se perde.

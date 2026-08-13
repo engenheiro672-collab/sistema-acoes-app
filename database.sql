@@ -130,7 +130,7 @@ create table if not exists pedidos (
   user_id uuid references usuarios(id),
   sorteio_id uuid references sorteios(id) on delete cascade,
   funil_id uuid references funis(id),
-  link_id uuid references links_rastreamento(id),
+  link_id uuid references links_rastreamento(id) on delete set null,
   quantidade_cotas integer not null,
   valor_total numeric(12,2) not null,
   status text default 'aguardando',        -- 'aguardando' | 'pago' | 'cancelado'
@@ -396,6 +396,29 @@ begin
 exception when others then null; -- se já estiver corrigido ou algo assim, ignora com segurança
 end $$;
 alter table sorteios add column if not exists roleta_pool_total integer default 0;
+
+-- 🐛 CORREÇÃO DE BUG: a trava de chave estrangeira de pedidos.link_id não deixava excluir um link
+-- de rastreamento depois que algum pedido já tinha usado ele (o Postgres bloqueava silenciosamente,
+-- com o erro "violates foreign key constraint pedidos_link_id_fkey"). Troca pra "ON DELETE SET
+-- NULL" — o pedido continua registrado com todo o histórico, só perde o vínculo direto com o link.
+do $$
+declare
+  nome_da_trava text;
+begin
+  select tc.constraint_name into nome_da_trava
+  from information_schema.table_constraints tc
+  join information_schema.key_column_usage kcu on tc.constraint_name = kcu.constraint_name
+  where tc.table_name = 'pedidos' and tc.constraint_type = 'FOREIGN KEY' and kcu.column_name = 'link_id'
+  limit 1;
+
+  if nome_da_trava is not null then
+    execute format('alter table pedidos drop constraint %I', nome_da_trava);
+  end if;
+
+  alter table pedidos add constraint pedidos_link_id_fkey
+    foreign key (link_id) references links_rastreamento(id) on delete set null;
+exception when others then null;
+end $$;
 alter table sorteios add column if not exists updated_at timestamptz default now();
 alter table sorteios add column if not exists regulamento text;
 alter table sorteios add column if not exists notice_active boolean default false;
