@@ -594,7 +594,28 @@ function enviarSorteioComOg(res, dadosCompletos, req, nomeArquivo = 'sorteio.htm
   return res.send(htmlComOg);
 }
 
-app.get('/sorteio/:slug', trackearAcesso, async (req, res) => {
+// ⭐ Se a pessoa cair no link "puro" do sorteio (sem funil, sem ?lk= novo), mas já tiver um funil
+// cravado de uma visita anterior, redireciona ELA NO SERVIDOR — antes de qualquer contagem de
+// acesso acontecer. Isso evita o bug de contar acesso duas vezes (uma no link oficial, outra no
+// funil) que acontecia quando esse redirecionamento era feito só no navegador, depois da página
+// já ter carregado (e já ter sido contabilizada).
+function redirecionarParaFunilCravado(req, res, next) {
+  if (req.query.lk) {
+    // Um link novo de verdade (?lk=) foi clicado — isso sempre tem prioridade (último clique
+    // vale), e como esse link não aponta pra nenhum funil específico, limpa o funil cravado
+    // anterior, senão a pessoa ficaria presa num funil antigo mesmo clicando num link diferente.
+    res.clearCookie('funil_cravado_' + req.params.slug);
+    return next();
+  }
+  const funilCravado = req.cookies?.['funil_cravado_' + req.params.slug];
+  if (funilCravado) {
+    const qs = new URLSearchParams(req.query).toString();
+    return res.redirect(302, `/sorteio/${req.params.slug}/${funilCravado}${qs ? '?' + qs : ''}`);
+  }
+  next();
+}
+
+app.get('/sorteio/:slug', redirecionarParaFunilCravado, trackearAcesso, async (req, res) => {
   try {
     const dados = await getSorteioPublicData(req.params.slug, req.query.funil || null);
     if (!dados) return res.status(404).send('Sorteio não encontrado');
@@ -607,6 +628,9 @@ app.get('/sorteio/:slug', trackearAcesso, async (req, res) => {
 
 // Serve o HTML correto para o funil: cada funil pode apontar pra um arquivo diferente em public/funis/
 app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
+  // ⭐ "Crava" esse funil pros próximos 7 dias — qualquer acesso futuro ao link "puro" desse
+  // sorteio (nesse navegador) volta pra cá automaticamente, sem contar acesso duplicado.
+  res.cookie('funil_cravado_' + req.params.slug, req.params.funilSlug, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
   try {
     const { slug, funilSlug } = req.params;
     const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();

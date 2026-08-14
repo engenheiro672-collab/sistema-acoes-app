@@ -244,7 +244,11 @@ create table if not exists roleta_giros (
   created_at timestamptz default now()
 );
 create index if not exists idx_roleta_giros_pedido on roleta_giros(pedido_id);
-create unique index if not exists idx_roleta_giros_sorteio_numero on roleta_giros(sorteio_id, numero_giro);
+-- 🐛 CORREÇÃO DE BUG GRAVE: essa trava original exigia numero_giro único POR SORTEIO INTEIRO —
+-- na prática, isso significava que só o PRIMEIRO cliente que ganhasse roleta em cada sorteio
+-- conseguia; todo mundo depois falhava silenciosamente ("duplicate key"). O certo é ser único só
+-- DENTRO de cada pedido (giro 1, 2, 3... da compra específica de cada pessoa).
+create unique index if not exists idx_roleta_giros_pedido_numero on roleta_giros(pedido_id, numero_giro);
 
 -- ============================================================================
 -- 13) CONFIGURACOES — chave/valor genérico (gateway, pixels, nome do sistema, etc.)
@@ -347,6 +351,11 @@ create index if not exists idx_despesas_data on despesas(data);
 -- Esse bloco resolve isso de vez: toda vez que você rodar esse arquivo inteiro (mesmo
 -- que seu banco já exista há tempos, em qualquer versão), ele garante que TODAS as
 -- colunas que o sistema usa existem — sem apagar nem sobrescrever nada que já tem dado.
+
+-- 🐛 CORREÇÃO DE BUG GRAVE: remove a trava antiga do banco que impedia qualquer cliente, exceto
+-- o primeiro, de ganhar giro de roleta em cada sorteio (erro "duplicate key" silencioso).
+drop index if exists idx_roleta_giros_sorteio_numero;
+create unique index if not exists idx_roleta_giros_pedido_numero on roleta_giros(pedido_id, numero_giro);
 
 alter table admin_users add column if not exists name text;
 alter table admin_users add column if not exists status text default 'active';

@@ -1,4 +1,78 @@
-# Sistema de Sorteios — v100 (🐛 3 bugs reais corrigidos — banco, redirecionamento, roleta)
+# Sistema de Sorteios — v103 (🎯 Rastreio de link redesenhado — sem contagem duplicada)
+
+## O bug que você descreveu — achei a causa exata
+
+O redirecionamento pro funil que eu tinha feito antes acontecia **no navegador**, depois que a página já tinha carregado — e isso significava que o servidor já tinha contado aquele acesso pro **link oficial** antes mesmo do redirecionamento rodar. Aí o redirecionamento levava a pessoa pro funil, e o servidor contava **de novo**, dessa vez pro funil. Resultado: acesso duplicado, contando nos dois lugares.
+
+## Como corrigi
+
+Movi essa decisão pro **servidor**, usando um "cookie" (diferente de antes, que só o navegador via) — agora, antes mesmo da página carregar, o servidor já sabe: "essa pessoa tem um funil cravado, vou mandar ela direto pra lá", sem nunca contar acesso no link oficial nesse meio do caminho. Só uma contagem acontece, sempre no lugar certo.
+
+## A regra de prioridade que você pediu — implementada certinha
+
+- **Link oficial do sorteio** (sem código de rastreio): nunca sobrescreve o que já estava cravado — só existe pra "levar de volta" pro que já estava salvo.
+- **Qualquer link novo com rastreio** (WhatsApp, Instagram Stories, um funil diferente): sempre sobrescreve o anterior — **último clique vale**, exatamente como você descreveu.
+- Se a pessoa clicar num link novo que não é de nenhum funil específico, o funil anterior é liberado — ela não fica "presa" nele à toa.
+
+## Testa assim, pra confirmar
+
+1. Acessa o link do Funil 01
+2. Volta pro início, tenta acessar de novo (deve voltar pro Funil 01, sem duplicar contagem)
+3. Confere no Comparativo de Links se só o Funil 01 recebeu esse acesso, não o oficial também
+4. Testa clicando num link diferente (WhatsApp, por exemplo) — deve assumir a prioridade
+
+## Sem mudança de banco — só `server.js` e `public/sorteio.html`.
+
+
+## Os logs de diagnóstico funcionaram perfeitamente — achamos a causa exata
+
+```
+[roleta] ERRO ao inserir giros: duplicate key value violates unique constraint "idx_roleta_giros_sorteio_numero"
+```
+
+## O que estava acontecendo — e é sério
+
+O banco de dados tinha uma trava dizendo que o "número do giro" precisava ser único **em todo o sorteio inteiro**. Mas o certo era ser único só **dentro de cada pedido individual** (giro 1, 2, 3... da compra específica de cada pessoa).
+
+**Na prática, isso significava**: só o **primeiro cliente** que ganhasse direito a giro de roleta em cada sorteio conseguia de verdade — todo mundo depois disso, a tentativa de dar o giro **falhava silenciosamente** no banco de dados. É por isso que testando de novo, com um sorteio que já tinha tido pelo menos um giro registrado antes, continuava não aparecendo.
+
+## Corrigido
+
+Troquei a trava do banco pra ser única por pedido, não por sorteio inteiro — do jeito que sempre deveria ter sido.
+
+## ⚠️ IMPORTANTE: precisa rodar o SQL de novo — dessa vez é crítico
+
+Essa correção só funciona depois de rodar o `database.sql` atualizado — ele remove a trava antiga quebrada e coloca a certa no lugar.
+
+## ⚠️ Sobre pedidos antigos que podem ter sido afetados
+
+Qualquer pedido pago **antes** dessa correção, que deveria ter ganhado roleta mas não ganhou (por causa desse bug), **não vai ganhar retroativamente** — o giro simplesmente nunca foi criado pra eles. Se você quiser, posso construir uma ferramenta pra "reprocessar" pedidos antigos e dar o giro que faltou pra eles. Me avisa se quiser isso.
+
+## Depois de rodar o SQL, testa de novo
+
+Faz uma compra de teste **num sorteio que já teve compra antes** (é justamente esse cenário que estava quebrado) — deve funcionar agora.
+
+
+## Sendo honesto: revisei tudo de novo, a lógica parece certa no papel
+
+Reli a função inteira que decide se cria o giro de roleta, ponto por ponto — estruturalmente está correta. Como não tenho acesso ao banco de dados de vocês pra ver o que está salvo de verdade, em vez de ficar chutando mais uma causa, adicionei **registros de diagnóstico bem detalhados** — assim, da próxima vez que testar, os logs vão me mostrar exatamente onde está travando, não mais eu tentando adivinhar.
+
+## Uma possibilidade que também quero descartar: será que o SQL mais recente foi rodado?
+
+Se a coluna `roleta_giros_por_compra` não existir no banco de vocês ainda (por não ter rodado o SQL de uma atualização anterior), a consulta pode falhar silenciosamente logo no início — e os logs novos vão mostrar isso bem claro também.
+
+## Como testar e me ajudar a achar a causa de vez
+
+1. Sobe essa atualização (e **confirma que rodou o SQL mais recente também**, se ainda não tiver rodado)
+2. Faz uma compra de teste num sorteio com a roleta ativada
+3. Vai no Render → seu serviço → aba **Logs**
+4. Procura as linhas que começam com `[roleta]` — geradas bem na hora da compra
+5. Me copia e cola aqui **exatamente** o que aparecer nessas linhas
+
+Com esse log na mão, vou conseguir apontar a causa exata, sem mais chutes.
+
+## Sem mudança visual — só logs a mais, pra investigar com precisão.
+
 
 ## 1. Erro ao excluir link ("violates foreign key constraint") — corrigido
 
