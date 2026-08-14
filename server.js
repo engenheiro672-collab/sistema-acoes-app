@@ -1172,7 +1172,11 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 // pra outro número de cota que ainda não foi vendido, pra continuar valendo pra um comprador futuro.
 async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) {
   const { data: sorteio } = await supabase.from('sorteios').select('roleta_ativada, total_cotas, roleta_giros_por_compra').eq('id', sorteio_id).maybeSingle();
-  if (!sorteio || !sorteio.roleta_ativada) return;
+  console.log(`[roleta] Pedido ${pedido?.id} — sorteio_id=${sorteio_id}, roleta_ativada=${sorteio?.roleta_ativada}, roleta_giros_por_compra=${sorteio?.roleta_giros_por_compra}`);
+  if (!sorteio || !sorteio.roleta_ativada) {
+    console.log(`[roleta] Pedido ${pedido?.id} — SAIU CEDO: sorteio não encontrado ou roleta_ativada é falso.`);
+    return;
+  }
 
   const girosGarantidos = Number(sorteio.roleta_giros_por_compra ?? 1);
   let qtdGiros = girosGarantidos;
@@ -1186,6 +1190,7 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
     const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
     if (tierAlcançado) qtdGiros = Math.max(girosGarantidos, Number(tierAlcançado.quantidade_giros));
   }
+  console.log(`[roleta] Pedido ${pedido?.id} — qtdGiros calculado = ${qtdGiros} (garantidos=${girosGarantidos})`);
 
   // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível
   const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel').in('numero_cota', numerosGerados);
@@ -1216,7 +1221,10 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
     }
   }
 
-  if (qtdGiros <= 0) return;
+  if (qtdGiros <= 0) {
+    console.log(`[roleta] Pedido ${pedido?.id} — SAIU: qtdGiros é 0 ou menos, nenhum giro será criado.`);
+    return;
+  }
 
   const houveVitoria = premioAcertado && qtdGiros > 0;
   const novasLinhas = [];
@@ -1231,7 +1239,10 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
       girado: false, created_at: new Date().toISOString()
     });
   }
-  await supabase.from('roleta_giros').insert(novasLinhas);
+  await supabase.from('roleta_giros').insert(novasLinhas).then(({ error }) => {
+    if (error) console.error(`[roleta] Pedido ${pedido?.id} — ERRO ao inserir giros:`, error.message);
+    else console.log(`[roleta] Pedido ${pedido?.id} — ${novasLinhas.length} giro(s) inserido(s) com sucesso.`);
+  });
 }
 
 // --- API PEDIDOS PUBLIC (com suporte a funil_id) ---
