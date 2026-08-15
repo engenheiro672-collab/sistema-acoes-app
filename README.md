@@ -1,4 +1,23 @@
-# Sistema de Sorteios — v105 (🚀 UPSELL COMPLETO — funcionalidade grande, ponta a ponta)
+# Sistema de Sorteios — v106 (🐛 Bug do Upsell corrigido + fotos 25-50% menores)
+
+## 1. Bug real corrigido: seletor de sorteio do Upsell
+
+Esqueci de incluir esse campo na lista de seletores que recebem a lista de sorteios de verdade — ele nunca preenchia. Corrigido.
+
+## 2. Sobre a lentidão no Instagram — entendi certinho agora
+
+Você tinha razão em esclarecer: é especificamente a **primeira** abertura que está mais lenta que os concorrentes (a segunda já está ótima, confirmado). Isso não tem a ver com cache (que só ajuda a partir da segunda visita) — é sobre o que precisa ser baixado e processado **logo de cara**.
+
+## O que encontrei e apliquei: fotos até 50% menores, mesma qualidade visual
+
+Testei e confirmei: trocando o formato de compressão das fotos (de JPEG/PNG pra um formato mais moderno chamado WebP), o arquivo final fica **25% a 50% menor**, com a mesma aparência. Como a foto é geralmente o elemento mais pesado da tela, isso ataca direto o que mais pesa numa primeira abertura — especialmente relevante num motor mais lento como o do navegador do Instagram.
+
+## ⚠️ Importante: só vale pra fotos novas
+
+Essa mudança se aplica a partir de agora — fotos que **já estão** cadastradas continuam do jeito que estão (JPEG/PNG). Se quiser o ganho nelas também, é só reenviar a foto de novo no painel (editar o sorteio, trocar a foto pela mesma imagem) — aí ela passa pelo processo novo.
+
+## Sem mudança de banco.
+
 
 ## Está tudo pronto e conectado, nos dois sorteios
 

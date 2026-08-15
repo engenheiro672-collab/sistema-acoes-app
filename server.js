@@ -349,16 +349,11 @@ const upload = multer({
 async function comprimirImagem(buffer, mimetype, larguraMaxima = 1280) {
   try {
     if (mimetype === 'image/gif') return { buffer, mimetype, extensao: 'gif' }; // GIF (pode ser animado) fica como está
-    if (mimetype === 'image/png') {
-      // PNG geralmente é logo/tem fundo transparente — mantém o formato, só redimensiona e comprime.
-      const comprimida = await sharp(buffer).resize({ width: larguraMaxima, withoutEnlargement: true }).png({ quality: 82, compressionLevel: 9 }).toBuffer();
-      return { buffer: comprimida, mimetype: 'image/png', extensao: 'png' };
-    }
-    const comprimida = await sharp(buffer)
-      .resize({ width: larguraMaxima, withoutEnlargement: true })
-      .jpeg({ quality: 78, mozjpeg: true })
-      .toBuffer();
-    return { buffer: comprimida, mimetype: 'image/jpeg', extensao: 'jpg' };
+    // WebP: mesmo visual que JPEG/PNG, mas 25-50% menor — ganho real principalmente em conexões
+    // ou motores mais lentos (como navegadores de dentro de apps tipo Instagram). Suporta
+    // transparência também, então funciona bem tanto pra fotos quanto pra logos com fundo transparente.
+    const comprimida = await sharp(buffer).resize({ width: larguraMaxima, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+    return { buffer: comprimida, mimetype: 'image/webp', extensao: 'webp' };
   } catch (e) {
     console.error('Erro ao comprimir imagem, usando original', e);
     return { buffer, mimetype, extensao: null };

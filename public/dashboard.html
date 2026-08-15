@@ -1539,7 +1539,7 @@ function popularSelectsSorteios() {
     const opts = '<option value="">Todos</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
     $('.select-sorteio-dash').not('#push-sorteio').html(opts);
     const optsEscolha = '<option value="">Selecione um sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
-    $('#select-bilhete-sorteio, #select-roleta-sorteio, #select-chance-sorteio, #select-urgencia-sorteio, #select-promo-sorteio').html(optsEscolha);
+    $('#select-bilhete-sorteio, #select-roleta-sorteio, #select-chance-sorteio, #select-urgencia-sorteio, #select-promo-sorteio, #select-upsell-sorteio').html(optsEscolha);
     $('#push-sorteio').html('<option value="">Sem sorteio específico (link livre)</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
 }
 
