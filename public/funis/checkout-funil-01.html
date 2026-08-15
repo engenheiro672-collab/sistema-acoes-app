@@ -19,6 +19,17 @@
         @keyframes pulsar-gradiente-verde { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 100%; overflow: visible; }
+        .btn-girar-todas-estilo { background: #fff; color: #16a34a; border: 2px solid #16a34a; font-weight: 800; padding: 8px 20px; border-radius: 999px; cursor: pointer; font-size: 0.85rem; animation: pulse-opacity 1.8s ease-in-out infinite; }
+        .giro-linha { border-radius: 14px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+        .giro-linha .giro-info { display: flex; flex-direction: column; gap: 2px; }
+        .giro-titulo { color: #fff; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .giro-sub { color: rgba(255,255,255,0.85); font-size: 0.78rem; }
+        .giro-pendente { background: linear-gradient(135deg, #14532d, #16a34a); }
+        .giro-perdeu { background: linear-gradient(135deg, #15803d, #4ade80); }
+        .giro-ganhou-linha { background: linear-gradient(135deg, #b45309, #f59e0b); }
+        .pill-girar { background: rgba(0,0,0,0.28); color: #fff; border: none; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; cursor: pointer; animation: pulse-opacity 1.6s ease-in-out infinite; }
+        .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; }
+        .pill-tentar { background: #15803d; color: #fff; border: none; border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: 0.8rem; cursor: pointer; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .header-bar { background-color: #000; padding: 1rem; }
         .card { background-color: #ffffff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
@@ -117,24 +128,6 @@
         </div>
         <div id="bonus-tag-box" class="text-center"></div>
 
-        <div id="banner-ativar-push" class="hidden my-4 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
-            <div class="sino-balancando" style="font-size:3rem;">🔔</div>
-            <h3 class="text-gray-800 font-black text-xl mt-2">Ative as notificações</h3>
-            <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Para receber promoções exclusivas, ative a notificação!</p>
-            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
-                <i class="bi bi-bell-fill"></i> Ativar Notificação
-            </button>
-        </div>
-
-        <div id="banner-grupo-vip-novo" class="hidden my-4" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
-            <div style="font-size:3rem;">👥</div>
-            <h3 class="text-gray-800 font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
-            <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
-            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-4 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
-                <i class="bi bi-whatsapp"></i> Entrar no Grupo
-            </a>
-        </div>
-
         <p id="cronometro-box" class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
 
         <div id="card-instrucoes" class="card">
@@ -186,6 +179,32 @@
                 </div>
         </div>
 
+        <div id="secao-roletas-checkout" class="card hidden text-left">
+            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                <span class="flex items-center gap-2" style="font-weight:600; color:#212b36; font-size:0.95rem;"><i class="bi bi-bullseye" style="color:#16a34a; font-size:1.2rem;"></i> <span id="texto-contador-roletas">Você tem 0 roleta(s) para girar!</span></span>
+                <button id="btn-girar-todas" class="btn-girar-todas-estilo">Girar Todas</button>
+            </div>
+            <div id="lista-giros-checkout" class="space-y-2"></div>
+        </div>
+
+        <div id="banner-ativar-push" class="hidden my-4 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:3rem;">🔔</div>
+            <h3 class="text-gray-800 font-black text-xl mt-2">Ative as notificações</h3>
+            <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Para receber promoções exclusivas, ative a notificação!</p>
+            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+                <i class="bi bi-bell-fill"></i> Ativar Notificação
+            </button>
+        </div>
+
+        <div id="banner-grupo-vip-novo" class="hidden my-4" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div style="font-size:3rem;">👥</div>
+            <h3 class="text-gray-800 font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
+            <p class="text-green-50 text-sm mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
+            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-4 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+                <i class="bi bi-whatsapp"></i> Entrar no Grupo
+            </a>
+        </div>
+
         <div id="card-detalhes-compra" class="card">
             <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center">
@@ -223,14 +242,9 @@
             </div>
         </div>
 
-        <div id="secao-roletas-checkout" class="card hidden text-left">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-xl font-semibold text-gray-800"><i class="bi bi-lightning-fill text-yellow-400"></i> Roletas</h3>
-                <span id="contador-roletas-checkout" class="text-gray-600 bg-gray-800 px-3 py-1 rounded-full text-sm">0/0</span>
-            </div>
-            <button id="btn-girar-todas" class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2 rounded-lg mb-3">GIRAR TODAS</button>
-            <div id="lista-giros-checkout" class="space-y-2"></div>
-        </div>
+        <p class="text-center mb-6">
+            <a id="link-suporte-compra" href="#" target="_blank" class="hidden" style="color:#16a34a; font-weight:600; font-size:0.85rem; text-decoration:none;">Problemas com sua compra? <span style="text-decoration:underline;">Clique aqui</span></a>
+        </p>
     </main>
 
     <!-- Popup dos combos de roleta — só aparece depois que a pessoa gira e não ganha, ou clicando em "Tentar novamente" -->
@@ -499,6 +513,7 @@
             isPago = true;
             $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-modo-teste').hide();
             $('#card-pago').removeClass('hidden').show();
+            $('.sorteio-corre-tag').text('Você está participando!').removeClass('blink');
             try { renderCombosRoleta(ROLETA_TIERS_GLOBAL, SORTEIO_SLUG_GLOBAL); } catch (e) { console.error('renderCombosRoleta', e); }
             $('#detalhe-situacao').text('Pago').removeClass('text-yellow-400 text-red-500').addClass('text-green-400');
             $('#detalhe-titulos-status').addClass('hidden');
@@ -587,26 +602,31 @@
 
         function renderListaGiros() {
             const restantes = GIROS.filter(g => !g.girado).length;
-            $('#contador-roletas-checkout').text(`${GIROS.length - restantes}/${GIROS.length}`);
-            $('#btn-girar-todas').toggle(restantes > 0);
+            if (restantes > 0) {
+                $('#texto-contador-roletas').text(`Você tem ${restantes} roleta(s) para girar!`);
+                $('#btn-girar-todas').text('Girar Todas').show().off('click.girartodas').on('click.girartodas', function() {
+                    const idx = GIROS.findIndex(g => !g.girado);
+                    if (idx >= 0) abrirModalRoleta(idx);
+                });
+            } else if (TEM_COMBOS_ROLETA) {
+                $('#texto-contador-roletas').text('Quer mais chances na roleta?');
+                $('#btn-girar-todas').text('Tentar novamente').show().off('click.girartodas').on('click.girartodas', abrirPopupCombosRoleta);
+            } else {
+                $('#texto-contador-roletas').text('Você já girou todas as roletas!');
+                $('#btn-girar-todas').hide();
+            }
             $('#lista-giros-checkout').html(GIROS.map((g, i) => {
                 if (g.girado && g.ganhou) {
                     const texto = g.valor_premio || g.premio_titulo || 'Prêmio!';
-                    return `<div class="bg-yellow-600 rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>${texto}</b></div>`;
+                    return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span></div><b style="color:#fff;">${texto}</b></div>`;
                 }
                 if (g.girado && !g.ganhou) {
                     if (TEM_COMBOS_ROLETA) {
-                        return `<div class="bg-gray-700 rounded-lg px-4 py-3 flex justify-between items-center text-white">
-                            <span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span>
-                            <button class="btn-tentar-novamente bg-green-700 hover:bg-green-800 px-4 py-1 rounded font-bold">Tentar novamente</button>
-                        </div>`;
+                        return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><button class="btn-tentar-novamente pill-tentar">Tentar novamente</button></div>`;
                     }
-                    return `<div class="bg-gray-700 rounded-lg px-4 py-3 flex justify-between items-center text-white"><span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span><b>Não foi dessa vez</b></div>`;
+                    return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><span class="pill-girou">GIROU</span></div>`;
                 }
-                return `<div class="bg-green-700 rounded-lg px-4 py-3 flex justify-between items-center text-white">
-                    <span><i class="bi bi-lightning-charge-fill"></i> Roleta Instantânea</span>
-                    <button class="btn-girar-uma bg-black bg-opacity-30 px-4 py-1 rounded font-bold" data-idx="${i}">GIRAR</button>
-                </div>`;
+                return `<div class="giro-linha giro-pendente"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span></div><button class="btn-girar-uma pill-girar" data-idx="${i}">GIRAR</button></div>`;
             }).join(''));
         }
 
@@ -724,10 +744,7 @@
         $('#roda-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
         $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; montarLabelsRoleta(); atualizarModalRoleta(); } });
         $('#btn-roleta-proxima').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; montarLabelsRoleta(); atualizarModalRoleta(); } });
-        $('#btn-girar-todas').on('click', function() {
-            const idx = GIROS.findIndex(g => !g.girado);
-            if (idx >= 0) abrirModalRoleta(idx);
-        });        function checarStatusPagamento() {
+        function checarStatusPagamento() {
             if (isPago || !TOKEN) return;
             $.get(`/api/public/pedidos/${TOKEN}/status`)
                 .done(function(data) {
@@ -796,6 +813,11 @@
             if (Number(pedido.giros_bonus_upsell) > 0) {
                 $('#linha-giros-bonus').removeClass('hidden');
                 $('#detalhe-giros-bonus').text(`🎯 +${pedido.giros_bonus_upsell} giro(s) de roleta`);
+            }
+            const suporteNum = String(pedido.sorteios?.suporte_whatsapp || '').replace(/\D/g, '');
+            if (suporteNum) {
+                const msgSuporte = encodeURIComponent(`Olá! Preciso de ajuda com meu pedido (${pedido.token || ''}).`);
+                $('#link-suporte-compra').attr('href', `https://wa.me/${suporteNum}?text=${msgSuporte}`).removeClass('hidden');
             }
 
             if (pagoInicial) {
