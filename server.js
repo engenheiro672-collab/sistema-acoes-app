@@ -594,28 +594,58 @@ function enviarSorteioComOg(res, dadosCompletos, req, nomeArquivo = 'sorteio.htm
   return res.send(htmlComOg);
 }
 
-// ⭐ Se a pessoa cair no link "puro" do sorteio (sem funil, sem ?lk= novo), mas já tiver um funil
-// cravado de uma visita anterior, redireciona ELA NO SERVIDOR — antes de qualquer contagem de
-// acesso acontecer. Isso evita o bug de contar acesso duas vezes (uma no link oficial, outra no
-// funil) que acontecia quando esse redirecionamento era feito só no navegador, depois da página
-// já ter carregado (e já ter sido contabilizada).
-function redirecionarParaFunilCravado(req, res, next) {
+// ⭐⭐ SISTEMA DE ATRIBUIÇÃO DE LINK — a lógica inteira do "link gravado" mora aqui.
+//
+// Regra: qualquer link COM código de rastreio (?lk=) que a pessoa clicar de propósito vira o
+// "link gravado" dela — WhatsApp, Instagram, um funil específico, não importa. A partir daí,
+// qualquer navegação que devolveria ela pro sorteio (clicar em "início" de novo, roleta, combo,
+// botão "voltar") sempre usa ESSE MESMO link gravado — nunca cria um link novo, nunca cai no
+// link oficial. Só troca se a pessoa clicar de propósito noutro link com código diferente
+// (último clique sempre vale). O link OFICIAL (sem ?lk=) nunca participa dessa "gravação" —
+// ele já é o destino natural quando não tem nada gravado, não precisa de memória especial.
+const NOME_COOKIE_ATRIBUICAO = (slug) => `atrib_${slug}`;
+
+function lerAtribuicaoCravada(req, slug) {
+  try {
+    const bruto = req.cookies?.[NOME_COOKIE_ATRIBUICAO(slug)];
+    return bruto ? JSON.parse(bruto) : null;
+  } catch (e) { return null; }
+}
+function gravarAtribuicao(res, slug, lk, funilSlug) {
+  res.cookie(NOME_COOKIE_ATRIBUICAO(slug), JSON.stringify({ lk: lk || null, funilSlug: funilSlug || null }), { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+}
+
+// Roda ANTES de qualquer contagem de acesso, só na rota "pura" (sem funil na URL) — decide se
+// essa visita precisa ser redirecionada pro link já gravado (sem contar acesso duplicado no
+// meio do caminho), ou se grava um link novo.
+function resolverAtribuicaoLinkOficial(req, res, next) {
+  const slug = req.params.slug;
   if (req.query.lk) {
-    // Um link novo de verdade (?lk=) foi clicado — isso sempre tem prioridade (último clique
-    // vale), e como esse link não aponta pra nenhum funil específico, limpa o funil cravado
-    // anterior, senão a pessoa ficaria presa num funil antigo mesmo clicando num link diferente.
-    res.clearCookie('funil_cravado_' + req.params.slug);
+    // Link novo de verdade sendo clicado — sempre tem prioridade, grava ele por cima do que
+    // já existia (último clique vale). Sem funil, já que é a rota "pura".
+    gravarAtribuicao(res, slug, req.query.lk, null);
     return next();
   }
-  const funilCravado = req.cookies?.['funil_cravado_' + req.params.slug];
-  if (funilCravado) {
-    const qs = new URLSearchParams(req.query).toString();
-    return res.redirect(302, `/sorteio/${req.params.slug}/${funilCravado}${qs ? '?' + qs : ''}`);
+  // Não veio nenhum ?lk= novo — confere se já tem algum link gravado de antes.
+  const cravado = lerAtribuicaoCravada(req, slug);
+  if (cravado && (cravado.lk || cravado.funilSlug)) {
+    const destino = cravado.funilSlug ? `/sorteio/${slug}/${cravado.funilSlug}` : `/sorteio/${slug}`;
+    const params = new URLSearchParams(req.query);
+    if (cravado.lk) params.set('lk', cravado.lk);
+    const queryString = params.toString();
+    return res.redirect(302, `${destino}${queryString ? '?' + queryString : ''}`);
   }
   next();
 }
 
-app.get('/sorteio/:slug', redirecionarParaFunilCravado, trackearAcesso, async (req, res) => {
+// Na rota do FUNIL, chegar aqui (com ou sem ?lk=) já é, em si, um destino deliberado — nunca
+// desvia pra outro link gravado. Só grava esse funil como o link atual, e segue normal.
+function gravarAtribuicaoDoFunil(req, res, next) {
+  gravarAtribuicao(res, req.params.slug, req.query.lk || null, req.params.funilSlug);
+  next();
+}
+
+app.get('/sorteio/:slug', resolverAtribuicaoLinkOficial, trackearAcesso, async (req, res) => {
   try {
     const dados = await getSorteioPublicData(req.params.slug, req.query.funil || null);
     if (!dados) return res.status(404).send('Sorteio não encontrado');
@@ -627,10 +657,7 @@ app.get('/sorteio/:slug', redirecionarParaFunilCravado, trackearAcesso, async (r
 });
 
 // Serve o HTML correto para o funil: cada funil pode apontar pra um arquivo diferente em public/funis/
-app.get('/sorteio/:slug/:funilSlug', trackearAcesso, async (req, res) => {
-  // ⭐ "Crava" esse funil pros próximos 7 dias — qualquer acesso futuro ao link "puro" desse
-  // sorteio (nesse navegador) volta pra cá automaticamente, sem contar acesso duplicado.
-  res.cookie('funil_cravado_' + req.params.slug, req.params.funilSlug, { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+app.get('/sorteio/:slug/:funilSlug', gravarAtribuicaoDoFunil, trackearAcesso, async (req, res) => {
   try {
     const { slug, funilSlug } = req.params;
     const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();

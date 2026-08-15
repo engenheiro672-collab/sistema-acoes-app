@@ -373,9 +373,6 @@
             } catch (e) {}
             return null;
         })();
-        if (FUNIL_SLUG) {
-            try { localStorage.setItem('funil_cravado_' + SORTEIO_SLUG, JSON.stringify({ funilSlug: FUNIL_SLUG, expira: Date.now() + 7 * 24 * 60 * 60 * 1000 })); } catch (e) {}
-        }
 
         let SORTEIO_DATA = {};
         let CHANCE_DOBRO_ATIVA = null;

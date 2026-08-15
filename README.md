@@ -1,4 +1,29 @@
-# Sistema de Sorteios — v103 (🎯 Rastreio de link redesenhado — sem contagem duplicada)
+# Sistema de Sorteios — v104 (🎯🎯 Rastreio de link — redesenho completo, resolvido de vez)
+
+## O bug real que você descreveu
+
+Minha correção anterior só gravava o **funil**, não o **link em si**. Isso significava que se alguém tivesse visitado o Funil 01 uma vez, mesmo dias atrás, esse cookie antigo "grudava" e teimava em levar de volta pro Funil 01 — mesmo que a pessoa tivesse acessado depois pelo WhatsApp de verdade.
+
+## O redesenho completo
+
+Agora o sistema grava o **link inteiro** (código + funil, juntos) — não só o funil. E apliquei essa correção em **todo lugar** que redireciona de volta: botão voltar do checkout, comprar mais roleta pelos combos, tanto no checkout normal quanto no do Funil 01.
+
+## A regra que você pediu, implementada exatamente assim
+
+- **Link oficial** (sem código): nunca "gruda" em ninguém — é sempre o destino padrão quando não tem nada gravado.
+- **Qualquer outro link** (WhatsApp, Instagram, um funil): assim que clicado, fica gravado. Toda navegação de volta ao sorteio (início → sorteio, roleta, combo, botão voltar) usa **esse mesmo link gravado**, nunca cria um link novo.
+- **Último clique vale** — só quando a pessoa clica de propósito num link diferente.
+
+## Teste recomendado, passo a passo
+
+1. Acessa pelo link do WhatsApp
+2. Compra, depois clica em "voltar" ou tenta de novo na roleta
+3. Confirma que continua sendo o WhatsApp que recebe o crédito (não o oficial, não um funil antigo)
+4. Depois, testa acessando por um link diferente (Instagram, por exemplo) — deve assumir a prioridade
+5. Confirma no Comparativo de Links que a contagem está batendo certinha, sem duplicar
+
+## Sem mudança de banco — `server.js`, `checkout.html`, `checkout-funil-01.html`, `sorteio.html`, `funil-01.html`.
+
 
 ## O bug que você descreveu — achei a causa exata
 

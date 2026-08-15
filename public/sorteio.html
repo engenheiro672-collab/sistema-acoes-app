@@ -376,12 +376,6 @@
             } catch (e) {}
             return null;
         })();
-        // ⭐ Também "crava" de qual FUNIL a pessoa veio (não só o código de rastreio) — assim,
-        // quando o checkout precisar mandar ela de volta pro sorteio (ex: comprar mais roleta),
-        // ele sabe que tem que levar pro mesmo funil, não pro sorteio "puro".
-        if (FUNIL_SLUG) {
-            try { localStorage.setItem('funil_cravado_' + SORTEIO_SLUG, JSON.stringify({ funilSlug: FUNIL_SLUG, expira: Date.now() + 7 * 24 * 60 * 60 * 1000 })); } catch (e) {}
-        }
 
         let SORTEIO_DATA = {};
         let CHANCE_DOBRO_ATIVA = null;
