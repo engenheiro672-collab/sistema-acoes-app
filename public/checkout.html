@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Checkout - Sorteios</title>
-    <link rel="stylesheet" href="/css/tailwind-estatico.css?v=2">
+    <link rel="stylesheet" href="/css/tailwind-estatico.css?v=3">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://code.jquery.com">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -172,6 +172,9 @@
                 <h4 id="sorteio-nome" class="card-small-title"></h4>
                 <p id="sorteio-qtd" class="card-small-desc">Cotas adquiridas: 0</p>
                 <span id="sorteio-total" class="card-small-badge">Total: R$ 0,00</span>
+                <div id="badge-desconto-resumo" class="hidden" style="margin-top:6px;">
+                    <span style="background:#1a8754; color:#fff; font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; display:inline-block;">🏷️ Comprado com desconto</span>
+                </div>
             </div>
         </div>
 
@@ -193,6 +196,7 @@
                     <span style="color:#fff; font-weight:700; font-size:0.9rem;"></span>
                 </div>
                 <div class="detalhe-item"><span class="detalhe-label">Quantidade:</span><span id="detalhe-quantidade" class="detalhe-valor">0</span></div>
+                <div id="linha-desconto" class="detalhe-item hidden"><span class="detalhe-label">Desconto aplicado:</span><span id="detalhe-desconto" class="detalhe-valor" style="color:#2f855a;"></span></div>
                 <div class="detalhe-item"><span class="detalhe-label">Total:</span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
                 <div class="detalhe-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
                     <span class="detalhe-label">Títulos:</span>
@@ -780,6 +784,11 @@
             $('#detalhe-expira').text(pedido.expira_em ? new Date(pedido.expira_em).toLocaleString('pt-BR') : '');
             $('#detalhe-quantidade').text(pedido.quantidade_cotas || 0);
             $('#detalhe-total').text(formatarMoeda(pedido.valor_total));
+            if (pedido.promocao_titulo) {
+                $('#badge-desconto-resumo').removeClass('hidden');
+                $('#linha-desconto').removeClass('hidden');
+                $('#detalhe-desconto').text(`🏷️ ${pedido.promocao_titulo}`);
+            }
 
             if (pagoInicial) {
                 aprovarPagamentoFront({

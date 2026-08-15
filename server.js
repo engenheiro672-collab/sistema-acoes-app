@@ -1386,6 +1386,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       if (upsellMatch) {
         valor_total = Number(upsellMatch.preco_promocional);
         giros_bonus_upsell = Number(upsellMatch.quantidade_giros_roleta || 0);
+        promocao_aplicada = 'Oferta especial';
       }
     }
     const token = uuidv4();
