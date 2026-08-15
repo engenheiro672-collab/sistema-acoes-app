@@ -24,7 +24,7 @@
         .card { background-color: #2b2b2b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
         .aguardando-icon { font-size: 2.5rem; color: #f7b731; }
         .aguardando-title { font-size: 1.5rem; font-weight: 700; }
-        #card-aguardando .aguardando-title { color: #f7b731; }
+        #card-aguardando .aguardando-title { color: rgba(255,255,255,0.85); }
         .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; animation: pulse-opacity 2.2s ease-in-out infinite; }
         .cronometro strong { color: #f7b731; font-weight: 700; }
         .instrucao-passo { display: flex; align-items: flex-start; margin-bottom: 1rem; }
@@ -48,13 +48,14 @@
         .titulos-aviso { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.85); font-size: 0.85rem; font-weight: 600; line-height: 1.3; }
         .titulos-aviso i { font-size: 1rem; flex-shrink: 0; }
         .sorteio-corre-tag { display: inline-block; background-color: #1a8754; color: #eafff0; font-size: 0.7rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin: 3px 0 2px; }
-        .detalhe-item { display: flex; justify-content: space-between; border-bottom: 1px solid #374151; padding: 0.35rem 0; font-size: 0.8rem; }
+        .detalhe-item { display: block; padding: 0.3rem 0; font-size: 0.85rem; }
         .detalhe-item:last-child { border-bottom: none; }
         .detalhe-label { color: #e2e8f0; font-weight: 700; }
         .detalhe-valor { color: #9aa1ac; font-weight: 500; }
         #card-detalhes-compra { padding: 1.1rem 1.25rem; }
         #card-detalhes-compra h3 { font-size: 0.95rem; }
         .badge-desconto-mini { font-size: 0.62rem; padding: 2px 8px; margin: 0; }
+        .cota-badge { display: inline-block; background-color: #1a8754; color: #eafff0; padding: 6px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; font-family: monospace; }
         .detalhe-id { font-size: 0.72rem; color: #6b7280; word-break: break-all; }
         .card-small { display: flex; align-items: center; overflow: hidden; }
         .card-small img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
@@ -194,27 +195,29 @@
             </div>
             <p id="detalhe-token" class="detalhe-id blink-soft mb-3"></p>
 
-            <div class="space-y-2">
-                <div class="detalhe-item"><span class="detalhe-label">Comprador:</span><span id="detalhe-comprador" class="detalhe-valor"></span></div>
-                <div id="linha-cpf" class="detalhe-item hidden"><span class="detalhe-label">CPF:</span><span id="detalhe-cpf" class="detalhe-valor"></span></div>
-                <div class="detalhe-item"><span class="detalhe-label">Telefone:</span><span id="detalhe-telefone" class="detalhe-valor"></span></div>
-                <div class="detalhe-item"><span class="detalhe-label">Situação:</span><span id="detalhe-situacao" class="detalhe-valor text-yellow-400">Aguardando pagamento</span></div>
-                <div class="detalhe-item"><span class="detalhe-label">Data/horário:</span><span id="detalhe-data" class="detalhe-valor"></span></div>
-                <div class="detalhe-item"><span class="detalhe-label">Expira em:</span><span id="detalhe-expira" class="detalhe-valor"></span></div>
+            <div class="space-y-1">
+                <div class="detalhe-item"><span class="detalhe-label">Comprador: </span><span id="detalhe-comprador" class="detalhe-valor"></span></div>
+                <div id="linha-cpf" class="detalhe-item hidden"><span class="detalhe-label">CPF: </span><span id="detalhe-cpf" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Telefone: </span><span id="detalhe-telefone" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Situação: </span><span id="detalhe-situacao" class="detalhe-valor text-yellow-400">Aguardando pagamento</span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Data/horário: </span><span id="detalhe-data" class="detalhe-valor"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Expira em: </span><span id="detalhe-expira" class="detalhe-valor"></span></div>
                 <div id="banner-chance-dobro-checkout" class="hidden" style="background:linear-gradient(to right,#1a8754 45%,#5be584); border-radius:10px; padding:10px 14px; margin-bottom:10px;">
                     <span style="color:#fff; font-weight:700; font-size:0.9rem;"></span>
                 </div>
-                <div class="detalhe-item"><span class="detalhe-label">Quantidade:</span><span id="detalhe-quantidade" class="detalhe-valor">0</span></div>
-                <div id="linha-desconto" class="detalhe-item hidden"><span class="detalhe-label">Desconto aplicado:</span><span id="detalhe-desconto" class="detalhe-valor" style="color:#2f855a;"></span></div>
-                <div id="linha-giros-bonus" class="detalhe-item hidden"><span class="detalhe-label">Roleta bônus:</span><span id="detalhe-giros-bonus" class="detalhe-valor" style="color:#22c55e;"></span></div>
-                <div class="detalhe-item"><span class="detalhe-label">Total:</span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
-                <div class="detalhe-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
+                <div class="detalhe-item"><span class="detalhe-label">Quantidade: </span><span id="detalhe-quantidade" class="detalhe-valor">0</span></div>
+                <div id="linha-desconto" class="detalhe-item hidden"><span class="detalhe-label">Desconto aplicado: </span><span id="detalhe-desconto" class="detalhe-valor" style="color:#2f855a;"></span></div>
+                <div id="linha-giros-bonus" class="detalhe-item hidden"><span class="detalhe-label">Roleta bônus: </span><span id="detalhe-giros-bonus" class="detalhe-valor" style="color:#22c55e;"></span></div>
+                <div class="detalhe-item"><span class="detalhe-label">Total: </span><span id="detalhe-total" class="detalhe-valor">R$ 0,00</span></div>
+                <div class="detalhe-item">
                     <span class="detalhe-label">Títulos:</span>
-                    <span id="detalhe-titulos-status" class="titulos-aviso blink"><i class="bi bi-info-circle-fill"></i> Os títulos serão disponibilizados quando o pagamento for identificado</span>
-                    <div id="cotas-geradas" class="flex flex-wrap gap-2 w-full"></div>
-                    <button id="btn-ver-mais-titulos" class="text-center text-gray-400 font-semibold hover:text-white hidden text-sm">
-                        <i class="bi bi-chevron-down"></i> Ver mais títulos
-                    </button>
+                    <div class="mt-1">
+                        <span id="detalhe-titulos-status" class="titulos-aviso blink"><i class="bi bi-info-circle-fill"></i> Os títulos serão disponibilizados quando o pagamento for identificado</span>
+                        <div id="cotas-geradas" class="flex flex-wrap gap-2 w-full mt-1"></div>
+                        <button id="btn-ver-mais-titulos" class="text-center text-gray-400 font-semibold hover:text-white hidden text-sm mt-1">
+                            <i class="bi bi-chevron-down"></i> Ver mais títulos
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -464,7 +467,7 @@
         function renderCotasPagina() {
             const $cotasContainer = $('#cotas-geradas');
             const visiveis = TODAS_COTAS.slice(0, COTAS_VISIVEIS);
-            $cotasContainer.html(visiveis.map(c => `<span class="inline-block bg-gray-700 px-2 py-1 rounded text-sm font-mono">${c.numero_cota || c}</span>`).join(''));
+            $cotasContainer.html(visiveis.map(c => `<span class="cota-badge">${c.numero_cota || c}</span>`).join(''));
             $('#detalhe-titulos-status').text(`${TODAS_COTAS.length} título(s):`).removeClass('hidden titulos-aviso blink').addClass('detalhe-valor');
             $('#btn-ver-mais-titulos').toggleClass('hidden', COTAS_VISIVEIS >= TODAS_COTAS.length);
 
