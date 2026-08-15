@@ -22,7 +22,9 @@
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .header-bar { background-color: #1a1a1a; padding: 1rem; }
         .card { background-color: #2b2b2b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
-        .aguardando-icon { font-size: 2.5rem; color: #f7b731; }
+        .aguardando-icon { font-size: 2.5rem; color: #f7b731; display: inline-block; }
+        @keyframes flip-hourglass { 0%, 40% { transform: rotate(0deg); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(180deg); } }
+        #card-aguardando .aguardando-icon { animation: flip-hourglass 2.4s ease-in-out infinite; }
         .aguardando-title { font-size: 1.5rem; font-weight: 700; }
         #card-aguardando .aguardando-title { color: rgba(255,255,255,0.85); }
         .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; animation: pulse-opacity 2.2s ease-in-out infinite; }
@@ -181,8 +183,7 @@
                 <h4 id="sorteio-nome" class="card-small-title"></h4>
                 <span class="sorteio-corre-tag blink">Corre que está acabando!</span>
                 <p id="sorteio-qtd" class="card-small-desc">Cotas adquiridas: 0</p>
-                <span id="sorteio-total" class="card-small-badge">Total: R$ 0,00</span>
-            </div>
+                </div>
         </div>
 
         <div id="card-detalhes-compra" class="card">
@@ -191,7 +192,7 @@
                     <i class="bi bi-info-circle text-gray-400 mr-2"></i>
                     <h3 class="font-semibold text-white">Detalhes da sua compra</h3>
                 </div>
-                <span id="badge-desconto-resumo" class="hidden sorteio-corre-tag badge-desconto-mini blink">🏷️ Com desconto</span>
+                <span id="badge-desconto-resumo" class="hidden sorteio-corre-tag badge-desconto-mini">🏷️ Com desconto</span>
             </div>
             <p id="detalhe-token" class="detalhe-id blink-soft mb-3"></p>
 
@@ -786,7 +787,6 @@
             if (pagoInicial) { try { renderCombosRoleta(ROLETA_TIERS_GLOBAL, SORTEIO_SLUG_GLOBAL); } catch (e) { console.error('renderCombosRoleta', e); } }
             $('#sorteio-qtd').text(`Cotas adquiridas: ${pedido.quantidade_cotas || 0}`);
             QUANTIDADE_PAGA = Number(pedido.quantidade_cotas || 0);
-            $('#sorteio-total').text(`Total: ${formatarMoeda(pedido.valor_total)}`);
             $('#detalhe-token').text(pedido.token || '');
             $('#detalhe-comprador').text(pedido.usuarios?.nome_completo || '');
             const cpf = pedido.usuarios?.cpf;
