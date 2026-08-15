@@ -1,4 +1,32 @@
-# Sistema de Sorteios — v104 (🎯🎯 Rastreio de link — redesenho completo, resolvido de vez)
+# Sistema de Sorteios — v105 (🚀 UPSELL COMPLETO — funcionalidade grande, ponta a ponta)
+
+## Está tudo pronto e conectado, nos dois sorteios
+
+### O que foi construído
+1. **Aba "Upsell" no painel** — cadastra ofertas pra 1ª compra (só desconto) e 2ª compra em diante (desconto + roleta)
+2. **Combo de roleta pula direto pra confirmar dados** — sem passar pela página do sorteio, com telefone já verificado automaticamente se for cliente conhecido
+3. **Chavinha de upsell** aparece na hora certa (a primeira oferta cadastrada acima do valor que a pessoa já está levando)
+4. **Fundo do modal corrigido** (era um bug real — a transparência nunca funcionava, agora sim, em 6 lugares de uma vez)
+5. **Roleta combo passa a valer sozinha a partir da 2ª compra**, mesmo sem clicar
+6. **Preço e giros bônus sempre decididos pelo servidor** — nunca confiando no que o navegador manda (segurança)
+
+### Aplicado nos dois: sorteio normal e Funil 01
+Os checkouts (normal e Funil 01) **não precisaram de nenhuma mudança** — o sistema de "link cravado" que já tínhamos construído antes já cuida de levar a pessoa pro lugar certo automaticamente.
+
+## ⚠️ Precisa rodar o SQL de novo
+
+Duas coisas novas: a tabela `upsell_ofertas` e a coluna `giros_bonus_upsell` em `pedidos`.
+
+## Como testar, passo a passo
+
+1. Roda o SQL
+2. Cadastra algumas ofertas de Upsell no painel (1ª e 2ª compra)
+3. Faz uma compra de teste — confirma que a chavinha aparece certinha
+4. Testa clicando num combo de roleta no checkout — deve pular direto pra confirmar dados
+5. Testa comprando de novo (2ª compra) — confirma que os combos de roleta passam a valer sozinhos
+
+Testa com calma — foi uma funcionalidade grande, várias peças novas trabalhando juntas.
+
 
 ## O bug real que você descreveu
 

@@ -89,6 +89,12 @@
         .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
         .input-com-icon { padding-left: 3rem !important; width: 100%; }
         .erro-msg { color: #f87171; font-size: 0.875rem; margin-top: 0.25rem; }
+        .toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-track { position: absolute; inset: 0; background: #cbd5e0; border-radius: 999px; transition: background .2s; }
+        .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .toggle-switch input:checked + .toggle-track { background: #1a8754; }
+        .toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
         .confirm-bar { display: flex; align-items: flex-start; background-color: #2f855a; color: #fff; padding: 1rem 1.1rem; border-radius: 10px; margin-bottom: 1.5rem; font-weight: 600; line-height: 1.5; }
         .confirm-bar-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background-color: #fff; color: #2f855a; border-radius: 50%; width: 26px; height: 26px; margin-right: 0.75rem; margin-top: 2px; font-weight: bold; }
         .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
@@ -282,6 +288,16 @@
                 <span id="checkout-confirm-text"></span>
             </div>
 
+            <div id="upsell-box" class="hidden" style="background:#eafaf1; border:1px solid #1a8754; border-radius:10px; padding:0.9rem; margin-bottom:1.25rem;">
+                <div class="flex justify-between items-center gap-3">
+                    <div style="flex:1;">
+                        <p class="text-sm text-gray-800 font-semibold" id="upsell-titulo">Leve mais títulos por menos!</p>
+                        <p class="text-xs text-gray-600 mt-1" id="upsell-descricao"></p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="upsell-toggle" onchange="aplicarToggleUpsell(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                </div>
+            </div>
+
             <!-- ETAPA 1: só telefone. Se já for um comprador conhecido, pula direto pra etapa 2 preenchida -->
             <form id="form-checkout-telefone">
                 <label class="block text-sm mb-2 text-gray-600" for="checkout-tel">Telefone (com DDD):</label>
@@ -379,6 +395,9 @@
         let PROMOCOES_ATIVAS = [];
         let PUSH_ATIVO_GLOBAL = false;
         let VEIO_DE_COMBO_ROLETA = false;
+        let GIROS_DO_COMBO_ATUAL = null;
+        let OFERTA_UPSELL_ATUAL = null;
+        let QUANTIDADE_ANTES_DO_UPSELL = null;
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
         let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
@@ -390,6 +409,45 @@
             return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
         function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        function carregarOfertaUpsell(qtd) {
+            $('#upsell-box').addClass('hidden');
+            $('#upsell-toggle').prop('checked', false);
+            OFERTA_UPSELL_ATUAL = null;
+            QUANTIDADE_ANTES_DO_UPSELL = null;
+            const valorAtual = qtd * PRECO;
+            const telefoneAtual = ($('#checkout-tel').val() || '').replace(/\D/g, '');
+            const params = new URLSearchParams({ valor_atual: valorAtual });
+            if (telefoneAtual) params.set('telefone', telefoneAtual);
+            $.get(`/api/public/upsell/${SORTEIO_DATA.id}?${params.toString()}`)
+                .done(function(resp) {
+                    if (!resp.oferta) return;
+                    OFERTA_UPSELL_ATUAL = resp.oferta;
+                    const o = resp.oferta;
+                    $('#upsell-titulo').text(`Leve mais por menos!`);
+                    let desc = `${o.quantidade_cotas} título(s) por ${formatarMoeda(o.preco_promocional)}`;
+                    if (o.quantidade_giros_roleta > 0) desc += ` — e ganhe ${o.quantidade_giros_roleta} giro(s) de roleta`;
+                    $('#upsell-descricao').text(desc);
+                    $('#upsell-box').removeClass('hidden');
+                })
+                .fail(function() {});
+        }
+        function aplicarToggleUpsell(ativado) {
+            if (!OFERTA_UPSELL_ATUAL) return;
+            const nomeSorteio = (SORTEIO_DATA.nome || '').toUpperCase();
+            if (ativado) {
+                QUANTIDADE_ANTES_DO_UPSELL = quantidadeCotas;
+                quantidadeCotas = Number(OFERTA_UPSELL_ATUAL.quantidade_cotas);
+                if (Number(OFERTA_UPSELL_ATUAL.quantidade_giros_roleta) > 0) {
+                    VEIO_DE_COMBO_ROLETA = true;
+                    GIROS_DO_COMBO_ATUAL = OFERTA_UPSELL_ATUAL.quantidade_giros_roleta;
+                }
+                $('#checkout-confirm-text').html(`🏷️ Você está adquirindo <strong>${quantidadeCotas}</strong> título(s) por <strong>${formatarMoeda(OFERTA_UPSELL_ATUAL.preco_promocional)}</strong> da campanha <strong>${escapeHtml(nomeSorteio)}</strong>${Number(OFERTA_UPSELL_ATUAL.quantidade_giros_roleta) > 0 ? ` — e vai ganhar <strong>${OFERTA_UPSELL_ATUAL.quantidade_giros_roleta}</strong> giro(s) na roleta!` : ''}`);
+            } else if (QUANTIDADE_ANTES_DO_UPSELL !== null) {
+                quantidadeCotas = QUANTIDADE_ANTES_DO_UPSELL;
+                $('#checkout-confirm-text').html(`Você está adquirindo <strong>${quantidadeCotas}</strong> título(s) da campanha <strong>${escapeHtml(nomeSorteio)}</strong>`);
+            }
+        }
         // Mostra o primeiro nome completo + só a inicial do segundo (evita nome grande vazando do card)
         function nomeCurto(nomeCompleto) {
             if (!nomeCompleto) return '';
@@ -737,8 +795,20 @@
                 quantidadeCotas = qtdDaUrl;
                 if (girosDaUrl) {
                     VEIO_DE_COMBO_ROLETA = true;
-                    setTimeout(() => notificar(`🎯 Você vai receber ${girosDaUrl} roleta(s) com essa compra!`, 'sucesso'), 600);
+                    GIROS_DO_COMBO_ATUAL = girosDaUrl;
                 }
+                // Pula direto pra tela de confirmar dados — sem precisar clicar em "Quero Participar"
+                // de novo, já que a pessoa veio de um combo de roleta clicado no checkout.
+                setTimeout(() => {
+                    $('#btn-participar').trigger('click');
+                    try {
+                        const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
+                        if (salvo?.telefone) {
+                            $('#checkout-tel').val(salvo.telefoneFormatado || salvo.telefone);
+                            $('#form-checkout-telefone').trigger('submit');
+                        }
+                    } catch (e) {}
+                }, 300);
             }
 
             if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
@@ -935,12 +1005,15 @@
                 const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === qtd);
                 if (CHANCE_DOBRO_ATIVA) {
                     $('#checkout-confirm-text').html(`🔥 Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${escapeHtml(nomeSorteio)}</strong> — e leva o <strong>DOBRO</strong>: <strong>${qtd * 2}</strong> título(s) no total, graças à promoção "${escapeHtml(CHANCE_DOBRO_ATIVA.titulo) || 'Chance em Dobro'}" ativa agora!`);
+                } else if (VEIO_DE_COMBO_ROLETA && GIROS_DO_COMBO_ATUAL) {
+                    $('#checkout-confirm-text').html(`🎯 Você está adquirindo <strong>${qtd}</strong> título(s) e vai ganhar <strong>${GIROS_DO_COMBO_ATUAL}</strong> giro(s) na roleta!`);
                 } else if (promoAtiva) {
                     $('#checkout-confirm-text').html(`🏷️ Você está comprando com a promoção <strong>"${escapeHtml(promoAtiva.titulo)}"</strong>: <strong>${qtd}</strong> título(s) por apenas <strong>${formatarMoeda(promoAtiva.preco_promocional)}</strong> da campanha <strong>${escapeHtml(nomeSorteio)}</strong>`);
                 } else {
                     $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) da campanha <strong>${escapeHtml(nomeSorteio)}</strong>`);
                 }
                 $('#checkout-confirm-bar').removeClass('hidden');
+                carregarOfertaUpsell(qtd);
 
                 // Volta pra etapa 1 (telefone) toda vez que abre — mas já pré-preenche se tiver dado salvo
                 $('#form-checkout-dados').addClass('hidden');

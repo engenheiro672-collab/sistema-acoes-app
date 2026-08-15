@@ -972,14 +972,47 @@ app.post('/api/public/meus-bilhetes', async (req, res) => {
 app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, res) => {
   try {
     const telefone = String(req.body?.telefone || '').replace(/\D/g, '');
+    const sorteio_id = req.body?.sorteio_id || null;
     if (!telefone) return fail(res, 'Telefone é obrigatório', 400);
-    const { data: usuario } = await supabase.from('usuarios').select('nome_completo, email, cpf, endereco').eq('telefone', telefone).maybeSingle();
-    if (!usuario) return ok(res, { existe: false });
+    const { data: usuario } = await supabase.from('usuarios').select('id, nome_completo, email, cpf, endereco').eq('telefone', telefone).maybeSingle();
+    if (!usuario) return ok(res, { existe: false, ja_comprou_este_sorteio: false });
+
+    let ja_comprou_este_sorteio = false;
+    if (sorteio_id) {
+      const { count } = await supabase.from('pedidos').select('*', { head: true, count: 'exact' }).eq('user_id', usuario.id).eq('sorteio_id', sorteio_id).eq('status', 'pago');
+      ja_comprou_este_sorteio = Number(count || 0) > 0;
+    }
+
     return ok(res, {
       existe: true, nome_completo: usuario.nome_completo,
-      tem_email: !!usuario.email, tem_cpf: !!usuario.cpf, tem_endereco: !!usuario.endereco
+      tem_email: !!usuario.email, tem_cpf: !!usuario.cpf, tem_endereco: !!usuario.endereco,
+      ja_comprou_este_sorteio
     });
   } catch (err) { console.error('POST usuarios/verificar', err); return fail(res); }
+});
+
+// ⭐ UPSELL: decide qual oferta mostrar na hora de confirmar a compra — a primeira cadastrada
+// (na etapa certa: 1ª compra ou 2ª em diante) cujo valor fique ACIMA do que a pessoa já está
+// levando. Se não tiver nenhuma acima, não mostra nada.
+app.get('/api/public/upsell/:sorteioId', limitePublicoSensivel, async (req, res) => {
+  try {
+    const { sorteioId } = req.params;
+    const valorAtual = Number(req.query.valor_atual || 0);
+    const telefone = String(req.query.telefone || '').replace(/\D/g, '');
+
+    let etapa = 'primeira_compra';
+    if (telefone) {
+      const { data: usuario } = await supabase.from('usuarios').select('id').eq('telefone', telefone).maybeSingle();
+      if (usuario) {
+        const { count } = await supabase.from('pedidos').select('*', { head: true, count: 'exact' }).eq('user_id', usuario.id).eq('sorteio_id', sorteioId).eq('status', 'pago');
+        if (Number(count || 0) > 0) etapa = 'segunda_compra_em_diante';
+      }
+    }
+
+    const { data: ofertas } = await supabase.from('upsell_ofertas').select('*').eq('sorteio_id', sorteioId).eq('etapa', etapa).eq('ativo', true).order('preco_promocional', { ascending: true });
+    const oferta = (ofertas || []).find(o => Number(o.preco_promocional) > valorAtual) || null;
+    return ok(res, { oferta, etapa });
+  } catch (err) { console.error('GET upsell', err); return fail(res); }
 });
 
 // --- PAGAMENTOS ---
@@ -1232,15 +1265,25 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
   const girosGarantidos = Number(sorteio.roleta_giros_por_compra ?? 1);
   let qtdGiros = girosGarantidos;
 
-  // Os combos de "a cada X títulos, receba Y roletas" só valem quando o cliente comprou de novo
-  // clicando especificamente num combo (mostrado na tela da roleta) — nunca automaticamente em
-  // qualquer compra que "bata" com a quantidade. Compra normal (mesmo grande) = só o padrão.
-  if (pedido.veio_de_combo_roleta) {
+  // Os combos de "a cada X títulos, receba Y roletas" valem em dois casos: quando o cliente
+  // comprou clicando especificamente num combo, OU quando essa já é a 2ª compra dele (ou mais)
+  // pra esse sorteio — a partir daí, os combos passam a valer sozinhos, mesmo sem clicar.
+  let ehSegundaCompraOuMais = false;
+  if (!pedido.veio_de_combo_roleta) {
+    const { count } = await supabase.from('pedidos').select('*', { head: true, count: 'exact' }).eq('user_id', user_id).eq('sorteio_id', sorteio_id).eq('status', 'pago').neq('id', pedido.id);
+    ehSegundaCompraOuMais = Number(count || 0) > 0;
+  }
+  console.log(`[roleta] Pedido ${pedido?.id} — veio_de_combo_roleta=${pedido?.veio_de_combo_roleta}, ehSegundaCompraOuMais=${ehSegundaCompraOuMais}, quantidade_cotas=${pedido?.quantidade_cotas}`);
+  if (pedido.veio_de_combo_roleta || ehSegundaCompraOuMais) {
     const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio_id).order('minimo_cotas', { ascending: false });
+    console.log(`[roleta] Pedido ${pedido?.id} — tiers configurados:`, JSON.stringify(tiers));
     const qtdComprada = Number(pedido.quantidade_cotas || 0);
     const tierAlcançado = (tiers || []).find(t => qtdComprada >= Number(t.minimo_cotas));
+    console.log(`[roleta] Pedido ${pedido?.id} — tier alcançado:`, JSON.stringify(tierAlcançado));
     if (tierAlcançado) qtdGiros = Math.max(girosGarantidos, Number(tierAlcançado.quantidade_giros));
   }
+  // Se o pedido veio com bônus de roleta de uma oferta de Upsell, garante pelo menos essa quantidade
+  if (Number(pedido.giros_bonus_upsell) > 0) qtdGiros = Math.max(qtdGiros, Number(pedido.giros_bonus_upsell));
   console.log(`[roleta] Pedido ${pedido?.id} — qtdGiros calculado = ${qtdGiros} (garantidos=${girosGarantidos})`);
 
   // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível
@@ -1334,10 +1377,20 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
 
     let valor_total = Number(sorteio.preco_cota) * Number(quantidade);
     let promocao_aplicada = null;
+    let giros_bonus_upsell = 0;
     const { data: promoMatch } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).maybeSingle();
     if (promoMatch) {
       valor_total = Number(promoMatch.preco_promocional);
       promocao_aplicada = promoMatch.titulo;
+    } else {
+      // Não bateu com nenhuma promoção "clássica" — confere se bate com uma oferta de Upsell
+      // (preço e giros de roleta bônus sempre decididos aqui no servidor, nunca confiando no
+      // que o navegador manda, por segurança).
+      const { data: upsellMatch } = await supabase.from('upsell_ofertas').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).order('preco_promocional', { ascending: true }).limit(1).maybeSingle();
+      if (upsellMatch) {
+        valor_total = Number(upsellMatch.preco_promocional);
+        giros_bonus_upsell = Number(upsellMatch.quantidade_giros_roleta || 0);
+      }
     }
     const token = uuidv4();
     const expira = new Date(Date.now() + (Number(sorteio.tempo_pagamento || 15) * 60000)).toISOString();
@@ -1356,7 +1409,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     }
 
     const { data: pedido } = await supabase.from('pedidos').insert({
-      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, veio_de_combo_roleta: !!veio_de_combo_roleta, created_at: new Date().toISOString()
+      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, veio_de_combo_roleta: !!veio_de_combo_roleta || giros_bonus_upsell > 0, giros_bonus_upsell, created_at: new Date().toISOString()
     }).select().single();
 
     const pagamento = await criarPagamentoGateway(pedido, usuario);
@@ -1838,6 +1891,45 @@ app.put('/api/admin/promocoes/:id', ensureAdminAuth, async (req, res) => {
 });
 app.delete('/api/admin/promocoes/:id', ensureAdminAuth, async (req, res) => {
   try { const { error } = await supabase.from('promocoes').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
+});
+
+// ---------------- UPSELL (aumentar ticket médio na hora de confirmar a compra) ----------------
+app.get('/api/admin/sorteios/:id/upsell-ofertas', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data } = await supabase.from('upsell_ofertas').select('*').eq('sorteio_id', req.params.id).order('preco_promocional', { ascending: true });
+    return ok(res, { lista: data || [] });
+  } catch (e) { return fail(res); }
+});
+app.post('/api/admin/sorteios/:id/upsell-ofertas', ensureAdminAuth, async (req, res) => {
+  try {
+    const { etapa, quantidade_cotas, preco_promocional, quantidade_giros_roleta, ativo } = req.body || {};
+    if (!quantidade_cotas || !preco_promocional) return fail(res, 'Preencha a quantidade e o preço promocional', 400);
+    if (!['primeira_compra', 'segunda_compra_em_diante'].includes(etapa)) return fail(res, 'Etapa inválida', 400);
+    const { data, error } = await supabase.from('upsell_ofertas').insert({
+      sorteio_id: req.params.id, etapa,
+      quantidade_cotas: parseInt(quantidade_cotas), preco_promocional: parseFloat(preco_promocional),
+      quantidade_giros_roleta: etapa === 'segunda_compra_em_diante' ? (parseInt(quantidade_giros_roleta) || 0) : 0,
+      ativo: ativo !== false
+    }).select().single();
+    if (error) return fail(res, error.message);
+    return ok(res, { oferta: data });
+  } catch (e) { return fail(res); }
+});
+app.put('/api/admin/upsell-ofertas/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { quantidade_cotas, preco_promocional, quantidade_giros_roleta, ativo } = req.body || {};
+    const payload = {};
+    if (quantidade_cotas !== undefined) payload.quantidade_cotas = parseInt(quantidade_cotas);
+    if (preco_promocional !== undefined) payload.preco_promocional = parseFloat(preco_promocional);
+    if (quantidade_giros_roleta !== undefined) payload.quantidade_giros_roleta = parseInt(quantidade_giros_roleta) || 0;
+    if (ativo !== undefined) payload.ativo = !!ativo;
+    const { error } = await supabase.from('upsell_ofertas').update(payload).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.delete('/api/admin/upsell-ofertas/:id', ensureAdminAuth, async (req, res) => {
+  try { const { error } = await supabase.from('upsell_ofertas').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
 });
 
 // Liga/desliga a roleta pra um sorteio sem precisar reenviar o formulário inteiro

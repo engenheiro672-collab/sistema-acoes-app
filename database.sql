@@ -302,6 +302,22 @@ create table if not exists promocoes (
 create index if not exists idx_promocoes_sorteio on promocoes(sorteio_id, ativo);
 
 -- ============================================================================
+-- 14b2) UPSELL_OFERTAS — ofertas de upgrade mostradas na hora de confirmar a compra (não na
+-- página do sorteio). Duas "etapas": pra quem está comprando pela 1ª vez (só desconto), e pra
+-- quem já comprou antes (desconto + roleta extra).
+create table if not exists upsell_ofertas (
+  id uuid primary key default gen_random_uuid(),
+  sorteio_id uuid references sorteios(id) on delete cascade,
+  etapa text not null default 'primeira_compra', -- 'primeira_compra' | 'segunda_compra_em_diante'
+  quantidade_cotas integer not null,
+  preco_promocional numeric not null,
+  quantidade_giros_roleta integer default 0, -- só usado na etapa 'segunda_compra_em_diante'
+  ativo boolean default true,
+  created_at timestamptz default now()
+);
+create index if not exists idx_upsell_ofertas_sorteio on upsell_ofertas(sorteio_id, etapa, ativo);
+
+-- ============================================================================
 -- 14c) AVISOS_URGENCIA — banners de urgência com contagem regressiva (múltiplos por sorteio)
 -- ============================================================================
 create table if not exists avisos_urgencia (
@@ -468,6 +484,7 @@ alter table pedidos add column if not exists updated_at timestamptz default now(
 alter table pedidos add column if not exists promocao_titulo text;
 alter table pedidos add column if not exists veio_de_combo_roleta boolean default false;
 alter table pedidos add column if not exists criado_manualmente_admin boolean default false;
+alter table pedidos add column if not exists giros_bonus_upsell integer default 0;
 
 alter table bilhetes_premiados add column if not exists valor_premio text;
 alter table bilhetes_premiados add column if not exists tipo text default 'bilhete';

@@ -139,7 +139,7 @@ img, svg { display: block; vertical-align: middle; max-width: 100%; }
 
 /* ---------- Fundos ---------- */
 .bg-white { background-color: #fff; }
-.bg-black { background-color: #000; }
+.bg-black { background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1)); }
 .bg-gray-700 { background-color: #374151; }
 .bg-green-600 { background-color: #16a34a; }
 .bg-green-700 { background-color: #15803d; }

@@ -261,6 +261,7 @@
             <li><a id="nav-chance-dobro" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('chance-dobro', this)"><i class="bi bi-lightning-charge w-6 text-lg"></i> Chance em Dobro</a></li>
             <li><a id="nav-urgencia" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('urgencia', this)"><i class="bi bi-exclamation-triangle w-6 text-lg"></i> Urgência</a></li>
             <li><a id="nav-promocoes" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('promocoes', this)"><i class="bi bi-tags w-6 text-lg"></i> Promoções</a></li>
+            <li><a id="nav-upsell" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('upsell', this)"><i class="bi bi-graph-up-arrow w-6 text-lg"></i> Upsell</a></li>
             <li><a id="nav-push" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('push', this)"><i class="bi bi-bell w-6 text-lg"></i> Notificação Push</a></li>
             <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
             <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
@@ -576,7 +577,53 @@
             </div>
         </div>
 
-        <!-- ===================== NOTIFICAÇÃO PUSH ===================== -->
+        <!-- ===================== UPSELL (aumentar ticket médio) ===================== -->
+        <div id="page-upsell" class="page-section">
+            <h2 class="text-2xl font-bold mb-2 text-center">📈 Upsell</h2>
+            <p class="text-sm opacity-60 mb-4 text-center">Ofertas mostradas só na hora de confirmar a compra (não na página do sorteio) — uma chavinha que o cliente pode ativar pra levar mais títulos.</p>
+            <div class="flex justify-center mb-6">
+                <select id="select-upsell-sorteio" class="input-dark text-lg text-center" style="max-width:400px; padding:14px;" onchange="selecionarSorteioUpsell(this.value)"><option value="">Selecione um sorteio...</option></select>
+            </div>
+
+            <div id="upsell-conteudo" class="hidden max-w-2xl mx-auto space-y-8">
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-1">🆕 1ª compra</h3>
+                    <p class="text-xs text-gray-500 mb-3">Só desconto — mostra a primeira oferta cadastrada cujo valor fique acima do que o cliente já está levando.</p>
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-4">
+                        <input type="hidden" id="upsell-p-edit-id" value="">
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="text-xs text-gray-400">Quantidade de títulos</label><input id="upsell-p-quantidade" type="number" min="1" class="input-dark mt-1" placeholder="Ex: 200"></div>
+                            <div><label class="text-xs text-gray-400">Preço promocional (total)</label><input id="upsell-p-preco" type="text" inputmode="numeric" class="input-dark mt-1 mascara-real" placeholder="R$ 0,00"></div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" class="btn-primary" id="upsell-p-btn-salvar" onclick="salvarUpsell('primeira_compra')">Criar Oferta</button>
+                            <button type="button" class="text-gray-400 hover:text-white text-sm hidden" id="upsell-p-btn-cancelar" onclick="cancelarEdicaoUpsell('primeira_compra')">Cancelar edição</button>
+                        </div>
+                    </div>
+                    <div id="lista-upsell-primeira" class="space-y-3"></div>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-1">🔁 2ª compra em diante</h3>
+                    <p class="text-xs text-gray-500 mb-3">Desconto + roletas extra — vale pra quem o sistema já reconhece (pelo telefone) que comprou esse sorteio antes.</p>
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-4">
+                        <input type="hidden" id="upsell-s-edit-id" value="">
+                        <div class="grid grid-cols-3 gap-3 mb-3">
+                            <div><label class="text-xs text-gray-400">Quantidade de títulos</label><input id="upsell-s-quantidade" type="number" min="1" class="input-dark mt-1" placeholder="Ex: 500"></div>
+                            <div><label class="text-xs text-gray-400">Preço promocional (total)</label><input id="upsell-s-preco" type="text" inputmode="numeric" class="input-dark mt-1 mascara-real" placeholder="R$ 0,00"></div>
+                            <div><label class="text-xs text-gray-400">Roletas que ganha</label><input id="upsell-s-giros" type="number" min="0" class="input-dark mt-1" placeholder="Ex: 5"></div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" class="btn-primary" id="upsell-s-btn-salvar" onclick="salvarUpsell('segunda_compra_em_diante')">Criar Oferta</button>
+                            <button type="button" class="text-gray-400 hover:text-white text-sm hidden" id="upsell-s-btn-cancelar" onclick="cancelarEdicaoUpsell('segunda_compra_em_diante')">Cancelar edição</button>
+                        </div>
+                    </div>
+                    <div id="lista-upsell-segunda" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+
         <div id="page-push" class="page-section">
             <h2 class="text-2xl font-bold mb-2 text-center">🔔 Notificação Push</h2>
             <p class="text-sm opacity-60 mb-6 text-center">Manda notificação direto pra tela de bloqueio do celular de quem ativou — mesmo com o site fechado.</p>
@@ -1473,7 +1520,7 @@ function navTo(page, el) {
     if (page === 'clientes') { carregarClientes(); }
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
-    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'upsell' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
     if (page === 'push') { carregarPagePush(); }
     if (page === 'gateway') { carregarGateway(); }
     if (page === 'marketing') { carregarMarketing(); }
@@ -2587,6 +2634,8 @@ function removerUrgencia(id) {
 
 // ==================== PROMOÇÕES (página própria) ====================
 let SORTEIO_PROMO_ID = null;
+let SORTEIO_UPSELL_ID = null;
+let UPSELL_CACHE = [];
 function selecionarSorteioPromo(id) {
     SORTEIO_PROMO_ID = id || null;
     $('#promo-conteudo').toggleClass('hidden', !id);
@@ -2667,6 +2716,96 @@ function togglePromocao(id, ativo) {
 }
 function removerPromocao(id) {
     confirmar('Excluir promoção', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/promocoes/${id}`).then(() => carregarPromocoes(SORTEIO_PROMO_ID)); });
+}
+
+// ==================== UPSELL ====================
+function selecionarSorteioUpsell(id) {
+    SORTEIO_UPSELL_ID = id || null;
+    $('#upsell-conteudo').toggleClass('hidden', !id);
+    if (id) carregarUpsell(id);
+}
+function carregarUpsell(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/upsell-ofertas`).then(d => {
+        const lista = d.lista || [];
+        const sorteio = SORTEIOS_CACHE.find(s => s.id === sorteioId);
+        const precoNormal = Number(sorteio?.preco_cota || 0);
+        const renderCard = (o) => {
+            const precoOriginal = precoNormal * o.quantidade_cotas;
+            const economia = precoOriginal - Number(o.preco_promocional);
+            return `
+                <div class="funil-card">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <h4 class="font-semibold text-white">${o.quantidade_cotas} títulos</h4>
+                                ${o.ativo ? '<span class="badge badge-organico">Ativa</span>' : '<span class="badge badge-outro">Desativada</span>'}
+                            </div>
+                            <p class="text-sm text-gray-300">Por <b class="text-green-400">${formatBR(o.preco_promocional)}</b> <span class="text-gray-500 line-through text-xs">${formatBR(precoOriginal)}</span></p>
+                            ${economia > 0 ? `<p class="text-xs text-yellow-400 mt-1">Economia de ${formatBR(economia)}</p>` : ''}
+                            ${o.etapa === 'segunda_compra_em_diante' ? `<p class="text-xs text-purple-300 mt-1">🎯 + ${o.quantidade_giros_roleta || 0} giro(s) de roleta</p>` : ''}
+                        </div>
+                        <div class="flex gap-2 flex-shrink-0">
+                            <label class="toggle-switch"><input type="checkbox" ${o.ativo ? 'checked' : ''} onchange="toggleUpsell('${o.id}', this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            <button class="text-purple-300 hover:text-purple-200" onclick="editarUpsell('${o.id}')"><i class="bi bi-pencil"></i></button>
+                            <button class="text-red-400 hover:text-red-300" onclick="removerUpsell('${o.id}')"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+        const primeira = lista.filter(o => o.etapa === 'primeira_compra');
+        const segunda = lista.filter(o => o.etapa === 'segunda_compra_em_diante');
+        $('#lista-upsell-primeira').html(primeira.map(renderCard).join('') || '<p class="opacity-60 text-sm">Nenhuma oferta criada ainda.</p>');
+        $('#lista-upsell-segunda').html(segunda.map(renderCard).join('') || '<p class="opacity-60 text-sm">Nenhuma oferta criada ainda.</p>');
+        UPSELL_CACHE = lista;
+    });
+}
+function salvarUpsell(etapa) {
+    const prefixo = etapa === 'primeira_compra' ? 'p' : 's';
+    const editId = $(`#upsell-${prefixo}-edit-id`).val();
+    const quantidade_cotas = $(`#upsell-${prefixo}-quantidade`).val();
+    const preco_promocional = valorMoedaParaNumero($(`#upsell-${prefixo}-preco`).val());
+    if (!SORTEIO_UPSELL_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
+    if (!quantidade_cotas || !preco_promocional) return notificar('Preencha a quantidade e o preço.', 'erro');
+
+    const payload = { etapa, quantidade_cotas, preco_promocional };
+    if (etapa === 'segunda_compra_em_diante') payload.quantidade_giros_roleta = $('#upsell-s-giros').val() || 0;
+
+    const chamada = editId
+        ? api('PUT', `/api/admin/upsell-ofertas/${editId}`, payload)
+        : api('POST', `/api/admin/sorteios/${SORTEIO_UPSELL_ID}/upsell-ofertas`, payload);
+
+    chamada.then(() => {
+        cancelarEdicaoUpsell(etapa);
+        carregarUpsell(SORTEIO_UPSELL_ID);
+        notificar(editId ? 'Oferta atualizada!' : 'Oferta criada!', 'sucesso');
+    }).catch(err => notificar(err.error || 'Erro ao salvar', 'erro'));
+}
+function editarUpsell(id) {
+    const o = (UPSELL_CACHE || []).find(x => x.id === id);
+    if (!o) return;
+    const prefixo = o.etapa === 'primeira_compra' ? 'p' : 's';
+    $(`#upsell-${prefixo}-edit-id`).val(o.id);
+    $(`#upsell-${prefixo}-quantidade`).val(o.quantidade_cotas);
+    $(`#upsell-${prefixo}-preco`).val('R$ ' + Number(o.preco_promocional).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'));
+    if (prefixo === 's') $('#upsell-s-giros').val(o.quantidade_giros_roleta || 0);
+    $(`#upsell-${prefixo}-btn-salvar`).text('Salvar alterações');
+    $(`#upsell-${prefixo}-btn-cancelar`).removeClass('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function cancelarEdicaoUpsell(etapa) {
+    const prefixo = etapa === 'primeira_compra' ? 'p' : 's';
+    $(`#upsell-${prefixo}-edit-id`).val('');
+    $(`#upsell-${prefixo}-quantidade, #upsell-${prefixo}-preco`).val('');
+    if (prefixo === 's') $('#upsell-s-giros').val('');
+    $(`#upsell-${prefixo}-btn-salvar`).text('Criar Oferta');
+    $(`#upsell-${prefixo}-btn-cancelar`).addClass('hidden');
+}
+function toggleUpsell(id, ativo) {
+    api('PUT', `/api/admin/upsell-ofertas/${id}`, { ativo }).then(() => carregarUpsell(SORTEIO_UPSELL_ID));
+}
+function removerUpsell(id) {
+    confirmar('Excluir oferta', 'Essa ação não pode ser desfeita.').then(yes => { if (yes) api('DELETE', `/api/admin/upsell-ofertas/${id}`).then(() => carregarUpsell(SORTEIO_UPSELL_ID)); });
 }
 
 // ==================== NOTIFICAÇÃO PUSH ====================
