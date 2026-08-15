@@ -528,6 +528,8 @@ app.post('/logout', (req, res, next) => {
 // ==================================================================
 app.get('/', (_req, res) => res.redirect('/inicio'));
 app.get('/inicio', (_req, res) => sendPage(res, 'index.html'));
+app.get('/termos-de-uso', (_req, res) => sendPage(res, 'termos-de-uso.html'));
+app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-privacidade.html'));
 // Middleware de rastreamento: roda em qualquer acesso à página do sorteio.
 // Detecta link manual (?lk=codigo) ou origem automática (utm/gclid/fbclid) e registra o clique.
 async function trackearAcesso(req, res, next) {

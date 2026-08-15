@@ -99,7 +99,7 @@
         .upsell-card { background: linear-gradient(135deg, #145c37 0%, #1a8754 55%, #2fb673 100%); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; transition: background 0.35s ease; box-shadow: 0 4px 14px rgba(20,92,55,0.35); }
         .upsell-card.ativado { background: linear-gradient(135deg, #061a10 0%, #0d2818 55%, #14361f 100%); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
         .upsell-titulo { font-size: 1.05rem; font-weight: 800; color: #fff; margin: 0; }
-        .upsell-descricao { font-size: 0.78rem; color: #d1f5e0; margin: 2px 0 0 0; }
+        .upsell-descricao { font-size: 0.88rem; color: #d1f5e0; margin: 2px 0 0 0; }
         .upsell-card.ativado .upsell-descricao { color: #9ae6b4; }
         .upsell-preco-linha { margin: 0; }
         .upsell-preco-riscado { color: #b3e6c9; font-size: 0.8rem; text-decoration: line-through; margin-right: 6px; }
@@ -331,7 +331,7 @@
                 </div>
 
                 <p class="text-gray-300 mb-3">Você está adquirindo <strong id="confirmar-qtd-cotas" class="text-white">0</strong> título(s) por <strong id="confirmar-valor-total" class="text-green-400">R$ 0,00</strong><span id="confirmar-valor-riscado-box" class="hidden"> <span id="confirmar-valor-riscado" class="text-gray-500 text-sm" style="text-decoration:line-through;"></span></span>.</p>
-                <div class="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 mb-4 flex items-center gap-3">
+                <div class="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 mb-4 flex items-center gap-4">
                     <div style="width:42px; height:42px; border-radius:50%; background:#2d3748; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#a0aec0" stroke-width="2"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#a0aec0" stroke-width="2" stroke-linecap="round"/></svg>
                     </div>
@@ -340,6 +340,9 @@
                         <p class="text-gray-300 text-sm" id="confirmar-tel-cliente">—</p>
                     </div>
                 </div>
+                <p style="font-size:0.72rem; color:#a0aec0; text-align:center; margin-bottom:0.75rem; line-height:1.4;">
+                    Ao efetuar o pagamento e confirmar a compra deste título, declaro que li e concordo com os <a href="/termos-de-uso" target="_blank" style="color:#e2e8f0; font-weight:700;">Termos de Uso</a> e a <a href="/politica-de-privacidade" target="_blank" style="color:#e2e8f0; font-weight:700;">Política de Privacidade</a>.
+                </p>
                 <button type="button" id="btn-finalizar-pedido-conhecido" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded text-lg">
                     Finalizar Pedido
                 </button>
@@ -423,6 +426,8 @@
         let GIROS_DO_COMBO_ATUAL = null;
         let OFERTA_UPSELL_ATUAL = null;
         let QUANTIDADE_ANTES_DO_UPSELL = null;
+        let VEIO_DE_COMBO_ANTES_DO_UPSELL = false;
+        let GIROS_ANTES_DO_UPSELL = null;
         let PENDENTE_NOME = null, PENDENTE_CPF = null, PENDENTE_EMAIL = null, PENDENTE_ENDERECO = null;
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
@@ -454,11 +459,11 @@
                     const temRoleta = Number(o.quantidade_giros_roleta) > 0;
 
                     if (temRoleta) {
-                        $('#upsell-titulo').text(`🎯 +${o.quantidade_giros_roleta} giro(s) de roleta`);
-                        $('#upsell-descricao').text(`Leve ${o.quantidade_cotas} títulos e ganhe roletas extras pra tentar a sorte de novo.`);
+                        $('#upsell-titulo').text(`🎯 Leve ${o.quantidade_cotas} títulos + ${o.quantidade_giros_roleta} giro(s) de roleta`);
+                        $('#upsell-descricao').text(`Leve mais títulos e ganhe roletas extras pra tentar a sorte de novo.`);
                         $('#upsell-toggle-label').text(`Turbinar com roleta: ${o.quantidade_cotas} títulos`);
                     } else {
-                        $('#upsell-titulo').text(`🎯 +${extras} chances de ganhar`);
+                        $('#upsell-titulo').text(`🎯 Leve ${o.quantidade_cotas} títulos`);
                         $('#upsell-descricao').text(`Quanto mais títulos, mais altas são suas chances de ganhar.`);
                         $('#upsell-toggle-label').text(`Turbinar suas chances: ${o.quantidade_cotas} títulos`);
                     }
@@ -506,10 +511,17 @@
             $('#upsell-box').toggleClass('ativado', ativado);
             if (ativado) {
                 QUANTIDADE_ANTES_DO_UPSELL = quantidadeCotas;
+                VEIO_DE_COMBO_ANTES_DO_UPSELL = VEIO_DE_COMBO_ROLETA;
+                GIROS_ANTES_DO_UPSELL = GIROS_DO_COMBO_ATUAL;
                 quantidadeCotas = Number(OFERTA_UPSELL_ATUAL.quantidade_cotas);
                 if (Number(OFERTA_UPSELL_ATUAL.quantidade_giros_roleta) > 0) {
                     VEIO_DE_COMBO_ROLETA = true;
                     GIROS_DO_COMBO_ATUAL = OFERTA_UPSELL_ATUAL.quantidade_giros_roleta;
+                } else {
+                    // Essa oferta específica não dá roleta — não pode ficar herdando giro de uma
+                    // roleta anterior sem querer.
+                    VEIO_DE_COMBO_ROLETA = false;
+                    GIROS_DO_COMBO_ATUAL = null;
                 }
                 const valorOriginal = quantidadeCotas * PRECO;
                 const valorPromo = Number(OFERTA_UPSELL_ATUAL.preco_promocional);
@@ -522,6 +534,10 @@
                 }
             } else if (QUANTIDADE_ANTES_DO_UPSELL !== null) {
                 quantidadeCotas = QUANTIDADE_ANTES_DO_UPSELL;
+                // Restaura a roleta pro estado de antes de ativar a chavinha — sem isso, a roleta
+                // da oferta ficava "grudada" mesmo depois de desativar.
+                VEIO_DE_COMBO_ROLETA = VEIO_DE_COMBO_ANTES_DO_UPSELL;
+                GIROS_DO_COMBO_ATUAL = GIROS_ANTES_DO_UPSELL;
                 montarConfirmacao(quantidadeCotas);
             }
         }
@@ -1055,22 +1071,24 @@
                 const qtd = $(this).data('qtd');
                 if (qtd !== undefined) {
                     quantidadeCotas = Math.min(MAX_QTY, quantidadeCotas + Number(qtd));
+                    VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null;
                     atualizarPreco();
                     $('.btn-add-cota').removeClass('selecionado');
                     $(this).addClass('selecionado');
                 }
             });
             $('#btn-add-cota').on('click', function() {
-                if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+                if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
             });
             $('#btn-remove-cota').on('click', function() {
-                if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+                if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
             });
             $('#input-qtd').on('change', function() {
                 let val = parseInt($(this).val());
                 if (isNaN(val) || val < MIN_QTY) val = MIN_QTY;
                 if (val > MAX_QTY) val = MAX_QTY;
                 quantidadeCotas = val;
+                VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null;
                 atualizarPreco();
             });
 
