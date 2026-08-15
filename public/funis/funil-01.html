@@ -97,7 +97,16 @@
         .toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
         @keyframes pulsarEntrada { 0% { opacity: 0; transform: scale(0.9); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
         .entrada-pulsante:not(.hidden) { animation: pulsarEntrada 0.45s ease-out; }
-        #upsell-box.ativado { background: #d1f5e0 !important; border-color: #14532d !important; transition: background 0.3s, border-color 0.3s; }
+        .upsell-card { background: linear-gradient(135deg, #145c37 0%, #1a8754 55%, #2fb673 100%); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; transition: background 0.35s ease; box-shadow: 0 4px 14px rgba(20,92,55,0.25); }
+        .upsell-card.ativado { background: linear-gradient(135deg, #061a10 0%, #0d2818 55%, #14361f 100%); box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+        .upsell-titulo { font-size: 1.05rem; font-weight: 800; color: #fff; margin: 0; }
+        .upsell-descricao { font-size: 0.88rem; color: #d1f5e0; margin: 2px 0 0 0; }
+        .upsell-card.ativado .upsell-descricao { color: #9ae6b4; }
+        .upsell-preco-linha { margin: 0; }
+        .upsell-preco-riscado { color: #b3e6c9; font-size: 0.8rem; text-decoration: line-through; margin-right: 6px; }
+        .upsell-preco-final { color: #fff; font-size: 1.15rem; font-weight: 800; }
+        .upsell-toggle-label { font-size: 0.72rem; color: #d1f5e0; margin: 2px 0 0 0; font-weight: 600; }
+        .upsell-card.ativado .upsell-toggle-label { color: #9ae6b4; }
         .confirm-bar { display: flex; align-items: flex-start; background-color: #2f855a; color: #fff; padding: 1rem 1.1rem; border-radius: 10px; margin-bottom: 1.5rem; font-weight: 600; line-height: 1.5; }
         .confirm-bar-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background-color: #fff; color: #2f855a; border-radius: 50%; width: 26px; height: 26px; margin-right: 0.75rem; margin-top: 2px; font-weight: bold; }
         .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
@@ -260,6 +269,11 @@
             </a>
         </div>
 
+        <footer style="text-align:center; padding:1.5rem 1rem 2.5rem; color:#a0aec0; font-size:0.78rem;">
+            <a href="/termos-de-uso" target="_blank" style="color:#4a5568;">Termos de Uso</a>
+            <span style="margin:0 6px;">·</span>
+            <a href="/politica-de-privacidade" target="_blank" style="color:#4a5568;">Política de Privacidade</a>
+        </footer>
     </main>
 
     <div id="modal-meus-numeros" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
@@ -302,28 +316,37 @@
             <!-- ETAPA FINAL: confirmar tudo antes de pagar — só aparece aqui, depois dos dados preenchidos -->
             <div id="etapa-confirmar-comprador" class="hidden">
                 <div id="checkout-confirm-bar" class="confirm-bar entrada-pulsante hidden">
-                    <span class="confirm-bar-icon">✓</span>
+                    <span class="confirm-bar-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8.5L6 12.5L14 3.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                     <span id="checkout-confirm-text"></span>
                 </div>
 
-                <div id="upsell-box" class="hidden entrada-pulsante" style="background:#eafaf1; border:1px solid #1a8754; border-radius:10px; padding:0.9rem; margin-bottom:1.25rem;">
-                    <div class="flex justify-between items-center gap-3">
-                        <div style="flex:1;">
-                            <p class="text-sm text-gray-800 font-semibold" id="upsell-titulo">Leve mais títulos por menos!</p>
-                            <p class="text-xs text-gray-600 mt-1" id="upsell-descricao"></p>
+                <div id="upsell-box" class="hidden entrada-pulsante upsell-card">
+                    <p id="upsell-titulo" class="upsell-titulo">🎯 Leve 200 títulos</p>
+                    <p id="upsell-descricao" class="upsell-descricao">Quanto mais títulos, mais altas são suas chances de ganhar.</p>
+                    <div class="flex justify-between items-center gap-3 mt-3">
+                        <div style="flex:1; min-width:0;">
+                            <p class="upsell-preco-linha">
+                                <span id="upsell-preco-riscado" class="upsell-preco-riscado"></span>
+                                <span id="upsell-preco-final" class="upsell-preco-final"></span>
+                            </p>
+                            <p id="upsell-toggle-label" class="upsell-toggle-label">Turbinar suas chances</p>
                         </div>
                         <label class="toggle-switch"><input type="checkbox" id="upsell-toggle" onchange="aplicarToggleUpsell(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
                     </div>
                 </div>
 
                 <p class="text-gray-600 mb-3">Você está adquirindo <strong id="confirmar-qtd-cotas" class="text-gray-800">0</strong> título(s) por <strong id="confirmar-valor-total" class="text-green-700">R$ 0,00</strong><span id="confirmar-valor-riscado-box" class="hidden"> <span id="confirmar-valor-riscado" class="text-gray-500 text-sm" style="text-decoration:line-through;"></span></span>.</p>
-                <div class="bg-white border border-gray-700 rounded-lg p-4 mb-4">
-                    <p class="text-xs text-gray-500 mb-1">Seus dados:</p>
-                    <p class="text-gray-800 font-semibold" id="confirmar-nome-cliente">—</p>
-                    <p class="text-gray-600 text-sm" id="confirmar-tel-cliente">—</p>
+                <div class="bg-white border border-gray-700 rounded-lg p-4 mb-4 flex items-center gap-4">
+                    <div style="width:42px; height:42px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#718096" stroke-width="2"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#718096" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div style="min-width:0;">
+                        <p class="text-gray-800 font-semibold" id="confirmar-nome-cliente">—</p>
+                        <p class="text-gray-600 text-sm" id="confirmar-tel-cliente">—</p>
+                    </div>
                 </div>
                 <p style="font-size:0.72rem; color:#718096; text-align:center; margin-bottom:0.75rem; line-height:1.4;">
-                    Ao efetuar o pagamento e confirmar a compra deste título, declaro que li e concordo com os <a href="/termos-de-uso" target="_blank" style="color:#2d3748; font-weight:700;">Termos de Uso</a> e a <a href="/politica-de-privacidade" target="_blank" style="color:#2d3748; font-weight:700;">Política de Privacidade</a>.
+                    Ao efetuar o pagamento e confirmar a compra deste título, declaro que li e concordo com os <a href="/termos-de-uso" target="_blank" style="color:#2d3748; font-weight:700;">Termos de Uso</a>.
                 </p>
                 <button type="button" id="btn-finalizar-pedido-conhecido" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded text-lg">
                     Finalizar Pedido
@@ -404,6 +427,8 @@
         let GIROS_DO_COMBO_ATUAL = null;
         let OFERTA_UPSELL_ATUAL = null;
         let QUANTIDADE_ANTES_DO_UPSELL = null;
+        let VEIO_DE_COMBO_ANTES_DO_UPSELL = false;
+        let GIROS_ANTES_DO_UPSELL = null;
         let PENDENTE_NOME = null, PENDENTE_CPF = null, PENDENTE_EMAIL = null, PENDENTE_ENDERECO = null;
         let BILHETES_PREMIADOS = [];
         let FUNIL_DATA = null;
@@ -418,7 +443,7 @@
         function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
         function carregarOfertaUpsell(qtd) {
-            $('#upsell-box').addClass('hidden');
+            $('#upsell-box').addClass('hidden').removeClass('ativado');
             $('#upsell-toggle').prop('checked', false);
             OFERTA_UPSELL_ATUAL = null;
             QUANTIDADE_ANTES_DO_UPSELL = null;
@@ -431,10 +456,26 @@
                     if (!resp.oferta) return;
                     OFERTA_UPSELL_ATUAL = resp.oferta;
                     const o = resp.oferta;
-                    $('#upsell-titulo').text(`Leve mais por menos!`);
-                    let desc = `${o.quantidade_cotas} título(s) por ${formatarMoeda(o.preco_promocional)}`;
-                    if (o.quantidade_giros_roleta > 0) desc += ` — e ganhe ${o.quantidade_giros_roleta} giro(s) de roleta`;
-                    $('#upsell-descricao').text(desc);
+                    const temRoleta = Number(o.quantidade_giros_roleta) > 0;
+
+                    if (temRoleta) {
+                        $('#upsell-titulo').text(`🎯 Leve ${o.quantidade_cotas} títulos + ${o.quantidade_giros_roleta} giro(s) de roleta`);
+                        $('#upsell-descricao').text(`Leve mais títulos e ganhe roletas extras pra tentar a sorte de novo.`);
+                        $('#upsell-toggle-label').text(`Turbinar com roleta: ${o.quantidade_cotas} títulos`);
+                    } else {
+                        $('#upsell-titulo').text(`🎯 Leve ${o.quantidade_cotas} títulos`);
+                        $('#upsell-descricao').text(`Quanto mais títulos, mais altas são suas chances de ganhar.`);
+                        $('#upsell-toggle-label').text(`Turbinar suas chances: ${o.quantidade_cotas} títulos`);
+                    }
+
+                    const precoOriginal = Number(o.quantidade_cotas) * PRECO;
+                    const precoPromo = Number(o.preco_promocional);
+                    $('#upsell-preco-final').text(`por ${formatarMoeda(precoPromo)}`);
+                    if (precoOriginal > precoPromo) {
+                        $('#upsell-preco-riscado').text(formatarMoeda(precoOriginal)).removeClass('hidden');
+                    } else {
+                        $('#upsell-preco-riscado').text('');
+                    }
                     $('#upsell-box').removeClass('hidden');
                 })
                 .fail(function() {});
@@ -469,10 +510,15 @@
             $('#upsell-box').toggleClass('ativado', ativado);
             if (ativado) {
                 QUANTIDADE_ANTES_DO_UPSELL = quantidadeCotas;
+                VEIO_DE_COMBO_ANTES_DO_UPSELL = VEIO_DE_COMBO_ROLETA;
+                GIROS_ANTES_DO_UPSELL = GIROS_DO_COMBO_ATUAL;
                 quantidadeCotas = Number(OFERTA_UPSELL_ATUAL.quantidade_cotas);
                 if (Number(OFERTA_UPSELL_ATUAL.quantidade_giros_roleta) > 0) {
                     VEIO_DE_COMBO_ROLETA = true;
                     GIROS_DO_COMBO_ATUAL = OFERTA_UPSELL_ATUAL.quantidade_giros_roleta;
+                } else {
+                    VEIO_DE_COMBO_ROLETA = false;
+                    GIROS_DO_COMBO_ATUAL = null;
                 }
                 const valorOriginal = quantidadeCotas * PRECO;
                 const valorPromo = Number(OFERTA_UPSELL_ATUAL.preco_promocional);
@@ -485,6 +531,8 @@
                 }
             } else if (QUANTIDADE_ANTES_DO_UPSELL !== null) {
                 quantidadeCotas = QUANTIDADE_ANTES_DO_UPSELL;
+                VEIO_DE_COMBO_ROLETA = VEIO_DE_COMBO_ANTES_DO_UPSELL;
+                GIROS_DO_COMBO_ATUAL = GIROS_ANTES_DO_UPSELL;
                 montarConfirmacao(quantidadeCotas);
             }
         }
@@ -1015,22 +1063,24 @@
                 const qtd = $(this).data('qtd');
                 if (qtd !== undefined) {
                     quantidadeCotas = Math.min(MAX_QTY, quantidadeCotas + Number(qtd));
+                    VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null;
                     atualizarPreco();
                     $('.btn-add-cota').removeClass('selecionado');
                     $(this).addClass('selecionado');
                 }
             });
             $('#btn-add-cota').on('click', function() {
-                if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+                if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
             });
             $('#btn-remove-cota').on('click', function() {
-                if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+                if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
             });
             $('#input-qtd').on('change', function() {
                 let val = parseInt($(this).val());
                 if (isNaN(val) || val < MIN_QTY) val = MIN_QTY;
                 if (val > MAX_QTY) val = MAX_QTY;
                 quantidadeCotas = val;
+                VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null;
                 atualizarPreco();
             });
 
