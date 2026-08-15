@@ -767,11 +767,12 @@ async function getSorteioPublicData(slug, funilSlug) {
     getPublicMeta()
   ]);
 
-  // Corrige em memória qualquer bilhete que já foi vendido mas ainda tava marcado como disponível
-  // (reaproveita o bilhetesTudo que já veio ali de cima — não gasta outra consulta pra isso)
-  const correcoes = await sincronizarBilhetesComCotasVendidas(sorteio.id, bilhetesTudo || []);
-  const correcaoMap = correcoes.reduce((a, c) => (a[c.id] = c, a), {});
-  const bilhetesCorrigidos = (bilhetesTudo || []).map(b => correcaoMap[b.id] ? { ...b, ...correcaoMap[b.id] } : b);
+  // ⚡ Essa correção de segurança (bilhete marcado errado por alguma inconsistência rara) NÃO
+  // precisa fazer a pessoa esperar — ela roda "por trás", sem atrasar a resposta. Se corrigir
+  // algo, já vale pra próxima visita; a visita atual usa os dados como já estavam (praticamente
+  // sempre já corretos mesmo, essa é só uma rede de segurança extra).
+  sincronizarBilhetesComCotasVendidas(sorteio.id, bilhetesTudo || []).catch(err => console.error('sincronizarBilhetesComCotasVendidas (fundo)', err));
+  const bilhetesCorrigidos = bilhetesTudo || [];
 
   const nowISO = nowISO2;
   const bloq = new Set((bloqueadas || []).map(b => b.numero_cota));
@@ -857,28 +858,28 @@ async function getCheckoutPublicData(token) {
   const isPago = pedido.status === 'pago';
   const derived_status = (isPago ? 'aprovado' : (pedido.expira_em && new Date(pedido.expira_em).getTime() < Date.now() ? 'expirado' : 'pendente'));
 
-  let funil = null;
-  if (pedido.funil_id) {
-    const { data: f } = await supabase.from('funis').select('*').eq('id', pedido.funil_id).maybeSingle();
-    funil = f || null;
-  }
-
-  const meta = await getPublicMeta();
   const sorteioDoPedido = pedido.sorteios || {};
+
+  // ⚡ Nenhuma dessas 4 consultas depende do resultado das outras — só do "pedido" que já veio
+  // ali de cima. Antes rodavam uma atrás da outra (4 idas e voltas ao banco); agora rodam todas
+  // ao mesmo tempo (1 ida e volta).
+  const [{ data: funilData }, meta, cfg, { data: roletaTiersData }] = await Promise.all([
+    pedido.funil_id ? supabase.from('funis').select('*').eq('id', pedido.funil_id).maybeSingle() : Promise.resolve({ data: null }),
+    getPublicMeta(),
+    fetchConfigFromDB(),
+    sorteioDoPedido.roleta_ativada
+      ? supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteioDoPedido.id).order('minimo_cotas', { ascending: true })
+      : Promise.resolve({ data: [] })
+  ]);
+  const funil = funilData || null;
   const pixels = {
     facebook_pixel_id: sorteioDoPedido.pixel_fb_override || meta.pixel_id || '',
     google_ads_id: sorteioDoPedido.pixel_google_override || meta.pixel_google || '',
     tiktok_pixel_id: sorteioDoPedido.pixel_tiktok_override || meta.pixel_tiktok || '',
     gtm_id: sorteioDoPedido.pixel_gtm_override || meta.pixel_gtm || ''
   };
-  const cfg = await fetchConfigFromDB();
   const modo_teste_pagamento = cfg.MODO_TESTE_PAGAMENTO === 'true' || cfg.MODO_TESTE_PAGAMENTO === 'on';
-
-  let roleta_tiers = [];
-  if (sorteioDoPedido.roleta_ativada) {
-    const { data: tiers } = await supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteioDoPedido.id).order('minimo_cotas', { ascending: true });
-    roleta_tiers = tiers || [];
-  }
+  const roleta_tiers = roletaTiersData || [];
 
   return { pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta, pixels, modo_teste_pagamento, roleta_tiers };
 }
