@@ -897,7 +897,7 @@ app.get('/api/public/checkout/:token', async (req, res) => {
 // Lista os giros de roleta de um pedido (sem revelar o resultado dos que ainda não foram girados)
 app.get('/api/public/pedidos/:token/roletas', async (req, res) => {
   try {
-    const { data: pedido } = await supabase.from('pedidos').select('id').eq('token', req.params.token).maybeSingle();
+    const { data: pedido } = await supabase.from('pedidos').select('id, sorteio_id').eq('token', req.params.token).maybeSingle();
     if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
     const { data: giros } = await supabase.from('roleta_giros').select('*').eq('pedido_id', pedido.id).order('created_at', { ascending: true });
     const publico = (giros || []).map(g => ({
@@ -906,7 +906,14 @@ app.get('/api/public/pedidos/:token/roletas', async (req, res) => {
       valor_premio: g.girado ? g.valor_premio : null,
       ganhou: g.girado ? !!g.premio_titulo : null
     }));
-    return ok(res, { giros: publico });
+    // Valores de prêmio possíveis (só pra decorar a roda visualmente) — nunca revela qual posição
+    // do pool é a vencedora, só os VALORES que existem em prêmios ainda disponíveis nesse sorteio.
+    let premios_possiveis = [];
+    if (pedido.sorteio_id) {
+      const { data: premiosData } = await supabase.from('bilhetes_premiados').select('valor_premio').eq('sorteio_id', pedido.sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel');
+      premios_possiveis = [...new Set((premiosData || []).map(p => p.valor_premio).filter(Boolean))].slice(0, 6);
+    }
+    return ok(res, { giros: publico, premios_possiveis });
   } catch (err) { console.error('GET pedidos/:token/roletas', err); return fail(res); }
 });
 

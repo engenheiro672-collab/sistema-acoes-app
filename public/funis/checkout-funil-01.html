@@ -30,6 +30,7 @@
         .pill-girar { background: rgba(0,0,0,0.28); color: #fff; border: none; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; cursor: pointer; animation: pulse-opacity 1.6s ease-in-out infinite; }
         .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; }
         .pill-tentar { background: #15803d; color: #fff; border: none; border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: 0.8rem; cursor: pointer; }
+        .pulse-centro { animation: pulse-opacity 1.5s ease-in-out infinite; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .header-bar { background-color: #000; padding: 1rem; }
         .card { background-color: #ffffff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
@@ -92,16 +93,8 @@
 </head>
 <body class="min-h-screen">
 
-    <header class="header-bar shadow-lg sticky top-0 z-50">
-        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
-            <div id="logo-box" class="text-2xl font-bold text-white">LOGO</div>
-            <a id="voltar-link" href="/inicio" class="text-gray-300 hover:text-white">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
-        </nav>
-    </header>
-
     <main id="checkout-container" class="container mx-auto max-w-2xl p-4">
+        <div style="height:0.5rem;"></div>
 
         <div id="card-aguardando" class="card flex items-center space-x-4">
             <i class="bi bi-hourglass-split aguardando-icon"></i>
@@ -271,7 +264,7 @@
                 <div id="ponteiro-roleta" style="position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 4px; z-index:10; font-size:1.6rem; transition: transform .08s;">📍</div>
                 <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:relative;background:conic-gradient(#16a34a 0deg 45deg,#166534 45deg 90deg,#16a34a 90deg 135deg,#166534 135deg 180deg,#16a34a 180deg 225deg,#166534 225deg 270deg,#16a34a 270deg 315deg,#166534 315deg 360deg); transition: transform 4.2s cubic-bezier(0.12,0.75,0.15,1); box-shadow: 0 0 0 6px #15803d;">
                     <div id="labels-roleta"></div>
-                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;z-index:5;">GIRAR</div>
+                    <div id="btn-centro-roleta" class="pulse-centro" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;z-index:5;">GIRAR</div>
                 </div>
             </div>
             <p id="resultado-roleta" class="text-gray-800 font-semibold mt-4 min-h-[1.5rem]">Gire e tente a sorte</p>
@@ -548,11 +541,14 @@
             if (!TOKEN) return;
             $.get(`/api/public/pedidos/${TOKEN}/roletas`).done(function(resp) {
                 GIROS = resp.giros || [];
+                PREMIOS_POSSIVEIS_GLOBAL = resp.premios_possiveis || [];
                 if (GIROS.length === 0) return;
                 $('#secao-roletas-checkout').removeClass('hidden');
                 renderListaGiros();
             });
         }
+        let PREMIOS_POSSIVEIS_GLOBAL = [];
+        let MOSTRAR_TODAS_ROLETAS = false;
 
         let ROLETA_TIERS_GLOBAL = [];
         let TEM_COMBOS_ROLETA = false;
@@ -600,49 +596,71 @@
             window.location.href = montarUrlVoltarPraSorteio(sorteioSlug, { qtd, giros });
         }
 
+        function acaoTentarNovamente() {
+            const idx = GIROS.findIndex(g => !g.girado);
+            if (idx >= 0) { abrirModalRoleta(idx); return; }
+            if (TEM_COMBOS_ROLETA) abrirPopupCombosRoleta();
+        }
+
         function renderListaGiros() {
             const restantes = GIROS.filter(g => !g.girado).length;
             if (restantes > 0) {
                 $('#texto-contador-roletas').text(`Você tem ${restantes} roleta(s) para girar!`);
-                $('#btn-girar-todas').text('Girar Todas').show().off('click.girartodas').on('click.girartodas', function() {
-                    const idx = GIROS.findIndex(g => !g.girado);
-                    if (idx >= 0) abrirModalRoleta(idx);
-                });
+                $('#btn-girar-todas').text('Girar Todas').show().off('click.girartodas').on('click.girartodas', acaoTentarNovamente);
             } else if (TEM_COMBOS_ROLETA) {
                 $('#texto-contador-roletas').text('Quer mais chances na roleta?');
-                $('#btn-girar-todas').text('Tentar novamente').show().off('click.girartodas').on('click.girartodas', abrirPopupCombosRoleta);
+                $('#btn-girar-todas').text('Tentar novamente').show().off('click.girartodas').on('click.girartodas', acaoTentarNovamente);
             } else {
                 $('#texto-contador-roletas').text('Você já girou todas as roletas!');
                 $('#btn-girar-todas').hide();
             }
-            $('#lista-giros-checkout').html(GIROS.map((g, i) => {
+            const visiveis = MOSTRAR_TODAS_ROLETAS ? GIROS : GIROS.slice(0, 4);
+            const podeTentarNovamente = restantes > 0 || TEM_COMBOS_ROLETA;
+            $('#lista-giros-checkout').html(visiveis.map((g) => {
+                const i = GIROS.indexOf(g);
                 if (g.girado && g.ganhou) {
                     const texto = g.valor_premio || g.premio_titulo || 'Prêmio!';
                     return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span></div><b style="color:#fff;">${texto}</b></div>`;
                 }
                 if (g.girado && !g.ganhou) {
-                    if (TEM_COMBOS_ROLETA) {
+                    if (podeTentarNovamente) {
                         return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><button class="btn-tentar-novamente pill-tentar">Tentar novamente</button></div>`;
                     }
                     return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><span class="pill-girou">GIROU</span></div>`;
                 }
                 return `<div class="giro-linha giro-pendente"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span></div><button class="btn-girar-uma pill-girar" data-idx="${i}">GIRAR</button></div>`;
             }).join(''));
+            if (!MOSTRAR_TODAS_ROLETAS && GIROS.length > 4) {
+                $('#lista-giros-checkout').append(`<button id="btn-ver-mais-roletas" class="text-center text-gray-500 font-semibold hover:text-gray-900 text-sm w-full mt-1"><i class="bi bi-chevron-down"></i> Ver mais ${GIROS.length - 4} roleta(s)</button>`);
+            }
         }
+        $('#lista-giros-checkout').on('click', '#btn-ver-mais-roletas', function() { MOSTRAR_TODAS_ROLETAS = true; renderListaGiros(); });
 
-        // 8 fatias: pares = "Tente Denovo", ímpares = fatias de prêmio (mostram um valor de exemplo até girar)
+        // 8 fatias: pares = "Tente Denovo", ímpares = fatias de prêmio real (busca os valores configurados)
         const SEGMENTOS = 8;
         const ANGULO_FATIA = 360 / SEGMENTOS;
+        const CORES_PREMIO = ['#f59e0b', '#facc15', '#ea580c', '#eab308'];
+
+        function montarCorFundoRoda() {
+            const stops = [];
+            for (let i = 0; i < SEGMENTOS; i++) {
+                const inicio = i * ANGULO_FATIA, fim = inicio + ANGULO_FATIA;
+                const cor = (i % 2 === 0) ? (i % 4 === 0 ? '#14532d' : '#166534') : CORES_PREMIO[((i - 1) / 2) % CORES_PREMIO.length];
+                stops.push(`${cor} ${inicio}deg ${fim}deg`);
+            }
+            $('#roda-roleta').css('background', `conic-gradient(${stops.join(',')})`);
+        }
 
         function montarLabelsRoleta() {
-            const exemplos = ['R$50', 'R$120', 'R$80', 'R$200'];
+            const premiosDisponiveis = PREMIOS_POSSIVEIS_GLOBAL.length ? PREMIOS_POSSIVEIS_GLOBAL : ['Prêmio!'];
             let html = '';
             for (let i = 0; i < SEGMENTOS; i++) {
                 const meio = i * ANGULO_FATIA + ANGULO_FATIA / 2;
-                const texto = (i % 2 === 0) ? 'Tente Denovo' : exemplos[(i - 1) / 2 % exemplos.length];
+                const texto = (i % 2 === 0) ? 'Tente Denovo' : premiosDisponiveis[((i - 1) / 2) % premiosDisponiveis.length];
                 html += `<div class="label-fatia" data-i="${i}" style="position:absolute; top:50%; left:50%; width:100px; text-align:center; transform: translate(-50%,-50%) rotate(${meio}deg) translateY(-90px); font-size:0.7rem; font-weight:700; color:#dcfce7;">${texto}</div>`;
             }
             $('#labels-roleta').html(html);
+            montarCorFundoRoda();
         }
 
         // Som de "tique" sintetizado (sem precisar de arquivo de áudio)
@@ -660,6 +678,48 @@
                 osc.start(); osc.stop(AUDIO_CTX.currentTime + 0.05);
             } catch (e) {}
         }
+        // Som "não deu certo" — dois tons curtos descendo, diferente do tique da roda girando
+        function tocarSomPerdeu() {
+            try {
+                AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
+                [440, 330].forEach((freq, idx) => {
+                    const osc = AUDIO_CTX.createOscillator();
+                    const gain = AUDIO_CTX.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const inicio = AUDIO_CTX.currentTime + idx * 0.12;
+                    gain.gain.setValueAtTime(0.08, inicio);
+                    gain.gain.exponentialRampToValueAtTime(0.001, inicio + 0.18);
+                    osc.connect(gain).connect(AUDIO_CTX.destination);
+                    osc.start(inicio); osc.stop(inicio + 0.18);
+                });
+            } catch (e) {}
+        }
+        // Som de prêmio — tons curtos subindo (mais animado)
+        function tocarSomGanhou() {
+            try {
+                AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
+                [520, 660, 880].forEach((freq, idx) => {
+                    const osc = AUDIO_CTX.createOscillator();
+                    const gain = AUDIO_CTX.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    const inicio = AUDIO_CTX.currentTime + idx * 0.1;
+                    gain.gain.setValueAtTime(0.09, inicio);
+                    gain.gain.exponentialRampToValueAtTime(0.001, inicio + 0.16);
+                    osc.connect(gain).connect(AUDIO_CTX.destination);
+                    osc.start(inicio); osc.stop(inicio + 0.16);
+                });
+            } catch (e) {}
+        }
+
+        function atualizarBotaoCentro(giro) {
+            if (giro.girado) {
+                $('#btn-centro-roleta').removeClass('pulse-centro').css({ background: '#dc2626', color: '#fff' }).text(giro.ganhou ? '🎉' : 'GIROU');
+            } else {
+                $('#btn-centro-roleta').addClass('pulse-centro').css({ background: '#fef3c7', color: '#111' }).text('GIRAR');
+            }
+        }
 
         function abrirModalRoleta(idx) {
             GIRO_ATUAL_IDX = idx;
@@ -673,15 +733,17 @@
             $('#roda-roleta').css('transition', 'none').css('transform', 'rotate(0deg)');
             requestAnimationFrame(() => $('#roda-roleta').css('transition', ''));
             const giro = GIROS[GIRO_ATUAL_IDX];
-            $('#resultado-roleta').text(giro.girado ? (giro.ganhou ? (giro.valor_premio || giro.premio_titulo) : 'Tente Denovo') : 'Gire e tente a sorte');
+            $('#resultado-roleta').html(giro.girado ? (giro.ganhou ? `🎉 ${giro.valor_premio || giro.premio_titulo}` : 'Não foi dessa vez! <span style="display:block; font-size:0.8rem; font-weight:400; opacity:0.8; margin-top:2px;">Tente a próxima roleta</span>') : 'Gire e tente a sorte');
             $('#btn-roleta-anterior').prop('disabled', GIRO_ATUAL_IDX === 0);
             $('#btn-roleta-proxima').prop('disabled', GIRO_ATUAL_IDX >= total - 1);
+            atualizarBotaoCentro(giro);
         }
 
         function girarRoleta(idx) {
             const giro = GIROS[idx];
             if (!giro || giro.girado) return;
             $('#resultado-roleta').text('Girando...');
+            $('#btn-centro-roleta').removeClass('pulse-centro').css({ background: '#dc2626', color: '#fff' }).text('...');
 
             $.post(`/api/public/roletas/${giro.id}/girar`).done(function(resultado) {
                 // Escolhe uma fatia compatível com o resultado real (par = perde, ímpar = ganha)
@@ -721,23 +783,37 @@
                     giro.ganhou = resultado.ganhou;
                     giro.premio_titulo = resultado.premio_titulo;
                     giro.valor_premio = resultado.valor_premio;
-                    $('#resultado-roleta').text(giro.ganhou ? (giro.valor_premio || giro.premio_titulo || 'Prêmio!') : 'Não foi dessa vez!');
+                    atualizarBotaoCentro(giro);
+                    renderListaGiros();
+
+                    const restantesAgora = GIROS.filter(g => !g.girado).length;
 
                     if (giro.ganhou) {
-                        renderListaGiros();
+                        tocarSomGanhou();
+                        $('#resultado-roleta').html(`🎉 ${giro.valor_premio || giro.premio_titulo || 'Prêmio!'}`);
+                        return;
+                    }
+
+                    tocarSomPerdeu();
+                    $('#resultado-roleta').html('Não foi dessa vez! <span style="display:block; font-size:0.8rem; font-weight:400; opacity:0.8; margin-top:2px;">Tente a próxima roleta</span>');
+
+                    if (restantesAgora > 0) {
+                        setTimeout(() => {
+                            const proximoIdx = GIROS.findIndex(g => !g.girado);
+                            if (proximoIdx >= 0) { GIRO_ATUAL_IDX = proximoIdx; montarLabelsRoleta(); atualizarModalRoleta(); }
+                        }, 1700);
                     } else {
                         setTimeout(() => {
                             $('#modal-roleta').addClass('hidden').css('display', '');
-                            renderListaGiros();
-                            abrirPopupCombosRoleta();
-                        }, 1400);
+                            if (TEM_COMBOS_ROLETA) abrirPopupCombosRoleta();
+                        }, 1700);
                     }
                 }, duracaoMs);
             });
         }
 
         $('#lista-giros-checkout').on('click', '.btn-girar-uma', function() { abrirModalRoleta(Number($(this).data('idx'))); });
-        $('#lista-giros-checkout').on('click', '.btn-tentar-novamente', function() { abrirPopupCombosRoleta(); });
+        $('#lista-giros-checkout').on('click', '.btn-tentar-novamente', function() { acaoTentarNovamente(); });
         $('#close-popup-combos-roleta').on('click', fecharPopupCombosRoleta);
         $('#popup-combos-roleta').on('click', function(e) { if (e.target === this) fecharPopupCombosRoleta(); });
         $('#close-modal-roleta').on('click', function() { $('#modal-roleta').addClass('hidden').css('display', ''); });
@@ -782,9 +858,9 @@
 
             if (modo_teste_pagamento && !pagoInicial) $('#card-modo-teste').removeClass('hidden');
 
-            if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
             injetarPixels(pixels);
-            $('#voltar-link').attr('href', montarUrlVoltarPraSorteio(pedido.sorteios?.slug || ''));
+            const urlVoltarSorteio = montarUrlVoltarPraSorteio(pedido.sorteios?.slug || '');
+            $('#card-sorteio').css('cursor', 'pointer').off('click.voltarsorteio').on('click.voltarsorteio', function() { window.location.href = urlVoltarSorteio; });
 
             $('#pixCopiaCola').text(pedido.pix_copia_cola || '');
             $('#qr-code-img').attr('src', pedido.pix_qr_code_base64 || '');
