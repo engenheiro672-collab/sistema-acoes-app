@@ -1120,11 +1120,21 @@
                 return;
             }
 
-            $.get(`/api/public/checkout/${TOKEN}`)
-                .done(function(resp) { renderPagina(resp); })
-                .fail(function() {
-                    $('#checkout-container').html('<p class="text-center text-red-400 p-8">Pedido não encontrado ou expirado.</p>');
-                });
+            // ⚡ Se o servidor já mandou os dados do pedido prontos dentro da página (mais rápido —
+            // sem esperar essa busca), usa direto. Senão, busca do jeito de sempre.
+            if (window.__DADOS_INICIAIS_CHECKOUT__) {
+                try { renderPagina(window.__DADOS_INICIAIS_CHECKOUT__); }
+                catch (e) {
+                    console.error('Erro ao renderizar checkout com dados pré-carregados', e);
+                    $('#checkout-container').html('<p class="text-center text-red-400 p-8">Ocorreu um erro ao carregar a página. Tente recarregar.</p>');
+                }
+            } else {
+                $.get(`/api/public/checkout/${TOKEN}`)
+                    .done(function(resp) { renderPagina(resp); })
+                    .fail(function() {
+                        $('#checkout-container').html('<p class="text-center text-red-400 p-8">Pedido não encontrado ou expirado.</p>');
+                    });
+            }
 
             $('#btn-copiar-pix').on('click', function() {
                 navigator.clipboard.writeText($('#pixCopiaCola').text() || '');

@@ -363,18 +363,30 @@ async function comprimirImagem(buffer, mimetype, larguraMaxima = 1280) {
 function ok(res, payload = {}) { return res.json({ status: 'success', ...payload }); }
 function fail(res, message = 'Erro interno', code = 500) { return res.status(code).json({ status: 'error', error: message }); }
 
+// ⚡ A tabela "configuracoes" (logo, pixels, redes sociais) quase nunca muda, mas antes era buscada
+// do banco em TODA página, de TODO visitante. Agora guarda em memória por 60s — o painel força uma
+// atualização na hora quando você salva algo (função invalidarCacheConfig abaixo), então nunca fica
+// desatualizado por muito tempo, mas a visita comum do dia a dia nem toca o banco pra isso.
+let _configCache = null;
+let _configCacheEm = 0;
+const CONFIG_CACHE_MS = 60 * 1000;
+function invalidarCacheConfig() { _configCache = null; }
+
 async function fetchConfigFromDB() {
+  if (_configCache && (Date.now() - _configCacheEm) < CONFIG_CACHE_MS) return _configCache;
   try {
     const { data, error } = await supabase.from('configuracoes').select('*');
-    if (error) return {};
+    if (error) return _configCache || {};
     const obj = {};
     (data || []).forEach(r => {
       const k = r.chave || r.key;
       const v = r.valor || r.value;
       if (k) obj[k] = v;
     });
+    _configCache = obj;
+    _configCacheEm = Date.now();
     return obj;
-  } catch { return {}; }
+  } catch { return _configCache || {}; }
 }
 
 async function loadConfigToEnv() {
@@ -526,34 +538,65 @@ app.post('/logout', (req, res, next) => {
 // ==================================================================
 // 🌐 PÁGINAS PÚBLICAS (servem HTML estático; dados vêm via /api/public/*)
 // ==================================================================
+// ⚡ Reaproveitada tanto pela página inicial pré-carregada quanto pela API — junta as 2 buscas que
+// não dependem uma da outra pra rodarem ao mesmo tempo (antes, uma esperava a outra terminar).
+async function getInicioPublicData() {
+  const [{ data: sorteios }, { data: ganhadores }, meta] = await Promise.all([
+    supabase.from('sorteios').select('*').eq('status', 'ativo').order('is_featured', { ascending: false }).order('created_at', { ascending: false }),
+    supabase.from('sorteios').select('id,nome,slug,ganhador_nome,ganhador_cota').eq('status', 'concluido').not('ganhador_nome', 'is', null).limit(5).order('updated_at', { ascending: false }),
+    getPublicMeta()
+  ]);
+  const pixels = { facebook_pixel_id: meta.pixel_id, google_ads_id: meta.pixel_google, tiktok_pixel_id: meta.pixel_tiktok, gtm_id: meta.pixel_gtm };
+  return { sorteios: sorteios || [], ganhadores: ganhadores || [], ...meta, pixels };
+}
+
 app.get('/', (_req, res) => res.redirect('/inicio'));
-app.get('/inicio', (_req, res) => sendPage(res, 'index.html'));
+app.get('/inicio', async (_req, res) => {
+  // ⚡ Mesmo truque do sorteio.html e do checkout: manda a lista de sorteios já pronta DENTRO do
+  // HTML, então a página inicial não precisa esperar uma busca à parte pra mostrar tudo.
+  const html = lerHtmlComCache('index.html');
+  let htmlFinal = html;
+  try {
+    const dados = await getInicioPublicData();
+    const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
+    htmlFinal = html.replace('</head>', `<script>window.__DADOS_INICIAIS_INICIO__ = ${dadosSeguro};</script></head>`);
+  } catch (errDados) { console.error('Erro ao pré-carregar dados da página inicial', errDados); }
+  res.set('Content-Type', 'text/html');
+  res.set('Cache-Control', 'no-cache');
+  return res.send(htmlFinal);
+});
 app.get('/termos-de-uso', (_req, res) => sendPage(res, 'termos-de-uso.html'));
 app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-privacidade.html'));
 // Middleware de rastreamento: roda em qualquer acesso à página do sorteio.
 // Detecta link manual (?lk=codigo) ou origem automática (utm/gclid/fbclid) e registra o clique.
-async function trackearAcesso(req, res, next) {
-  try {
-    const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', req.params.slug).maybeSingle();
-    if (sorteio) {
-      let funil = null;
-      if (req.params.funilSlug) {
-        const { data: f } = await supabase.from('funis').select('id, nome, slug').eq('sorteio_id', sorteio.id).eq('slug', req.params.funilSlug).maybeSingle();
-        funil = f || null;
-      }
-      if (req.query.lk) {
-        const { data: link } = await supabase.from('links_rastreamento').select('*').eq('sorteio_id', sorteio.id).eq('codigo', req.query.lk).maybeSingle();
-        if (link) {
-          await supabase.from('links_rastreamento').update({ cliques: (link.cliques || 0) + 1 }).eq('id', link.id);
-          await supabase.from('acessos_log').insert({ sorteio_id: sorteio.id, link_id: link.id, created_at: new Date().toISOString() });
-        }
-      } else {
-        const auto = detectarOrigemAutomatica(req.query, req.headers.referer, funil);
-        await registrarClique(sorteio.id, auto.codigo, auto.nome, auto.canal, funil?.id);
-      }
-    }
-  } catch (err) { console.error('trackearAcesso error', err); }
+// ⚡ Registra o clique/acesso SEM fazer a pessoa esperar: chama next() na hora (a página já começa
+// a carregar), e só depois disso é que as consultas de rastreamento rodam, "por trás". Antes, essas
+// até 5 idas ao banco (uma atrás da outra) aconteciam ANTES da página nem começar a ser buscada —
+// agora elas não atrasam mais nada que a pessoa vê.
+function trackearAcesso(req, res, next) {
   next();
+  (async () => {
+    try {
+      const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', req.params.slug).maybeSingle();
+      if (sorteio) {
+        let funil = null;
+        if (req.params.funilSlug) {
+          const { data: f } = await supabase.from('funis').select('id, nome, slug').eq('sorteio_id', sorteio.id).eq('slug', req.params.funilSlug).maybeSingle();
+          funil = f || null;
+        }
+        if (req.query.lk) {
+          const { data: link } = await supabase.from('links_rastreamento').select('*').eq('sorteio_id', sorteio.id).eq('codigo', req.query.lk).maybeSingle();
+          if (link) {
+            await supabase.from('links_rastreamento').update({ cliques: (link.cliques || 0) + 1 }).eq('id', link.id);
+            await supabase.from('acessos_log').insert({ sorteio_id: sorteio.id, link_id: link.id, created_at: new Date().toISOString() });
+          }
+        } else {
+          const auto = detectarOrigemAutomatica(req.query, req.headers.referer, funil);
+          await registrarClique(sorteio.id, auto.codigo, auto.nome, auto.canal, funil?.id);
+        }
+      }
+    } catch (err) { console.error('trackearAcesso error (fundo)', err); }
+  })();
 }
 
 // Escapa texto pra colocar dentro de atributo HTML com segurança (evita quebrar a página com aspas/símbolos)
@@ -563,8 +606,18 @@ function escaparAtributoHtml(texto) {
 
 // Injeta os dados reais do sorteio (foto, título, descrição) no HTML antes de mandar — necessário porque
 // o WhatsApp/Instagram/Facebook NÃO executam o JavaScript da página, só leem o HTML puro que o servidor manda.
+// ⚡ Guarda o conteúdo desses arquivos HTML em memória depois da 1ª leitura — evita ler o disco de
+// novo em toda visita (os arquivos só mudam quando você faz um novo deploy, então é seguro).
+const _cacheHtmlArquivos = new Map();
+function lerHtmlComCache(caminhoRelativo) {
+  if (_cacheHtmlArquivos.has(caminhoRelativo)) return _cacheHtmlArquivos.get(caminhoRelativo);
+  const conteudo = fs.readFileSync(path.join(PUBLIC_DIR, caminhoRelativo), 'utf-8');
+  _cacheHtmlArquivos.set(caminhoRelativo, conteudo);
+  return conteudo;
+}
+
 function enviarSorteioComOg(res, dadosCompletos, req, nomeArquivo = 'sorteio.html') {
-  const html = fs.readFileSync(path.join(PUBLIC_DIR, nomeArquivo), 'utf-8');
+  const html = lerHtmlComCache(nomeArquivo);
   const sorteio = dadosCompletos?.sorteio;
   const titulo = sorteio?.nome ? `${sorteio.nome} — Participe e concorra!` : 'Sorteio';
   const descricao = sorteio?.descricao ? String(sorteio.descricao).slice(0, 150) : 'Participe e concorra a prêmios incríveis!';
@@ -708,14 +761,32 @@ app.get('/sorteio/:slug/teste/:grupo', async (req, res) => {
 app.get('/checkout/:token/:status?', async (req, res) => {
   try {
     const { data: pedido } = await supabase.from('pedidos').select('funil_id').eq('token', req.params.token).maybeSingle();
+    let arquivoRelativo = 'checkout.html';
     if (pedido?.funil_id) {
       const { data: funil } = await supabase.from('funis').select('arquivo_checkout_html').eq('id', pedido.funil_id).maybeSingle();
       const arquivo = funil?.arquivo_checkout_html || 'checkout.html';
       if (arquivo && arquivo !== 'checkout.html') {
         const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
-        if (fs.existsSync(customPath)) return res.sendFile(customPath);
+        if (fs.existsSync(customPath)) arquivoRelativo = path.join('funis', arquivo);
       }
     }
+
+    // ⚡ Mesmo truque do sorteio.html: manda os dados do pedido já prontos DENTRO do HTML, então o
+    // checkout não precisa esperar uma busca à parte pra mostrar tudo — corta uma ida-e-volta
+    // inteira bem na página onde a pessoa está prestes a pagar.
+    const html = lerHtmlComCache(arquivoRelativo);
+    let htmlFinal = html;
+    try {
+      const dados = await getCheckoutPublicData(req.params.token);
+      if (dados) {
+        const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
+        htmlFinal = html.replace('</head>', `<script>window.__DADOS_INICIAIS_CHECKOUT__ = ${dadosSeguro};</script></head>`);
+      }
+    } catch (errDados) { console.error('Erro ao pré-carregar dados do checkout', errDados); }
+
+    res.set('Content-Type', 'text/html');
+    res.set('Cache-Control', 'no-cache');
+    return res.send(htmlFinal);
   } catch (err) { console.error('Erro ao resolver checkout do funil', err); }
   return sendPage(res, 'checkout.html');
 });
@@ -726,11 +797,8 @@ app.get('/checkout/:token/:status?', async (req, res) => {
 
 app.get('/api/public/inicio', async (_req, res) => {
   try {
-    const { data: sorteios } = await supabase.from('sorteios').select('*').eq('status', 'ativo').order('is_featured', { ascending: false }).order('created_at', { ascending: false });
-    const { data: ganhadores } = await supabase.from('sorteios').select('id,nome,slug,ganhador_nome,ganhador_cota').eq('status', 'concluido').not('ganhador_nome', 'is', null).limit(5).order('updated_at', { ascending: false });
-    const meta = await getPublicMeta();
-    const pixels = { facebook_pixel_id: meta.pixel_id, google_ads_id: meta.pixel_google, tiktok_pixel_id: meta.pixel_tiktok, gtm_id: meta.pixel_gtm };
-    return ok(res, { sorteios: sorteios || [], ganhadores: ganhadores || [], ...meta, pixels });
+    const dados = await getInicioPublicData();
+    return ok(res, dados);
   } catch (err) { console.error('GET /api/public/inicio', err); return fail(res); }
 });
 
@@ -2266,6 +2334,7 @@ app.post('/api/admin/configuracoes', ensureAdminAuth, async (req, res) => {
       ops.push(supabase.from('configuracoes').upsert({ chave: k, valor: v }, { onConflict: 'chave' }));
     });
     await Promise.all(ops);
+    invalidarCacheConfig();
     await loadConfigToEnv();
     return ok(res, { msg: 'Configurações salvas!' });
   } catch (e) { return fail(res); }
@@ -2285,6 +2354,7 @@ app.post('/api/admin/upload-logo', ensureAdminAuth, upload.single('logo'), async
     const publicURL = pub?.publicUrl;
 
     await supabase.from('configuracoes').upsert({ chave: 'LOGO_URL', valor: publicURL }, { onConflict: 'chave' });
+    invalidarCacheConfig();
     return ok(res, { url: publicURL });
   } catch (e) { return fail(res); }
 });
@@ -2891,6 +2961,7 @@ app.post('/api/admin/gateway-config', ensureAdminAuth, async (req, res) => {
     const { chave, valor } = req.body;
     if (!chave) return res.status(400).json({ error: 'chave obrigatoria' });
     await supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' });
+    invalidarCacheConfig();
     return res.json({ ok: true });
   } catch (e) {
     console.error('gateway-config save error', e);
@@ -3147,6 +3218,7 @@ app.post('/api/admin/push/config', ensureAdminAuth, async (req, res) => {
   try {
     const { ativo } = req.body || {};
     await supabase.from('configuracoes').upsert({ chave: 'PUSH_ATIVO', valor: String(!!ativo) }, { onConflict: 'chave' });
+    invalidarCacheConfig();
     return ok(res);
   } catch (e) { return fail(res); }
 });

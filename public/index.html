@@ -253,11 +253,21 @@
                 navigator.serviceWorker.register('/sw.js').catch(function(e) { console.warn('SW não registrado', e); });
             }
 
-            $.get('/api/public/inicio')
-                .done(function(resp) { renderPagina(resp); })
-                .fail(function() {
+            // ⚡ Se o servidor já mandou os dados prontos dentro da página (mais rápido — sem esperar
+            // essa busca), usa direto. Senão, busca do jeito de sempre.
+            if (window.__DADOS_INICIAIS_INICIO__) {
+                try { renderPagina(window.__DADOS_INICIAIS_INICIO__); }
+                catch (e) {
+                    console.error('Erro ao renderizar página inicial com dados pré-carregados', e);
                     $('#sorteio-destaque').html('<p class="text-center text-red-400">Erro ao carregar sorteios. Tente novamente.</p>');
-                });
+                }
+            } else {
+                $.get('/api/public/inicio')
+                    .done(function(resp) { renderPagina(resp); })
+                    .fail(function() {
+                        $('#sorteio-destaque').html('<p class="text-center text-red-400">Erro ao carregar sorteios. Tente novamente.</p>');
+                    });
+            }
 
             $('#btn-meus-bilhetes').on('click', function() { $('#menu-dropdown').addClass('hidden'); $('#modal-bilhetes').removeClass('hidden'); });
             $('#btn-menu').on('click', function(e) { e.stopPropagation(); $('#menu-dropdown').toggleClass('hidden'); });
