@@ -381,7 +381,7 @@
 
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
                     <h4 class="font-semibold text-white mb-1">🔓 Liberar cota numa data</h4>
-                    <p class="text-xs text-gray-500 mb-3">A cota fica bloqueada até a data/hora escolhida. Você também pode condicionar: só libera pra quem comprar acima ou abaixo de X cotas naquele pedido.</p>
+                    <p class="text-xs text-gray-500 mb-3">A cota fica bloqueada até a data/hora escolhida. Depois que passar (e a condição bater, se houver), ela é <b>entregue garantidamente</b> na próxima compra que se encaixar — não é sorteio, é uma entrega certa. Você também pode condicionar: só entrega pra quem comprar acima ou abaixo de X cotas naquele pedido.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                         <input id="inp-lib-cota" placeholder="Número da cota" class="input-dark">
                         <input id="inp-lib-data" type="datetime-local" class="input-dark" title="Data/hora a partir da qual libera">
@@ -2405,7 +2405,13 @@ function verificarCota(sorteioId, idResultado, campoComSufixoRoleta) {
             d.agendamentos.forEach(a => {
                 const cor = a.bloqueada_agora ? 'text-yellow-400' : 'text-green-400';
                 const icone = a.bloqueada_agora ? '⏳' : '✅';
-                html += `<p class="${cor}">${icone} ${a.motivo}</p>`;
+                const dataLocal = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+                let motivo = '';
+                if (a.motivo_tipo === 'aguardando_data') motivo = `Ainda bloqueada — libera em ${dataLocal} (seu horário)`;
+                else if (a.motivo_tipo === 'aguardando_condicao_acima') motivo = `Data (${dataLocal}) já passou, mas só libera pra compras acima de ${a.condicao_quantidade} cotas`;
+                else if (a.motivo_tipo === 'aguardando_condicao_abaixo') motivo = `Data (${dataLocal}) já passou, mas só libera pra compras abaixo de ${a.condicao_quantidade} cotas`;
+                else motivo = `Pronta desde ${dataLocal} — vai ser entregue garantidamente na próxima compra que bater os critérios`;
+                html += `<p class="${cor}">${icone} ${motivo}</p>`;
             });
         }
 

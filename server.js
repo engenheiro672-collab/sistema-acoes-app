@@ -1285,24 +1285,48 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
     ]);
 
     const qtdPedidoAtual = Number(pedido.quantidade_cotas || 0);
-    const agendadasAindaBloqueadas = (agRes.data || []).filter(r => {
-      const dataLiberacao = r.liberar_em;
-      const aindaNaoChegouADat = dataLiberacao && dataLiberacao > nowISO;
-      if (aindaNaoChegouADat) return true; // data ainda não chegou — continua bloqueada pra todo mundo
-      // Data já passou: se tiver condição de quantidade, só libera pra quem se encaixa nela
-      if (r.condicao_tipo === 'acima' && !(qtdPedidoAtual > Number(r.condicao_quantidade))) return true;
-      if (r.condicao_tipo === 'abaixo' && !(qtdPedidoAtual < Number(r.condicao_quantidade))) return true;
-      return false; // liberada de vez pra esse pedido
-    });
+    const jaVendidas = new Set((vendRes.data || []).map(r => r.numero_cota));
+
+    // Separa os agendamentos em dois grupos:
+    // - agendadasAindaBloqueadas: data não chegou, OU chegou mas a condição de quantidade não bate
+    //   com ESSE pedido (continua fora do sorteio aleatório pra ele, mas outro pedido pode se encaixar depois)
+    // - prontasParaForcar: data já passou E (sem condição, OU a condição bate com ESSE pedido) — essas
+    //   são ENTREGUES garantidamente nesta compra, não dependem de sorte no sorteio aleatório.
+    const agendadasAindaBloqueadas = [];
+    const prontasParaForcar = [];
+    for (const r of (agRes.data || [])) {
+      if (jaVendidas.has(r.numero_cota)) continue; // já foi entregue antes (não deveria sobrar agendamento, mas por segurança)
+      const aindaNaoChegouAData = r.liberar_em && r.liberar_em > nowISO;
+      if (aindaNaoChegouAData) { agendadasAindaBloqueadas.push(r); continue; }
+      let bateCondicao = true;
+      if (r.condicao_tipo === 'acima') bateCondicao = qtdPedidoAtual > Number(r.condicao_quantidade);
+      if (r.condicao_tipo === 'abaixo') bateCondicao = qtdPedidoAtual < Number(r.condicao_quantidade);
+      if (bateCondicao) prontasParaForcar.push(r);
+      else agendadasAindaBloqueadas.push(r);
+    }
+    // A mais antiga programada tem prioridade se houver mais de uma pronta ao mesmo tempo.
+    prontasParaForcar.sort((a, b) => String(a.liberar_em).localeCompare(String(b.liberar_em)));
 
     const invalidos = new Set([
       ...(bloqRes.data || []).map(r => r.numero_cota),
       ...agendadasAindaBloqueadas.map(r => r.numero_cota),
-      ...(vendRes.data || []).map(r => r.numero_cota)
+      ...jaVendidas
     ]);
 
     const quantidade = Number(pedido.quantidade_cotas || 0) + bonusCotas;
     const rows = [];
+
+    // ⚡ Entrega garantida: as cotas agendadas que já bateram a data (e a condição, se houver) entram
+    // DIRETO nessa compra — não dependem de sorte no sorteio aleatório abaixo.
+    const agendamentosForcadosNestaCompra = [];
+    for (const ag of prontasParaForcar) {
+      if (rows.length >= quantidade) break;
+      if (invalidos.has(ag.numero_cota)) continue; // segurança, não deveria acontecer
+      rows.push({ sorteio_id, pedido_id: pedido.id, user_id, numero_cota: ag.numero_cota, created_at: new Date().toISOString() });
+      invalidos.add(ag.numero_cota);
+      agendamentosForcadosNestaCompra.push(ag);
+    }
+
     let attempts = 0;
     const maxAttempts = Math.max(quantidade * 200, 20000);
 
@@ -1344,6 +1368,16 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
       }
     }
     if (inserted.length === 0) return [];
+
+    // As cotas agendadas que realmente entraram nesta compra saem da fila de agendamentos — já
+    // foram entregues, não podem ser prometidas de novo pra outra pessoa no futuro.
+    if (agendamentosForcadosNestaCompra.length) {
+      const numerosInseridos = new Set(inserted.map(r => r.numero_cota));
+      const idsParaRemover = agendamentosForcadosNestaCompra.filter(ag => numerosInseridos.has(ag.numero_cota)).map(ag => ag.id);
+      if (idsParaRemover.length) {
+        await supabase.from('cotas_agendadas').delete().in('id', idsParaRemover);
+      }
+    }
 
     await safeUpdatePedidos(pedido.id, { cotas_geradas: 1, cotas_array: inserted.map(r => r.numero_cota), status: 'pago', updated_at: new Date().toISOString() });
 
@@ -2881,11 +2915,12 @@ app.get('/api/admin/sorteios/:id/verificar-cota', ensureAdminAuth, async (req, r
     const agendamentosComStatus = (agendamentos || []).map(a => {
       const aindaNaoChegouAData = a.liberar_em && a.liberar_em > nowISO;
       let bloqueadaAgora = aindaNaoChegouAData;
-      let motivo = aindaNaoChegouAData ? `Ainda bloqueada — libera em ${a.liberar_em}` : 'Data já passou';
-      if (!aindaNaoChegouAData && a.condicao_tipo === 'acima') { bloqueadaAgora = true; motivo = `Data já passou, mas só libera pra compras acima de ${a.condicao_quantidade} cotas`; }
-      if (!aindaNaoChegouAData && a.condicao_tipo === 'abaixo') { bloqueadaAgora = true; motivo = `Data já passou, mas só libera pra compras abaixo de ${a.condicao_quantidade} cotas`; }
-      if (!aindaNaoChegouAData && !a.condicao_tipo) { bloqueadaAgora = false; motivo = 'Liberada — elegível pra ser sorteada em qualquer compra a partir de agora'; }
-      return { ...a, bloqueada_agora: bloqueadaAgora, motivo };
+      let motivoTipo = aindaNaoChegouAData ? 'aguardando_data' : 'liberada';
+      if (!aindaNaoChegouAData && a.condicao_tipo === 'acima') { bloqueadaAgora = true; motivoTipo = 'aguardando_condicao_acima'; }
+      if (!aindaNaoChegouAData && a.condicao_tipo === 'abaixo') { bloqueadaAgora = true; motivoTipo = 'aguardando_condicao_abaixo'; }
+      // motivo_tipo vai puro (sem data formatada) — o painel converte liberar_em pro fuso local
+      // de quem está olhando, senão a data aparece "crua" em UTC e parece errada sem ser.
+      return { ...a, bloqueada_agora: bloqueadaAgora, motivo_tipo: motivoTipo };
     });
 
     return ok(res, {
