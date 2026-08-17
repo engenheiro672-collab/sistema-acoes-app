@@ -395,6 +395,16 @@
                     <button type="button" class="btn-primary" onclick="addAgendamento()">Agendar Liberação</button>
                     <div id="lista-agendamentos" class="max-h-40 overflow-y-auto space-y-2 mt-3"></div>
                 </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">🔍 Verificar status de uma cota agora</h4>
+                    <p class="text-xs text-gray-500 mb-3">Confere na hora se essa cota está bloqueada, agendada (e se já liberou ou não, e por quê), se já foi vendida, e se é um prêmio. Não depende de comprar de teste.</p>
+                    <div class="flex gap-2 mb-2">
+                        <input id="inp-verificar-cota" placeholder="Número da cota" class="input-dark" style="max-width:200px">
+                        <button type="button" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg" onclick="verificarCota(SORTEIO_BILHETE_ID, 'resultado-verificar-cota')">Verificar</button>
+                    </div>
+                    <div id="resultado-verificar-cota" class="text-sm"></div>
+                </div>
                 </div>
             </div>
         </div>
@@ -488,6 +498,16 @@
                     </div>
                     <button type="button" class="btn-primary" onclick="addAgendamentoRoleta()">Agendar Liberação</button>
                     <div id="lista-agendamentos-roleta" class="max-h-40 overflow-y-auto space-y-2 mt-3"></div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">🔍 Verificar status de uma cota agora</h4>
+                    <p class="text-xs text-gray-500 mb-3">Confere na hora se essa cota está bloqueada, agendada (e se já liberou ou não, e por quê), se já foi vendida, e se é um prêmio. Não depende de comprar de teste.</p>
+                    <div class="flex gap-2 mb-2">
+                        <input id="inp-verificar-cota-roleta" placeholder="Número da cota" class="input-dark" style="max-width:200px">
+                        <button type="button" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg" onclick="verificarCota(SORTEIO_ROLETA_ID, 'resultado-verificar-cota-roleta', true)">Verificar</button>
+                    </div>
+                    <div id="resultado-verificar-cota-roleta" class="text-sm"></div>
                 </div>
 
                 <div>
@@ -2364,6 +2384,54 @@ function addAgendamentoRoleta() {
 }
 function removerBloqueioRoleta(id) { api('DELETE', `/api/admin/bloqueios/${id}`).then(() => carregarBloqueiosRoleta(SORTEIO_ROLETA_ID)); }
 function removerAgendamentoRoleta(id) { api('DELETE', `/api/admin/agendamentos/${id}`).then(() => carregarBloqueiosRoleta(SORTEIO_ROLETA_ID)); }
+
+// Verifica na hora o status real de uma cota: bloqueio permanente, agendamento (e se já liberou
+// ou não, e por quê), se já foi vendida, e se é um prêmio. Não depende de "comprar de teste pra
+// ver se ganha" — mostra o estado exato guardado no banco, agora mesmo.
+function verificarCota(sorteioId, idResultado, campoComSufixoRoleta) {
+    const inputId = campoComSufixoRoleta ? 'inp-verificar-cota-roleta' : 'inp-verificar-cota';
+    const numero = $(`#${inputId}`).val();
+    if (!sorteioId) return notificar('Selecione um sorteio primeiro.', 'erro');
+    if (!numero) return notificar('Informe o número da cota.', 'erro');
+    $(`#${idResultado}`).html('<p class="opacity-60">Verificando...</p>');
+    api('GET', `/api/admin/sorteios/${sorteioId}/verificar-cota?numero=${encodeURIComponent(numero)}`).then(d => {
+        let html = `<div class="p-3 bg-gray-900 rounded-lg space-y-2"><p class="font-semibold text-white">Cota ${d.numero}</p>`;
+
+        if (d.bloqueio_permanente) {
+            html += `<p class="text-red-400">🔒 Bloqueada permanentemente — nunca sai até você remover manualmente.</p>`;
+        }
+
+        if (d.agendamentos && d.agendamentos.length > 0) {
+            d.agendamentos.forEach(a => {
+                const cor = a.bloqueada_agora ? 'text-yellow-400' : 'text-green-400';
+                const icone = a.bloqueada_agora ? '⏳' : '✅';
+                html += `<p class="${cor}">${icone} ${a.motivo}</p>`;
+            });
+        }
+
+        if (!d.bloqueio_permanente && (!d.agendamentos || d.agendamentos.length === 0)) {
+            html += `<p class="text-green-400">✅ Sem nenhum bloqueio — livre pra ser sorteada normalmente.</p>`;
+        }
+
+        if (d.ja_vendida) {
+            html += `<p class="text-blue-400">🛒 Já foi vendida (pedido ${d.ja_vendida.pedido_id || '-'}).</p>`;
+        } else {
+            html += `<p class="opacity-60">Ainda não foi vendida a ninguém.</p>`;
+        }
+
+        if (d.premios && d.premios.length > 0) {
+            d.premios.forEach(p => {
+                html += `<p class="text-purple-300">🏆 É um prêmio de ${p.tipo === 'roleta' ? 'roleta' : 'bilhete premiado'} — status: <b>${p.status}</b>${p.valor_premio ? ` (${p.valor_premio})` : ''}</p>`;
+            });
+        } else {
+            html += `<p class="opacity-60">Não é um número de prêmio configurado.</p>`;
+        }
+
+        html += '</div>';
+        $(`#${idResultado}`).html(html);
+    }).catch(err => $(`#${idResultado}`).html(`<p class="text-red-400">Erro: ${err.error || 'não foi possível verificar'}</p>`));
+}
+
 
 // ==================== ROLETA (página própria) ====================
 let SORTEIO_ROLETA_ID = null;

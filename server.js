@@ -2860,6 +2860,44 @@ app.delete('/api/admin/agendamentos/:id', ensureAdminAuth, async (req, res) => {
   try { const { error } = await supabase.from('cotas_agendadas').delete().eq('id', req.params.id); if (error) return fail(res, error.message); return ok(res); } catch (e) { return fail(res); }
 });
 
+// Diagnóstico: mostra o status REAL de uma cota agora mesmo — bloqueio permanente, agendamento
+// (e se já liberou ou ainda não, e por quê), se já foi vendida, e se ela é um prêmio (bilhete
+// premiado ou roleta) e o status desse prêmio. Existe pra você conseguir CONFERIR com certeza,
+// sem depender de comprar de teste pra "ver se ganha" (que é probabilístico, não garantido).
+app.get('/api/admin/sorteios/:id/verificar-cota', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data: sorteioRef } = await supabase.from('sorteios').select('total_cotas').eq('id', req.params.id).maybeSingle();
+    if (!sorteioRef) return fail(res, 'Sorteio não encontrado', 404);
+    const numeroFormatado = padCota(String(req.query.numero || '').replace(/\D/g, ''), sorteioRef.total_cotas);
+
+    const [{ data: bloqueio }, { data: agendamentos }, { data: vendida }, { data: premios }] = await Promise.all([
+      supabase.from('cotas_bloqueadas').select('*').eq('sorteio_id', req.params.id).eq('numero_cota', numeroFormatado).maybeSingle(),
+      supabase.from('cotas_agendadas').select('*').eq('sorteio_id', req.params.id).eq('numero_cota', numeroFormatado),
+      supabase.from('cotas').select('numero_cota, user_id, pedido_id, created_at').eq('sorteio_id', req.params.id).eq('numero_cota', numeroFormatado).maybeSingle(),
+      supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', req.params.id).eq('numero_cota', numeroFormatado)
+    ]);
+
+    const nowISO = new Date().toISOString();
+    const agendamentosComStatus = (agendamentos || []).map(a => {
+      const aindaNaoChegouAData = a.liberar_em && a.liberar_em > nowISO;
+      let bloqueadaAgora = aindaNaoChegouAData;
+      let motivo = aindaNaoChegouAData ? `Ainda bloqueada — libera em ${a.liberar_em}` : 'Data já passou';
+      if (!aindaNaoChegouAData && a.condicao_tipo === 'acima') { bloqueadaAgora = true; motivo = `Data já passou, mas só libera pra compras acima de ${a.condicao_quantidade} cotas`; }
+      if (!aindaNaoChegouAData && a.condicao_tipo === 'abaixo') { bloqueadaAgora = true; motivo = `Data já passou, mas só libera pra compras abaixo de ${a.condicao_quantidade} cotas`; }
+      if (!aindaNaoChegouAData && !a.condicao_tipo) { bloqueadaAgora = false; motivo = 'Liberada — elegível pra ser sorteada em qualquer compra a partir de agora'; }
+      return { ...a, bloqueada_agora: bloqueadaAgora, motivo };
+    });
+
+    return ok(res, {
+      numero: numeroFormatado,
+      bloqueio_permanente: bloqueio || null,
+      agendamentos: agendamentosComStatus,
+      ja_vendida: vendida || null,
+      premios: premios || []
+    });
+  } catch (e) { console.error('verificar-cota', e); return fail(res); }
+});
+
 app.post('/api/admin/sorteios/:id/premios', ensureAdminAuth, async (req, res) => {
   try {
     const { id } = req.params; const { numero_cota, premio_titulo, ativo } = req.body;
