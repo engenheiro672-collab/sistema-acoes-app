@@ -31,6 +31,7 @@
         .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; }
         .pill-tentar { background: #15803d; color: #fff; border: none; border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: 0.8rem; cursor: pointer; }
         @keyframes pulse-centro-btn { 0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.06); opacity: 0.85; } }
+        @keyframes cair-confete { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(280px) rotate(540deg); opacity: 0; } }
         .pulse-centro { animation: pulse-centro-btn 1.5s ease-in-out infinite; }
         .combo-pulse { animation: pulse-opacity 2.5s infinite; }
         .header-bar { background-color: #000; padding: 1rem; }
@@ -267,10 +268,15 @@
                 <div id="ponteiro-roleta" style="position:absolute; top:-8px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 8px; z-index:10; transition: transform .08s;">
                     <div style="width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d1d5db); box-shadow:0 2px 4px rgba(0,0,0,0.6);"></div>
                 </div>
-                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:absolute;top:0;left:0;background:conic-gradient(#166534 0deg 18deg,#dc2626 18deg 36deg); transition: transform 5.6s cubic-bezier(0.12,0.75,0.15,1), filter .6s ease; box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4);"></div>
+                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:absolute;top:0;left:0;background:conic-gradient(#166534 0deg 18deg,#dc2626 18deg 36deg); transition: transform 7s cubic-bezier(0.05,0.8,0.1,1), filter .6s ease; box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4);"></div>
                 <div id="btn-centro-roleta" class="pulse-centro" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#1f2937; display:flex;align-items:center;justify-content:center;font-weight:800;color:#f3f4f6;font-size:0.85rem;z-index:5;box-shadow:0 3px 8px rgba(0,0,0,0.5);">GIRAR</div>
                 <div id="overlay-resultado-roleta" class="hidden" style="position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; z-index:8;">
                     <span style="color:#fff; font-weight:800; font-size:1.15rem; line-height:1.3;">Não foi dessa vez!</span>
+                </div>
+                <div id="overlay-vitoria-roleta" class="hidden" style="position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle, rgba(15,92,56,0.97), rgba(9,58,35,0.97)); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:16px; z-index:9; overflow:hidden;">
+                    <div id="confete-container" style="position:absolute; inset:0; overflow:hidden; pointer-events:none;"></div>
+                    <span style="color:#fff; font-weight:800; font-size:1.3rem; z-index:2; text-shadow:0 2px 6px rgba(0,0,0,0.4);">🎉 VOCÊ GANHOU! 🎉</span>
+                    <span id="valor-vitoria-roleta" style="color:#facc15; font-weight:800; font-size:1.7rem; margin-top:8px; z-index:2; text-shadow:0 2px 6px rgba(0,0,0,0.4);"></span>
                 </div>
             </div>
             <p id="resultado-roleta" class="text-gray-800 font-semibold mt-4 min-h-[1.5rem]">Escolha sua cor e gire</p>
@@ -658,9 +664,9 @@
         const HEX_COR = { verde: '#166534', vermelho: '#dc2626', preto: '#111827' };
         const NOME_COR = { verde: 'verde', vermelho: 'vermelho', preto: 'preto' };
         const ANGULO_FATIA = 360 / TOTAL_FATIAS;
-        const BEZIER_RODA = [0.12, 0.75, 0.15, 1]; // igual à curva do transition CSS da roda
+        const BEZIER_RODA = [0.05, 0.8, 0.1, 1]; // curva com cauda de desaceleração bem mais longa
         const TRANSICAO_RODA = `transform 5.6s cubic-bezier(${BEZIER_RODA.join(',')}), filter .6s ease`;
-        const DURACAO_GIRO_MS = 5600;
+        const DURACAO_GIRO_MS = 7000;
 
         // Avalia a MESMA curva cubic-bezier do CSS, pra saber exatamente em que ângulo a roda
         // está em cada instante — assim os "tiques" caem certinho onde a roda realmente está,
@@ -777,7 +783,37 @@
                     osc.connect(gain).connect(AUDIO_CTX.destination);
                     osc.start(inicio); osc.stop(inicio + 0.16);
                 });
+                // Estouros rápidos, tipo confete estourando
+                for (let i = 0; i < 10; i++) {
+                    const osc = AUDIO_CTX.createOscillator();
+                    const gain = AUDIO_CTX.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = 500 + Math.random() * 1600;
+                    const inicio = AUDIO_CTX.currentTime + 0.15 + Math.random() * 0.5;
+                    gain.gain.setValueAtTime(0.045, inicio);
+                    gain.gain.exponentialRampToValueAtTime(0.001, inicio + 0.07);
+                    osc.connect(gain).connect(AUDIO_CTX.destination);
+                    osc.start(inicio); osc.stop(inicio + 0.07);
+                }
             } catch (e) {}
+        }
+
+        // Chuva de confete caindo dentro da roda (visual só, some sozinho)
+        function dispararConfete() {
+            const cores = ['#facc15', '#4ade80', '#f87171', '#60a5fa', '#f472b6', '#ffffff'];
+            const container = document.getElementById('confete-container');
+            if (!container) return;
+            container.innerHTML = '';
+            for (let i = 0; i < 45; i++) {
+                const el = document.createElement('div');
+                const cor = cores[Math.floor(Math.random() * cores.length)];
+                const esquerda = Math.random() * 100;
+                const atraso = Math.random() * 0.5;
+                const duracao = 1.5 + Math.random() * 1.1;
+                const largura = 5 + Math.random() * 5;
+                el.style.cssText = `position:absolute; top:-10px; left:${esquerda}%; width:${largura}px; height:${largura * 0.4}px; background:${cor}; opacity:0.95; border-radius:1px; animation: cair-confete ${duracao}s ${atraso}s ease-in forwards;`;
+                container.appendChild(el);
+            }
         }
 
         function atualizarBotaoCentro(giro) {
@@ -800,9 +836,12 @@
         function mostrarResultadoGiro(giro) {
             $('#roda-roleta').css('filter', giro.ganhou ? '' : 'grayscale(0.85) brightness(0.85)');
             $('#btn-whatsapp-premio-roleta').addClass('hidden');
+            $('#overlay-resultado-roleta').addClass('hidden');
+            $('#overlay-vitoria-roleta').addClass('hidden');
             if (giro.ganhou) {
-                $('#overlay-resultado-roleta').addClass('hidden');
-                $('#resultado-roleta').html(`🎉 Caiu no ${NOME_COR[giro.cor_sorteada]}! <br>${giro.valor_premio || giro.premio_titulo || 'Prêmio!'}${giro.pago_dobro ? ' 🟢 (prêmio em dobro!)' : ''}`);
+                $('#valor-vitoria-roleta').text(`${giro.valor_premio || giro.premio_titulo || 'Prêmio!'}${giro.pago_dobro ? ' 🟢 (dobro!)' : ''}`);
+                $('#overlay-vitoria-roleta').removeClass('hidden');
+                $('#resultado-roleta').html('');
                 montarLinkWhatsappPremio(giro);
             } else {
                 $('#overlay-resultado-roleta').removeClass('hidden');
@@ -859,7 +898,7 @@
                 CORES_FATIAS.forEach((c, i) => { if (c === corSorteada) indicesDaCor.push(i); });
                 const fatiaAlvo = indicesDaCor.length ? indicesDaCor[Math.floor(Math.random() * indicesDaCor.length)] : 0;
 
-                const voltas = 7 + Math.floor(Math.random() * 3);
+                const voltas = 9 + Math.floor(Math.random() * 3);
                 const centroFatia = fatiaAlvo * ANGULO_FATIA + ANGULO_FATIA / 2;
                 const anguloFinal = voltas * 360 + (360 - centroFatia);
                 $('#roda-roleta').css('transform', `rotate(${anguloFinal}deg)`);
@@ -891,7 +930,7 @@
                     montarSeletorCor(giro);
                     mostrarResultadoGiro(giro);
 
-                    if (giro.ganhou) { tocarSomGanhou(); return; }
+                    if (giro.ganhou) { tocarSomGanhou(); dispararConfete(); return; }
 
                     tocarSomPerdeu();
                     // Não avança sozinho pra próxima roleta — a pessoa decide, clicando em "Próxima".
