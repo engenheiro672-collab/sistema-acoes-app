@@ -20,15 +20,16 @@
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 100%; overflow: visible; }
         .btn-girar-todas-estilo { background: transparent; color: #4ade80; border: 2px solid #22c55e; font-weight: 800; padding: 8px 20px; border-radius: 999px; cursor: pointer; font-size: 0.85rem; animation: pulse-opacity 1.8s ease-in-out infinite; }
-        .giro-linha { padding: 8px 2px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .giro-linha:last-child { border-bottom: none; margin-bottom: 0; }
+        .giro-linha { border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 10px; flex-wrap: wrap; }
         .giro-linha .giro-info { display: flex; flex-direction: column; gap: 2px; }
         .giro-titulo { color: #fff; font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; gap: 8px; }
-        .giro-sub { color: rgba(255,255,255,0.65); font-size: 0.76rem; }
-        .giro-pendente, .giro-perdeu, .giro-ganhou-linha { background: transparent; }
-        .pill-girar { background: #082017; color: #fff; border: none; border-radius: 999px; padding: 4px 12px; font-weight: 800; font-size: 0.64rem; cursor: pointer; animation: pulse-opacity 1.6s ease-in-out infinite; }
-        .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 4px 12px; font-weight: 800; font-size: 0.64rem; }
-        .pill-tentar { background: #0f3d24; color: #fff; border: none; border-radius: 999px; padding: 4px 12px; font-weight: 800; font-size: 0.64rem; cursor: pointer; }
+        .giro-sub { color: rgba(255,255,255,0.85); font-size: 0.76rem; }
+        .giro-pendente { background: linear-gradient(to right, #0d3d24, #237a4a); }
+        .giro-perdeu { background: linear-gradient(to right, #145c37, #2f9e5c); }
+        .giro-ganhou-linha { background: linear-gradient(135deg, #b45309, #f59e0b); }
+        .pill-girar { background: rgba(0,0,0,0.3); color: #fff; border: none; border-radius: 999px; padding: 7px 16px; font-weight: 800; font-size: 0.72rem; cursor: pointer; animation: pulse-opacity 1.6s ease-in-out infinite; }
+        .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 7px 16px; font-weight: 800; font-size: 0.72rem; }
+        .pill-tentar { background: rgba(0,0,0,0.3); color: #fff; border: none; border-radius: 999px; padding: 7px 16px; font-weight: 800; font-size: 0.72rem; cursor: pointer; }
         @keyframes pulse-centro-btn { 0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.06); opacity: 0.85; } }
         @keyframes cair-confete { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(280px) rotate(540deg); opacity: 0; } }
         .pulse-centro { animation: pulse-centro-btn 1.5s ease-in-out infinite; }
@@ -652,7 +653,7 @@
                 const i = GIROS.indexOf(g);
                 if (g.girado && g.ganhou) {
                     const texto = g.valor_premio || g.premio_titulo || 'Prêmio!';
-                    return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span></div><b style="color:#22c55e;">${texto}</b></div>`;
+                    return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span></div><b style="color:#fff;">${texto}</b></div>`;
                 }
                 if (g.girado && !g.ganhou) {
                     // Perdeu esse giro — enquanto ainda houver roletas por girar (ou combos configurados),
