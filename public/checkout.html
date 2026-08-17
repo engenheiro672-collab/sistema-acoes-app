@@ -24,12 +24,12 @@
         .giro-linha .giro-info { display: flex; flex-direction: column; gap: 2px; }
         .giro-titulo { color: #fff; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
         .giro-sub { color: rgba(255,255,255,0.85); font-size: 0.78rem; }
-        .giro-pendente { background: linear-gradient(to right, #145c37, #2f9e5c); }
-        .giro-perdeu { background: linear-gradient(to right, #1c7a48, #3fb56b); }
+        .giro-pendente { background: linear-gradient(to right, #0d3d24, #237a4a); }
+        .giro-perdeu { background: linear-gradient(to right, #145c37, #2f9e5c); }
         .giro-ganhou-linha { background: linear-gradient(135deg, #b45309, #f59e0b); }
-        .pill-girar { background: #0f3d24; color: #fff; border: none; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; cursor: pointer; animation: pulse-opacity 1.6s ease-in-out infinite; }
-        .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 9px 20px; font-weight: 800; font-size: 0.8rem; }
-        .pill-tentar { background: #15803d; color: #fff; border: none; border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: 0.8rem; cursor: pointer; }
+        .pill-girar { background: #082017; color: #fff; border: none; border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 0.68rem; cursor: pointer; animation: pulse-opacity 1.6s ease-in-out infinite; }
+        .pill-girou { background: #e5e7eb; color: #374151; border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 0.68rem; }
+        .pill-tentar { background: #0f3d24; color: #fff; border: none; border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 0.68rem; cursor: pointer; }
         @keyframes pulse-centro-btn { 0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.06); opacity: 0.85; } }
         @keyframes cair-confete { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(280px) rotate(540deg); opacity: 0; } }
         .pulse-centro { animation: pulse-centro-btn 1.5s ease-in-out infinite; }
@@ -61,6 +61,8 @@
         .blink { animation: blink-anim 1.6s ease-in-out infinite; }
         @keyframes blink-soft { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.45; } }
         .blink-soft { animation: blink-soft 2.2s ease-in-out infinite; }
+        .card-flush-bottom { border-radius: 16px 16px 0 0 !important; margin-bottom: 0 !important; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .card-flush-top { border-radius: 0 0 16px 16px !important; margin-top: 0 !important; border-top: 1px solid rgba(255,255,255,0.08); }
         .titulos-aviso { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.65); font-size: 0.85rem; font-weight: 500; line-height: 1.3; }
         .titulos-aviso i { font-size: 1rem; flex-shrink: 0; }
         .sorteio-corre-tag { display: inline-block; background-color: #1a8754; color: #eafff0; font-size: 0.7rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin: 3px 0 2px; }
@@ -114,9 +116,9 @@
             </div>
         </div>
 
-        <div id="card-pago" class="card flex items-center space-x-4 hidden">
+        <div id="card-pago" class="card flex flex-col items-center text-center hidden">
             <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:#22c55e;"></i>
-            <div>
+            <div class="mt-2">
                 <h2 id="pos-pagamento-titulo" class="aguardando-title" style="color:#22c55e;">Pagamento identificado!</h2>
                 <p id="pos-pagamento-mensagem" class="text-gray-400">Seus números já foram gerados.</p>
             </div>
@@ -165,7 +167,7 @@
             </button>
         </div>
 
-        <div id="card-sorteio" class="card card-small">
+        <div id="card-sorteio" class="card card-small card-flush-bottom">
             <img id="sorteio-img" src="" alt="">
             <div class="card-small-info">
                 <h4 id="sorteio-nome" class="card-small-title"></h4>
@@ -179,31 +181,31 @@
 
         <div id="secao-roletas-checkout" class="card hidden text-left">
             <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-                <span class="flex items-center gap-2" style="font-weight:600; color:#fff; font-size:0.95rem;"><i class="bi bi-bullseye" style="color:#22c55e; font-size:1.2rem;"></i> <span id="texto-contador-roletas">Você tem 0 roleta(s) para girar!</span></span>
+                <span class="flex items-center gap-2" style="font-weight:600; color:#fff; font-size:0.95rem;"><span style="font-size:1.1rem;">🎯</span> <span id="texto-contador-roletas">Você tem 0 roleta(s) para girar!</span></span>
                 <button id="btn-girar-todas" class="btn-girar-todas-estilo">Girar Todas</button>
             </div>
             <div id="lista-giros-checkout" class="space-y-2"></div>
         </div>
 
-        <div id="banner-ativar-push" class="hidden my-3 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:0.9rem 1rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
-            <div class="sino-balancando" style="font-size:1.6rem;">🔔</div>
-            <h3 class="text-white font-black text-base mt-1">Ative as notificações</h3>
+        <div id="banner-ativar-push" class="hidden my-3 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:1.25rem 1.25rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:2.1rem;">🔔</div>
+            <h3 class="text-white font-black text-base mt-2">Ative as notificações</h3>
             <p class="text-green-50 text-xs mt-1" style="opacity:0.9;">Para receber promoções exclusivas, ative a notificação!</p>
-            <button id="btn-ativar-push" class="mt-2 bg-white text-green-700 font-bold px-6 py-2 rounded-full text-sm" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+            <button id="btn-ativar-push" class="mt-3 bg-white text-green-700 font-bold px-6 py-2 rounded-full text-sm" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
                 <i class="bi bi-bell-fill"></i> Ativar Notificação
             </button>
         </div>
 
-        <div id="banner-grupo-vip-novo" class="hidden my-3" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:0.9rem 1rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
-            <div style="font-size:1.6rem;">👥</div>
-            <h3 class="text-white font-black text-base mt-1">Entre para o nosso Grupo VIP</h3>
+        <div id="banner-grupo-vip-novo" class="hidden my-3 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:1.25rem 1.25rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:2.1rem;">👥</div>
+            <h3 class="text-white font-black text-base mt-2">Entre para o nosso Grupo VIP</h3>
             <p class="text-green-50 text-xs mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
-            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-2 inline-block bg-white text-green-700 font-bold px-6 py-2 rounded-full text-sm" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-3 inline-block bg-white text-green-700 font-bold px-6 py-2 rounded-full text-sm" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
                 <i class="bi bi-whatsapp"></i> Entrar no Grupo
             </a>
         </div>
 
-        <div id="card-detalhes-compra" class="card">
+        <div id="card-detalhes-compra" class="card card-flush-top">
             <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center">
                     <i class="bi bi-info-circle text-gray-400 mr-2"></i>
@@ -532,7 +534,9 @@
         function aprovarPagamentoFront(data) {
             isPago = true;
             $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-modo-teste').hide();
-            $('#card-pago').removeClass('hidden').show();
+            $('#card-pago').removeClass('hidden').show().addClass('card-flush-bottom');
+            $('#card-sorteio').removeClass('card-flush-bottom').addClass('card-flush-top');
+            $('#card-detalhes-compra').removeClass('card-flush-top');
             $('.sorteio-corre-tag').text('Você está participando!').removeClass('blink');
             $('#link-comprar-novamente-box').removeClass('hidden');
             try { renderCombosRoleta(ROLETA_TIERS_GLOBAL, SORTEIO_SLUG_GLOBAL); } catch (e) { console.error('renderCombosRoleta', e); }
@@ -653,17 +657,17 @@
                 const i = GIROS.indexOf(g);
                 if (g.girado && g.ganhou) {
                     const texto = g.valor_premio || g.premio_titulo || 'Prêmio!';
-                    return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span></div><b style="color:#fff;">${texto}</b></div>`;
+                    return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span></div><b style="color:#fff;">${texto}</b></div>`;
                 }
                 if (g.girado && !g.ganhou) {
                     // Perdeu esse giro — enquanto ainda houver roletas por girar (ou combos configurados),
                     // "Tentar novamente" leva direto pra próxima roleta disponível, não abre o combo à toa.
                     if (podeTentarNovamente) {
-                        return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><button class="btn-tentar-novamente pill-tentar">Tentar novamente</button></div>`;
+                        return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><button class="btn-tentar-novamente pill-tentar">Tentar novamente</button></div>`;
                     }
-                    return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><span class="pill-girou">GIROU</span></div>`;
+                    return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><span class="pill-girou">GIROU</span></div>`;
                 }
-                return `<div class="giro-linha giro-pendente"><div class="giro-info"><span class="giro-titulo"><i class="bi bi-bullseye"></i> Roleta Instantânea</span></div><button class="btn-girar-uma pill-girar" data-idx="${i}">GIRAR</button></div>`;
+                return `<div class="giro-linha giro-pendente"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span></div><button class="btn-girar-uma pill-girar" data-idx="${i}">GIRAR</button></div>`;
             }).join(''));
             if (!MOSTRAR_TODAS_ROLETAS && GIROS.length > 4) {
                 $('#lista-giros-checkout').append(`<button id="btn-ver-mais-roletas" class="text-center text-gray-400 font-semibold hover:text-white text-sm w-full mt-1"><i class="bi bi-chevron-down"></i> Ver mais ${GIROS.length - 4} roleta(s)</button>`);
