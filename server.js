@@ -904,7 +904,9 @@ app.get('/api/public/pedidos/:token/roletas', async (req, res) => {
       id: g.id, girado: g.girado,
       premio_titulo: g.girado ? g.premio_titulo : null,
       valor_premio: g.girado ? g.valor_premio : null,
-      ganhou: g.girado ? !!g.premio_titulo : null
+      ganhou: g.girado ? !!g.premio_titulo : null,
+      cor_sorteada: g.girado ? (g.cor_sorteada || null) : null,
+      pago_dobro: g.girado ? !!g.pago_dobro : false
     }));
     // Valores de prêmio possíveis (só pra decorar a roda visualmente) — nunca revela qual posição
     // do pool é a vencedora, só os VALORES que existem em prêmios ainda disponíveis nesse sorteio.
@@ -917,15 +919,62 @@ app.get('/api/public/pedidos/:token/roletas', async (req, res) => {
   } catch (err) { console.error('GET pedidos/:token/roletas', err); return fail(res); }
 });
 
-// "Gira" um giro específico — o resultado já estava determinado desde a aprovação do pagamento,
-// aqui só revelamos e, se for prêmio, confirmamos a reivindicação do bilhete de roleta correspondente.
+// Converte "R$ 50,00" -> 50 e formata de volta, pra dobrar o prêmio com segurança no servidor
+// (nunca no navegador — é aqui que o valor final fica gravado e é o que vale pra pagamento).
+function parseValorMoedaBR(str) {
+  if (!str) return null;
+  const limpo = String(str).replace(/[^\d.,]/g, '');
+  if (!limpo) return null;
+  const normalizado = limpo.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const num = parseFloat(normalizado);
+  return isNaN(num) ? null : num;
+}
+function formatarValorMoedaBR(num) {
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// "Gira" um giro específico — o resultado (ganhou/não ganhou) já estava determinado desde a
+// aprovação do pagamento; aqui só revelamos. A COR onde a bolinha cai (verde/vermelho/preto) é
+// sorteada agora, no servidor — nunca no navegador — porque o verde paga o prêmio em dobro, e essa
+// decisão precisa ficar registrada de forma confiável (pra vocês saberem quanto pagar de verdade).
 app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
   try {
     const { data: giro } = await supabase.from('roleta_giros').select('*').eq('id', req.params.giroId).maybeSingle();
     if (!giro) return res.status(404).json({ error: 'Giro não encontrado' });
-    if (giro.girado) return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: giro.valor_premio, ganhou: !!giro.premio_titulo });
+    if (giro.girado) {
+      return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: giro.valor_premio, ganhou: !!giro.premio_titulo, cor_sorteada: giro.cor_sorteada || null });
+    }
 
-    await supabase.from('roleta_giros').update({ girado: true, girado_em: new Date().toISOString() }).eq('id', giro.id);
+    const corEscolhida = ['vermelho', 'preto', 'verde'].includes(req.body?.cor_escolhida) ? req.body.cor_escolhida : null;
+    const ganhou = !!giro.premio_titulo;
+    let corSorteada, valorFinal = giro.valor_premio, pagoDobro = false;
+
+    if (ganhou) {
+      // Ganhou de verdade — 20% de chance de a bolinha cair no verde (prêmio em dobro),
+      // senão cai em vermelho ou preto (não muda o valor do prêmio).
+      corSorteada = Math.random() < 0.2 ? 'verde' : (Math.random() < 0.5 ? 'vermelho' : 'preto');
+      if (corSorteada === 'verde') {
+        const valorNum = parseValorMoedaBR(giro.valor_premio);
+        if (valorNum !== null) { valorFinal = formatarValorMoedaBR(valorNum * 2); pagoDobro = true; }
+      }
+    } else {
+      // Perdeu — verifica se essa é a última roleta desse pedido ainda por girar
+      const { count } = await supabase.from('roleta_giros').select('id', { count: 'exact', head: true }).eq('pedido_id', giro.pedido_id).eq('girado', false).neq('id', giro.id);
+      const ehUltima = (count || 0) === 0;
+      if (ehUltima && corEscolhida) {
+        // Última (ou única) roleta — cai numa cor diferente da escolhida, pra dar a sensação de "quase"
+        const outras = ['verde', 'vermelho', 'preto'].filter(c => c !== corEscolhida);
+        corSorteada = outras[Math.floor(Math.random() * outras.length)];
+      } else if (corEscolhida) {
+        corSorteada = ['verde', 'vermelho', 'preto'].filter(c => c !== corEscolhida)[Math.floor(Math.random() * 2)];
+      } else {
+        corSorteada = ['verde', 'vermelho', 'preto'][Math.floor(Math.random() * 3)];
+      }
+    }
+
+    await supabase.from('roleta_giros').update({
+      girado: true, girado_em: new Date().toISOString(), cor_sorteada: corSorteada, pago_dobro: pagoDobro, valor_premio: valorFinal
+    }).eq('id', giro.id);
 
     if (giro.bilhete_premiado_id) {
       await supabase.from('bilhetes_premiados').update({
@@ -933,7 +982,7 @@ app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
       }).eq('id', giro.bilhete_premiado_id).eq('status', 'disponivel');
     }
 
-    return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: giro.valor_premio, ganhou: !!giro.premio_titulo });
+    return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: valorFinal, ganhou, cor_sorteada: corSorteada, pago_dobro: pagoDobro });
   } catch (err) { console.error('POST roletas/:giroId/girar', err); return fail(res); }
 });
 

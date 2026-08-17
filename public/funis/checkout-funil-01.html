@@ -260,16 +260,19 @@
                 <h3 class="text-gray-800 font-semibold">Roleta <span id="roleta-indice">1 de 1</span></h3>
                 <button id="close-modal-roleta" class="text-gray-500 hover:text-gray-900 text-2xl">&times;</button>
             </div>
-            <p style="color:#4b5563; font-size:0.78rem; margin-bottom:12px; line-height:1.4;">🎯 Escolha uma cor: se a bolinha parar nela, você ganha o prêmio!</p>
+            <p style="color:#4b5563; font-size:0.78rem; margin-bottom:6px; line-height:1.4;">🎯 Escolha uma cor: se a bolinha parar nela, você ganha o prêmio!</p>
+            <p id="valor-premio-roleta" class="hidden" style="color:#15803d; font-weight:800; font-size:0.95rem; margin-bottom:10px;"></p>
             <div style="position:relative; width:260px; height:260px; margin:0 auto;">
                 <div id="ponteiro-roleta" style="position:absolute; top:-8px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 8px; z-index:10; transition: transform .08s;">
                     <div style="width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d1d5db); box-shadow:0 2px 4px rgba(0,0,0,0.6);"></div>
                 </div>
-                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:relative;background:conic-gradient(#166534 0deg 18deg,#dc2626 18deg 36deg); transition: transform 4.2s cubic-bezier(0.12,0.75,0.15,1), filter .6s ease; box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4);">
-                    <div id="btn-centro-roleta" class="pulse-centro" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#1f2937; display:flex;align-items:center;justify-content:center;font-weight:800;color:#f3f4f6;font-size:0.85rem;z-index:5;box-shadow:0 3px 8px rgba(0,0,0,0.5);">GIRAR</div>
-                </div>
+                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:absolute;top:0;left:0;background:conic-gradient(#166534 0deg 18deg,#dc2626 18deg 36deg); transition: transform 4.2s cubic-bezier(0.12,0.75,0.15,1), filter .6s ease; box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4);"></div>
+                <div id="btn-centro-roleta" class="pulse-centro" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#1f2937; display:flex;align-items:center;justify-content:center;font-weight:800;color:#f3f4f6;font-size:0.85rem;z-index:5;box-shadow:0 3px 8px rgba(0,0,0,0.5);">GIRAR</div>
             </div>
             <p id="resultado-roleta" class="text-gray-800 font-semibold mt-4 min-h-[1.5rem]">Escolha sua cor e gire</p>
+            <a id="btn-whatsapp-premio-roleta" href="#" target="_blank" class="hidden mt-2 inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-full text-sm">
+                <i class="bi bi-whatsapp"></i> Falar com o suporte
+            </a>
             <div class="mt-3">
                 <div id="seletor-cor-roleta" style="display:flex; gap:8px;"></div>
                 <p id="aviso-escolha-numero" class="hidden" style="color:#dc2626; font-size:0.75rem; margin-top:6px;">Escolha uma cor antes de girar</p>
@@ -388,7 +391,7 @@
             }
         }
         $(document).on('click', '#btn-ativar-push', ativarNotificacaoPush);
-        let PEDIDO_TELEFONE = null, PEDIDO_SORTEIO_ID = null;
+        let PEDIDO_TELEFONE = null, PEDIDO_SORTEIO_ID = null, SUPORTE_WHATSAPP_GLOBAL = null;
 
         function notificar(mensagem, tipo) {
             const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
@@ -643,13 +646,16 @@
         $('#lista-giros-checkout').on('click', '#btn-ver-mais-roletas', function() { MOSTRAR_TODAS_ROLETAS = true; renderListaGiros(); });
 
 
-        // Roleta reduzida a 20 fatias por cor: 1 verde (paga em dobro) + vermelho/preto alternando
+        // Roleta reduzida a 20 fatias por cor: 1 verde (paga em dobro) + vermelho/preto alternando.
+        // A cor onde a bolinha cai é decidida no SERVIDOR (endpoint /girar) — o navegador só anima
+        // até a fatia certa, nunca decide o resultado sozinho.
         const TOTAL_FATIAS = 20;
         const CORES_FATIAS = Array.from({ length: TOTAL_FATIAS }, (_, i) => i === 0 ? 'verde' : (i % 2 === 1 ? 'vermelho' : 'preto'));
         const HEX_COR = { verde: '#166534', vermelho: '#dc2626', preto: '#111827' };
         const NOME_COR = { verde: 'verde', vermelho: 'vermelho', preto: 'preto' };
         const ANGULO_FATIA = 360 / TOTAL_FATIAS;
         const TRANSICAO_RODA = 'transform 4.2s cubic-bezier(0.12,0.75,0.15,1), filter .6s ease';
+        const DURACAO_GIRO_MS = 4200;
 
         function montarCorFundoRoda() {
             const stops = [];
@@ -672,6 +678,9 @@
                 return `<button type="button" class="btn-cor-roleta" data-cor="${c.chave}" ${desabilitado ? 'disabled' : ''} style="flex:1; background:${HEX_COR[c.chave]}; color:#fff; border-radius:10px; padding:10px 4px; font-weight:800; font-size:0.78rem; border:2px solid ${selecionado ? '#fbbf24' : 'transparent'}; opacity:${desabilitado && !selecionado ? '0.4' : '1'}; cursor:${desabilitado ? 'default' : 'pointer'};">${c.label}${c.extra ? `<br><span style="font-size:0.6rem; font-weight:600; opacity:0.85;">${c.extra}</span>` : ''}</button>`;
             }).join('');
             $('#seletor-cor-roleta').html(html);
+            // Sempre restaura o estado normal do seletor — corrige o bug de ficar "travado"
+            // escurecido depois de um giro anterior, ao trocar de roleta.
+            $('#seletor-cor-roleta').css({ opacity: '', pointerEvents: giro.girado ? 'none' : 'auto' });
         }
         $('#seletor-cor-roleta').on('click', '.btn-cor-roleta', function() {
             const giro = GIROS[GIRO_ATUAL_IDX];
@@ -681,7 +690,19 @@
             $('#aviso-escolha-numero').addClass('hidden');
         });
 
-        // Converte "R$ 50,00" -> 50 (pra poder dobrar o prêmio do verde)
+        // Mostra o valor principal do prêmio (o mesmo valor configurado em todos os bilhetes de
+        // roleta) acima da roda, e o quanto o verde pagaria em dobro — só decorativo/informativo.
+        function mostrarValorPremio() {
+            if (!PREMIOS_POSSIVEIS_GLOBAL.length) { $('#valor-premio-roleta').addClass('hidden'); return; }
+            const valorBase = PREMIOS_POSSIVEIS_GLOBAL[0];
+            const valorNum = parseValorBR(valorBase);
+            const valorDobro = valorNum !== null ? formatValorBR(valorNum * 2) : null;
+            $('#valor-premio-roleta').removeClass('hidden').html(
+                `🏆 Prêmio: ${valorBase}${valorDobro ? ` <span style="color:#facc15;">· Verde paga ${valorDobro}!</span>` : ''}`
+            );
+        }
+
+        // Converte "R$ 50,00" -> 50 (só pra exibir o valor em dobro do verde na tela)
         function parseValorBR(str) {
             if (!str) return null;
             const limpo = String(str).replace(/[^\d.,]/g, '');
@@ -707,7 +728,6 @@
                 osc.start(); osc.stop(AUDIO_CTX.currentTime + 0.05);
             } catch (e) {}
         }
-        // Som "não deu certo" — dois tons curtos descendo, diferente do tique da roda girando
         function tocarSomPerdeu() {
             try {
                 AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
@@ -724,7 +744,6 @@
                 });
             } catch (e) {}
         }
-        // Som de prêmio — tons curtos subindo (mais animado)
         function tocarSomGanhou() {
             try {
                 AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
@@ -750,9 +769,17 @@
             }
         }
 
+        function montarLinkWhatsappPremio(giro) {
+            const numero = String(SUPORTE_WHATSAPP_GLOBAL || '').replace(/\D/g, '');
+            if (!numero) { $('#btn-whatsapp-premio-roleta').addClass('hidden'); return; }
+            const msg = encodeURIComponent(`Olá! Ganhei um prêmio na roleta! 🎉 Cor: ${NOME_COR[giro.cor_sorteada]} — Prêmio: ${giro.valor_premio || giro.premio_titulo || ''} — Pedido: ${TOKEN}`);
+            $('#btn-whatsapp-premio-roleta').attr('href', `https://wa.me/${numero}?text=${msg}`).removeClass('hidden');
+        }
+
         function abrirModalRoleta(idx) {
             GIRO_ATUAL_IDX = idx;
             montarCorFundoRoda();
+            mostrarValorPremio();
             $('#modal-roleta').removeClass('hidden').css('display', 'flex');
             atualizarModalRoleta();
         }
@@ -765,11 +792,13 @@
             const giro = GIROS[GIRO_ATUAL_IDX];
             montarSeletorCor(giro);
             $('#aviso-escolha-numero').addClass('hidden');
+            $('#btn-whatsapp-premio-roleta').addClass('hidden');
             if (giro.girado) {
                 $('#roda-roleta').css('filter', giro.ganhou ? '' : 'grayscale(0.85) brightness(0.85)');
                 $('#resultado-roleta').html(giro.ganhou
                     ? `🎉 Caiu no ${NOME_COR[giro.cor_sorteada]}! <br>${giro.valor_premio || giro.premio_titulo || 'Prêmio!'}`
                     : `Não foi dessa vez! Caiu no ${NOME_COR[giro.cor_sorteada] ?? ''}`);
+                if (giro.ganhou) montarLinkWhatsappPremio(giro);
             } else {
                 $('#roda-roleta').css('filter', '');
                 $('#resultado-roleta').text('Escolha sua cor e gire');
@@ -789,85 +818,60 @@
             }
             $('#resultado-roleta').text('Girando...');
             $('#btn-centro-roleta').removeClass('pulse-centro').css({ background: '#dc2626', color: '#fff' }).text('...');
-            $('#seletor-cor-roleta').css('pointer-events', 'none').css('opacity', '0.6');
+            $('#seletor-cor-roleta').css({ pointerEvents: 'none', opacity: '0.6' });
 
-            $.post(`/api/public/roletas/${giro.id}/girar`).done(function(resultado) {
-                const indicesDaCor = [], indicesOutraCor = [];
-                CORES_FATIAS.forEach((c, i) => (c === corEscolhida ? indicesDaCor : indicesOutraCor).push(i));
-                const restantesDepois = GIROS.filter(g => !g.girado).length - 1;
-                let fatiaAlvo, quaseGanhou = false;
+            $.post(`/api/public/roletas/${giro.id}/girar`, { cor_escolhida: corEscolhida }).done(function(resultado) {
+                // A cor onde a bolinha cai já veio decidida do servidor — só escolhemos, pra fins
+                // visuais, UMA fatia entre as que têm essa cor, pra bolinha ter onde parar.
+                const corSorteada = resultado.cor_sorteada || (resultado.ganhou ? corEscolhida : (corEscolhida === 'verde' ? 'vermelho' : 'verde'));
+                const indicesDaCor = [];
+                CORES_FATIAS.forEach((c, i) => { if (c === corSorteada) indicesDaCor.push(i); });
+                const fatiaAlvo = indicesDaCor.length ? indicesDaCor[Math.floor(Math.random() * indicesDaCor.length)] : 0;
 
-                if (resultado.ganhou) {
-                    // Ganhou de verdade — a bola sempre para numa fatia da cor escolhida
-                    fatiaAlvo = indicesDaCor[Math.floor(Math.random() * indicesDaCor.length)];
-                } else if (restantesDepois === 0) {
-                    // Última roleta (ou única) e perdeu — procura uma fatia de outra cor bem
-                    // colada numa fatia da cor escolhida, pra dar a sensação de "quase".
-                    const vizinhos = [];
-                    indicesDaCor.forEach(i => {
-                        const v1 = (i + 1) % TOTAL_FATIAS, v2 = (i - 1 + TOTAL_FATIAS) % TOTAL_FATIAS;
-                        if (CORES_FATIAS[v1] !== corEscolhida) vizinhos.push(v1);
-                        if (CORES_FATIAS[v2] !== corEscolhida) vizinhos.push(v2);
-                    });
-                    fatiaAlvo = vizinhos.length ? vizinhos[Math.floor(Math.random() * vizinhos.length)] : indicesOutraCor[Math.floor(Math.random() * indicesOutraCor.length)];
-                    quaseGanhou = true;
-                } else {
-                    // Ainda tem mais roletas depois dessa — cai em qualquer outra cor
-                    fatiaAlvo = indicesOutraCor[Math.floor(Math.random() * indicesOutraCor.length)];
-                }
-
-                const voltas = 5 + Math.floor(Math.random() * 3);
+                const voltas = 6 + Math.floor(Math.random() * 3);
                 const centroFatia = fatiaAlvo * ANGULO_FATIA + ANGULO_FATIA / 2;
                 const anguloFinal = voltas * 360 + (360 - centroFatia);
                 $('#roda-roleta').css('transform', `rotate(${anguloFinal}deg)`);
 
-                // Ponteiro reage + tique a cada fatia que passa, desacelerando até parar
-                const duracaoMs = 4200;
-                const totalFatiasPassadas = Math.round(anguloFinal / ANGULO_FATIA);
-                let passadas = 0;
-                function proximoTique() {
-                    if (passadas >= totalFatiasPassadas) { $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(0deg)'); return; }
-                    passadas++;
-                    const progresso = passadas / totalFatiasPassadas;
-                    const atraso = 20 + progresso * progresso * 140; // desacelera com o tempo
-                    tocarTique();
-                    $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(14deg)');
-                    setTimeout(() => $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(-6deg)'), atraso * 0.4);
-                    setTimeout(proximoTique, atraso);
+                // Agenda os "tiques" do ponteiro pra caberem EXATAMENTE dentro da duração do giro
+                // (DURACAO_GIRO_MS) — evitando o som continuar depois da roda já ter parado.
+                const totalTiques = Math.max(1, Math.round(anguloFinal / ANGULO_FATIA));
+                const pesos = Array.from({ length: totalTiques }, (_, i) => Math.pow((i + 1) / totalTiques, 2));
+                const somaPesos = pesos.reduce((a, b) => a + b, 0);
+                let acumulado = 0;
+                for (let i = 0; i < totalTiques; i++) {
+                    acumulado += (pesos[i] / somaPesos) * DURACAO_GIRO_MS;
+                    setTimeout(() => {
+                        tocarTique();
+                        $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(14deg)');
+                        setTimeout(() => $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(-6deg)'), 40);
+                    }, acumulado);
                 }
-                proximoTique();
+                setTimeout(() => $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(0deg)'), DURACAO_GIRO_MS);
 
                 setTimeout(() => {
                     giro.girado = true;
                     giro.ganhou = resultado.ganhou;
                     giro.premio_titulo = resultado.premio_titulo;
                     giro.valor_premio = resultado.valor_premio;
-                    giro.cor_sorteada = CORES_FATIAS[fatiaAlvo];
+                    giro.cor_sorteada = corSorteada;
+                    giro.pago_dobro = !!resultado.pago_dobro;
                     atualizarBotaoCentro(giro);
                     renderListaGiros();
                     montarSeletorCor(giro);
 
-                    const restantesAgora = GIROS.filter(g => !g.girado).length;
-
                     if (giro.ganhou) {
                         tocarSomGanhou();
-                        let textoPremio = giro.valor_premio || giro.premio_titulo || 'Prêmio!';
-                        if (corEscolhida === 'verde') {
-                            const valorNum = parseValorBR(giro.valor_premio);
-                            textoPremio = valorNum !== null
-                                ? `${formatValorBR(valorNum * 2)} — verde, prêmio em dobro! 🎉`
-                                : `${textoPremio} (verde — prêmio em dobro!)`;
-                        }
-                        $('#resultado-roleta').html(`🎉 Caiu no ${NOME_COR[giro.cor_sorteada]}! <br>${textoPremio}`);
+                        $('#resultado-roleta').html(`🎉 Caiu no ${NOME_COR[corSorteada]}! <br>${giro.valor_premio || giro.premio_titulo || 'Prêmio!'}${giro.pago_dobro ? ' 🟢 (prêmio em dobro!)' : ''}`);
+                        montarLinkWhatsappPremio(giro);
                         return;
                     }
 
                     tocarSomPerdeu();
                     $('#roda-roleta').css('filter', 'grayscale(0.85) brightness(0.85)');
-                    $('#resultado-roleta').html(quaseGanhou
-                        ? `Tão perto! Caiu no ${NOME_COR[giro.cor_sorteada]}, bem do lado da sua cor 🥲`
-                        : `Não foi dessa vez! Caiu no ${NOME_COR[giro.cor_sorteada]}`);
+                    $('#resultado-roleta').html(`Não foi dessa vez! Caiu no ${NOME_COR[corSorteada]}`);
 
+                    const restantesAgora = GIROS.filter(g => !g.girado).length;
                     if (restantesAgora > 0) {
                         // Ainda tem roleta pra girar — leva automaticamente pra próxima disponível,
                         // sem abrir o combo de roletas à toa.
@@ -882,7 +886,7 @@
                             if (TEM_COMBOS_ROLETA) abrirPopupCombosRoleta();
                         }, 2000);
                     }
-                }, duracaoMs);
+                }, DURACAO_GIRO_MS);
             });
         }
 
@@ -892,6 +896,7 @@
         $('#popup-combos-roleta').on('click', function(e) { if (e.target === this) fecharPopupCombosRoleta(); });
         $('#close-modal-roleta').on('click', function() { $('#modal-roleta').addClass('hidden').css('display', ''); });
         $('#roda-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
+        $('#btn-centro-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
         $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; atualizarModalRoleta(); } });
         $('#btn-roleta-proxima').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; atualizarModalRoleta(); } });
         function checarStatusPagamento() {
@@ -965,6 +970,7 @@
                 $('#detalhe-giros-bonus').text(`🎯 +${pedido.giros_bonus_upsell} giro(s) de roleta`);
             }
             const suporteNum = String(pedido.sorteios?.suporte_whatsapp || '').replace(/\D/g, '');
+            SUPORTE_WHATSAPP_GLOBAL = suporteNum || null;
             if (suporteNum) {
                 const msgSuporte = encodeURIComponent(`Olá! Preciso de ajuda com meu pedido (${pedido.token || ''}).`);
                 $('#link-suporte-compra').attr('href', `https://wa.me/${suporteNum}?text=${msgSuporte}`).removeClass('hidden');
