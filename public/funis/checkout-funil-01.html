@@ -268,7 +268,7 @@
                 <div id="ponteiro-roleta" style="position:absolute; top:-8px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 8px; z-index:10; transition: transform .08s;">
                     <div style="width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d1d5db); box-shadow:0 2px 4px rgba(0,0,0,0.6);"></div>
                 </div>
-                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:absolute;top:0;left:0;background:conic-gradient(#166534 0deg 18deg,#dc2626 18deg 36deg); transition: transform 7s cubic-bezier(0.05,0.8,0.1,1), filter .6s ease; box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4);"></div>
+                <div id="roda-roleta" style="width:260px;height:260px;border-radius:50%;position:absolute;top:0;left:0;background:conic-gradient(#166534 0deg 18deg,#dc2626 18deg 36deg); transition: filter .6s ease; box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4);"></div>
                 <div id="btn-centro-roleta" class="pulse-centro" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:76px;height:76px;border-radius:50%;background:#1f2937; display:flex;align-items:center;justify-content:center;font-weight:800;color:#f3f4f6;font-size:0.85rem;z-index:5;box-shadow:0 3px 8px rgba(0,0,0,0.5);">GIRAR</div>
                 <div id="overlay-resultado-roleta" class="hidden" style="position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; z-index:8;">
                     <span style="color:#fff; font-weight:800; font-size:1.15rem; line-height:1.3;">Não foi dessa vez!</span>
@@ -665,7 +665,7 @@
         const NOME_COR = { verde: 'verde', vermelho: 'vermelho', preto: 'preto' };
         const ANGULO_FATIA = 360 / TOTAL_FATIAS;
         const BEZIER_RODA = [0.05, 0.8, 0.1, 1]; // curva com cauda de desaceleração bem mais longa
-        const TRANSICAO_RODA = `transform 5.6s cubic-bezier(${BEZIER_RODA.join(',')}), filter .6s ease`;
+        const TRANSICAO_RODA = 'filter .6s ease'; // o giro em si agora é controlado quadro a quadro pelo JS
         const DURACAO_GIRO_MS = 7000;
 
         // Avalia a MESMA curva cubic-bezier do CSS, pra saber exatamente em que ângulo a roda
@@ -865,9 +865,9 @@
         function atualizarModalRoleta() {
             const total = GIROS.length;
             $('#roleta-indice').text(`${GIRO_ATUAL_IDX + 1} de ${total}`);
-            // Zera a rotação sem animação (a transição correta é reaplicada logo em seguida)
-            $('#roda-roleta').css('transition', 'none').css('transform', 'rotate(0deg)');
-            requestAnimationFrame(() => { requestAnimationFrame(() => $('#roda-roleta').css('transition', TRANSICAO_RODA)); });
+            // Zera a rotação — agora sem transição de CSS pra brigar com o JS (o giro em si é
+            // feito quadro a quadro), só reseta a posição visual.
+            $('#roda-roleta').css('transition', TRANSICAO_RODA).css('transform', 'rotate(0deg)');
             const giro = GIROS[GIRO_ATUAL_IDX];
             montarSeletorCor(giro);
             $('#aviso-escolha-numero').addClass('hidden');
@@ -918,11 +918,10 @@
                 const voltas = 9 + Math.floor(Math.random() * 3);
                 const centroFatia = fatiaAlvo * ANGULO_FATIA + ANGULO_FATIA / 2;
                 const anguloFinal = voltas * 360 + (360 - centroFatia);
-                $('#roda-roleta').css('transform', `rotate(${anguloFinal}deg)`);
+                const rodaEl = document.getElementById('roda-roleta');
 
-                // Toca os "tiques" acompanhando a roda em tempo real, quadro a quadro (mesma curva
-                // de desaceleração do CSS) — assim nunca desalinha nem acumula atraso, e o som
-                // sempre termina exatamente junto com a roda parando.
+                // A roda e o som agora vêm do MESMO cálculo, no mesmo quadro — não tem mais uma
+                // transição de CSS de um lado e um cronômetro de som do outro brigando entre si.
                 const totalTiques = Math.max(1, Math.round(anguloFinal / ANGULO_FATIA));
                 const inicioTS = performance.now();
                 let proximoTiqueIdx = 1;
@@ -930,6 +929,7 @@
                     const decorrido = agora - inicioTS;
                     const fracaoTempo = Math.min(1, decorrido / DURACAO_GIRO_MS);
                     const anguloAtual = progressoNoTempo(fracaoTempo) * anguloFinal;
+                    rodaEl.style.transform = `rotate(${anguloAtual}deg)`;
                     while (proximoTiqueIdx <= totalTiques && anguloAtual >= proximoTiqueIdx * ANGULO_FATIA) {
                         tocarTique(proximoTiqueIdx / totalTiques);
                         $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(14deg)');
@@ -939,6 +939,7 @@
                     if (decorrido < DURACAO_GIRO_MS) {
                         requestAnimationFrame(passoAnimacao);
                     } else {
+                        rodaEl.style.transform = `rotate(${anguloFinal}deg)`;
                         $('#ponteiro-roleta').css('transform', 'translateX(-50%) rotate(0deg)');
                     }
                 }
