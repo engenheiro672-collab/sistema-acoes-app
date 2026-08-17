@@ -1390,10 +1390,18 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 
     // Verifica se alguma das cotas geradas bate com um BILHETE premiado ainda disponível
     // (a roleta usa números de cota reais também, mas é tratada à parte — veja atribuirGirosRoleta).
+    //
+    // ⚡ Antes, isso mandava a lista INTEIRA de números gerados (podendo ter milhares numa compra
+    // grande) dentro de um filtro pro banco — uma URL/consulta gigantesca, que crescia junto com o
+    // tamanho da compra e travava tudo. Só que os PRÊMIOS configurados são sempre pouquíssimos (uns
+    // punhados, não milhares) — então é muito mais rápido buscar só os prêmios disponíveis (poucos)
+    // e comparar na memória contra os números já gerados, em vez do caminho inverso.
     const numeros = inserted.map(r => r.numero_cota);
+    const numerosSet = new Set(numeros);
     try {
-      const { data: possiveisPremios } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'bilhete').eq('status', 'disponivel').eq('ativo', true).in('numero_cota', numeros);
-      for (const premio of (possiveisPremios || [])) {
+      const { data: premiosDisponiveisBilhete } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'bilhete').eq('status', 'disponivel').eq('ativo', true);
+      const possiveisPremios = (premiosDisponiveisBilhete || []).filter(p => numerosSet.has(p.numero_cota));
+      for (const premio of possiveisPremios) {
         await supabase.from('bilhetes_premiados').update({
           status: 'reivindicada', usuario_id: user_id, pedido_id: pedido.id, reivindicada_em: new Date().toISOString()
         }).eq('id', premio.id);
@@ -1451,9 +1459,12 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
   if (Number(pedido.giros_bonus_upsell) > 0) qtdGiros = Math.max(qtdGiros, Number(pedido.giros_bonus_upsell));
   console.log(`[roleta] Pedido ${pedido?.id} — qtdGiros calculado = ${qtdGiros} (garantidos=${girosGarantidos})`);
 
-  // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível
-  const { data: premiosRoleta } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel').in('numero_cota', numerosGerados);
-  const premioAcertado = (premiosRoleta || [])[0] || null;
+  // Verifica se alguma das cotas REAIS geradas agora bate com um prêmio de roleta ainda disponível.
+  // Mesma otimização de cima: busca só os prêmios (poucos) e compara na memória, em vez de mandar
+  // a lista inteira de números gerados (que numa compra grande vira uma consulta gigantesca).
+  const numerosGeradosSet = new Set(numerosGerados);
+  const { data: premiosRoletaDisponiveis } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel');
+  const premioAcertado = (premiosRoletaDisponiveis || []).find(p => numerosGeradosSet.has(p.numero_cota)) || null;
 
   if (premioAcertado) {
     if (qtdGiros > 0) {
