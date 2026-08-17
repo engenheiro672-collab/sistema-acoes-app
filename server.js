@@ -947,7 +947,7 @@ app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
 
     const corEscolhida = ['vermelho', 'preto', 'verde'].includes(req.body?.cor_escolhida) ? req.body.cor_escolhida : null;
     const ganhou = !!giro.premio_titulo;
-    let corSorteada, valorFinal = giro.valor_premio, pagoDobro = false;
+    let corSorteada, valorFinal = giro.valor_premio, pagoDobro = false, quase = false;
 
     if (ganhou) {
       // Ganhou de verdade — 20% de chance de a bolinha cair no verde (prêmio em dobro),
@@ -958,13 +958,15 @@ app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
         if (valorNum !== null) { valorFinal = formatarValorMoedaBR(valorNum * 2); pagoDobro = true; }
       }
     } else {
-      // Perdeu — verifica se essa é a última roleta desse pedido ainda por girar
+      // Perdeu — verifica se essa é a última roleta desse pedido ainda por girar (ou a única)
       const { count } = await supabase.from('roleta_giros').select('id', { count: 'exact', head: true }).eq('pedido_id', giro.pedido_id).eq('girado', false).neq('id', giro.id);
       const ehUltima = (count || 0) === 0;
       if (ehUltima && corEscolhida) {
-        // Última (ou única) roleta — cai numa cor diferente da escolhida, pra dar a sensação de "quase"
+        // Última (ou única) roleta — cai numa cor diferente da escolhida, pra dar a sensação de
+        // "quase": o navegador vai fazer a bolinha parar bem do lado da cor que a pessoa escolheu.
         const outras = ['verde', 'vermelho', 'preto'].filter(c => c !== corEscolhida);
         corSorteada = outras[Math.floor(Math.random() * outras.length)];
+        quase = true;
       } else if (corEscolhida) {
         corSorteada = ['verde', 'vermelho', 'preto'].filter(c => c !== corEscolhida)[Math.floor(Math.random() * 2)];
       } else {
@@ -982,7 +984,7 @@ app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
       }).eq('id', giro.bilhete_premiado_id).eq('status', 'disponivel');
     }
 
-    return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: valorFinal, ganhou, cor_sorteada: corSorteada, pago_dobro: pagoDobro });
+    return ok(res, { premio_titulo: giro.premio_titulo, valor_premio: valorFinal, ganhou, cor_sorteada: corSorteada, pago_dobro: pagoDobro, quase });
   } catch (err) { console.error('POST roletas/:giroId/girar', err); return fail(res); }
 });
 
