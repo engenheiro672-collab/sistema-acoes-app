@@ -1293,6 +1293,21 @@ function escapeHtml(texto) {
     return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ⚡ Correção de fuso horário: um <input type="datetime-local"> guarda a hora "crua", sem fuso
+// (ex: "2026-08-20T15:30"). Se mandar isso direto pro servidor, e o servidor rodar em UTC (como
+// no Render), ele lê "15:30" como se já fosse UTC — e o horário salvo sai errado (geralmente
+// 3h adiantado, já que o Brasil é UTC-3). Essas duas funções resolvem isso nos dois sentidos.
+function localParaISO(valorLocal) {
+    if (!valorLocal) return null;
+    return new Date(valorLocal).toISOString();
+}
+function isoParaLocal(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function api(method, url, data, isForm) {
     const opts = { method, credentials: 'include' };
     if (data) {
@@ -2297,7 +2312,7 @@ function addAgendamento() {
     if (!SORTEIO_BILHETE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!numero_cota || !liberar_em) return notificar('Preencha a cota e a data/hora de liberação.', 'erro');
     if (condicao_tipo && !condicao_quantidade) return notificar('Informe a quantidade da condição.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/agendamentos`, { numero_cota, liberar_em, condicao_tipo, condicao_quantidade }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/agendamentos`, { numero_cota, liberar_em: localParaISO(liberar_em), condicao_tipo, condicao_quantidade }).then(() => {
         $('#inp-lib-cota, #inp-lib-data, #inp-lib-quantidade').val('');
         $('#inp-lib-condicao').val('');
         carregarBloqueios(SORTEIO_BILHETE_ID);
@@ -2340,7 +2355,7 @@ function addAgendamentoRoleta() {
     if (!SORTEIO_ROLETA_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!numero_cota || !liberar_em) return notificar('Preencha a cota e a data/hora de liberação.', 'erro');
     if (condicao_tipo && !condicao_quantidade) return notificar('Informe a quantidade da condição.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/agendamentos`, { numero_cota, liberar_em, condicao_tipo, condicao_quantidade }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/agendamentos`, { numero_cota, liberar_em: localParaISO(liberar_em), condicao_tipo, condicao_quantidade }).then(() => {
         $('#inp-lib-cota-roleta, #inp-lib-data-roleta, #inp-lib-quantidade-roleta').val('');
         $('#inp-lib-condicao-roleta').val('');
         carregarBloqueiosRoleta(SORTEIO_ROLETA_ID);
@@ -2536,7 +2551,7 @@ function criarChanceDobro() {
     if (!SORTEIO_CHANCE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!data_inicio || !data_fim) return notificar('Preencha o início e o fim.', 'erro');
     if (new Date(data_fim) <= new Date(data_inicio)) return notificar('O fim precisa ser depois do início.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_CHANCE_ID}/chance-dobro`, { titulo, data_inicio, data_fim }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_CHANCE_ID}/chance-dobro`, { titulo, data_inicio: localParaISO(data_inicio), data_fim: localParaISO(data_fim) }).then(() => {
         $('#cd-titulo, #cd-inicio, #cd-fim').val('');
         carregarChanceDobro(SORTEIO_CHANCE_ID);
         notificar('Chance em Dobro criada!', 'sucesso');
@@ -2592,7 +2607,7 @@ function salvarAvisoUrgencia() {
     if (!data_inicio || !data_fim) return notificar('Preencha o início e o fim.', 'erro');
     if (new Date(data_fim) <= new Date(data_inicio)) return notificar('O fim precisa ser depois do início.', 'erro');
 
-    const payload = { titulo, descricao, data_inicio, data_fim };
+    const payload = { titulo, descricao, data_inicio: localParaISO(data_inicio), data_fim: localParaISO(data_fim) };
     const chamada = editId
         ? api('PUT', `/api/admin/avisos-urgencia/${editId}`, payload)
         : api('POST', `/api/admin/sorteios/${SORTEIO_URGENCIA_ID}/avisos-urgencia`, payload);
@@ -2610,8 +2625,8 @@ function editarUrgencia(id) {
         $('#urg-edit-id').val(aviso.id);
         $('#urg-titulo').val(aviso.titulo);
         $('#urg-descricao').val(aviso.descricao);
-        $('#urg-inicio').val(aviso.data_inicio ? aviso.data_inicio.slice(0, 16) : '');
-        $('#urg-fim').val(aviso.data_fim ? aviso.data_fim.slice(0, 16) : '');
+        $('#urg-inicio').val(isoParaLocal(aviso.data_inicio));
+        $('#urg-fim').val(isoParaLocal(aviso.data_fim));
         $('#urgencia-form-titulo').text('Editando aviso');
         $('#urg-btn-salvar').text('Salvar alterações');
         $('#urg-btn-cancelar').removeClass('hidden');

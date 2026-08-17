@@ -823,7 +823,7 @@ async function getSorteioPublicData(slug, funilSlug) {
   ] = await Promise.all([
     supabase.from('cotas').select('*', { head: true, count: 'exact' }).eq('sorteio_id', sorteio.id),
     supabase.from('cotas_bloqueadas').select('numero_cota').eq('sorteio_id', sorteio.id),
-    supabase.from('cotas_agendadas').select('numero_cota, release_at, liberar_em').eq('sorteio_id', sorteio.id),
+    supabase.from('cotas_agendadas').select('numero_cota, liberar_em').eq('sorteio_id', sorteio.id),
     supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: false }),
     sorteio.roleta_ativada
       ? supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteio.id).order('minimo_cotas', { ascending: true })
@@ -846,7 +846,7 @@ async function getSorteioPublicData(slug, funilSlug) {
 
   const nowISO = nowISO2;
   const bloq = new Set((bloqueadas || []).map(b => b.numero_cota));
-  const agnd = new Set((agendadas || []).filter(a => (a.release_at || a.liberar_em) && (a.release_at || a.liberar_em) > nowISO).map(a => a.numero_cota));
+  const agnd = new Set((agendadas || []).filter(a => a.liberar_em && a.liberar_em > nowISO).map(a => a.numero_cota));
   const restantes = Math.max(0, Number(sorteio.total_cotas || 0) - Number(vendidas || 0) - bloq.size - agnd.size);
   const bilhetes = bilhetesCorrigidos.filter(b => (b.tipo || 'bilhete') === 'bilhete');
   const roletaTodos = bilhetesCorrigidos.filter(b => b.tipo === 'roleta');
@@ -1280,13 +1280,13 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 
     const [bloqRes, agRes, vendRes] = await Promise.all([
       supabase.from('cotas_bloqueadas').select('numero_cota').eq('sorteio_id', sorteio_id),
-      supabase.from('cotas_agendadas').select('numero_cota, release_at, liberar_em, condicao_tipo, condicao_quantidade').eq('sorteio_id', sorteio_id),
+      supabase.from('cotas_agendadas').select('numero_cota, liberar_em, condicao_tipo, condicao_quantidade').eq('sorteio_id', sorteio_id),
       supabase.from('cotas').select('numero_cota').eq('sorteio_id', sorteio_id)
     ]);
 
     const qtdPedidoAtual = Number(pedido.quantidade_cotas || 0);
     const agendadasAindaBloqueadas = (agRes.data || []).filter(r => {
-      const dataLiberacao = r.release_at || r.liberar_em;
+      const dataLiberacao = r.liberar_em;
       const aindaNaoChegouADat = dataLiberacao && dataLiberacao > nowISO;
       if (aindaNaoChegouADat) return true; // data ainda não chegou — continua bloqueada pra todo mundo
       // Data já passou: se tiver condição de quantidade, só libera pra quem se encaixa nela
