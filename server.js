@@ -1331,12 +1331,18 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
     let attempts = 0;
     const maxAttempts = Math.max(quantidade * 200, 20000);
 
+    // ⚡ Antes, cada tentativa varria o array `rows` inteiro pra conferir duplicata (`rows.some(...)`)
+    // — com poucas cotas isso nem se sentia, mas em compras de milhares de cotas isso virava uma
+    // conta gigantesca (quadrática: quantidade × quantidade), e era isso que travava a geração em
+    // compras grandes. Essa checagem no array era redundante: todo número aceito já entra no Set
+    // `invalidos` na sequência — então só checar o Set (que é instantâneo) já é suficiente e 100%
+    // seguro contra repetição, sem precisar mais do `.some()`.
     while (rows.length < quantidade && attempts < maxAttempts) {
       attempts++;
       const numeroInt = Math.floor(Math.random() * totalCotas);
       const numero = padCota(numeroInt, totalCotas);
 
-      if (!invalidos.has(numero) && !rows.some(r => r.numero_cota === numero)) {
+      if (!invalidos.has(numero)) {
         rows.push({ sorteio_id, pedido_id: pedido.id, user_id, numero_cota: numero, created_at: new Date().toISOString() });
         invalidos.add(numero);
       }

@@ -283,6 +283,7 @@
                     <div id="confete-container" style="position:absolute; inset:0; overflow:hidden; pointer-events:none;"></div>
                     <span style="color:#fff; font-weight:800; font-size:1.3rem; z-index:2; text-shadow:0 2px 6px rgba(0,0,0,0.4);">🎉 VOCÊ GANHOU! 🎉</span>
                     <span id="valor-vitoria-roleta" style="color:#facc15; font-weight:800; font-size:1.7rem; margin-top:8px; z-index:2; text-shadow:0 2px 6px rgba(0,0,0,0.4);"></span>
+                    <button id="btn-proxima-apos-vitoria" type="button" class="hidden mt-3" style="z-index:2; background:#fff; color:#166534; font-weight:800; padding:9px 20px; border-radius:999px; font-size:0.78rem; border:none; cursor:pointer;">Girar próxima roleta →</button>
                 </div>
             </div>
             <p id="resultado-roleta" class="text-white font-semibold mt-4 min-h-[1.5rem]">Escolha sua cor e gire</p>
@@ -864,11 +865,16 @@
             $('#btn-whatsapp-premio-roleta').addClass('hidden');
             $('#overlay-resultado-roleta').addClass('hidden');
             $('#overlay-vitoria-roleta').addClass('hidden');
+            $('#btn-proxima-apos-vitoria').addClass('hidden');
             if (giro.ganhou) {
                 $('#valor-vitoria-roleta').text(`${giro.valor_premio || giro.premio_titulo || 'Prêmio!'}${giro.pago_dobro ? ' 🟢 (dobro!)' : ''}`);
                 $('#overlay-vitoria-roleta').removeClass('hidden');
                 $('#resultado-roleta').html('');
                 montarLinkWhatsappPremio(giro);
+                // Se ainda sobra roleta pra girar, deixa um caminho bem claro e visível pra
+                // continuar — sem isso, a pessoa ficava "presa" olhando a tela de vitória.
+                const temProxima = GIRO_ATUAL_IDX < GIROS.length - 1;
+                $('#btn-proxima-apos-vitoria').toggleClass('hidden', !temProxima);
             } else {
                 $('#overlay-resultado-roleta').removeClass('hidden');
                 $('#resultado-roleta').html('');
@@ -1003,6 +1009,7 @@
         $('#btn-centro-roleta').on('click', function() { girarRoleta(GIRO_ATUAL_IDX); });
         $('#btn-roleta-anterior').on('click', function() { if (GIRO_ATUAL_IDX > 0) { GIRO_ATUAL_IDX--; atualizarModalRoleta(); } });
         $('#btn-roleta-proxima').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; atualizarModalRoleta(); } });
+        $('#btn-proxima-apos-vitoria').on('click', function() { if (GIRO_ATUAL_IDX < GIROS.length - 1) { GIRO_ATUAL_IDX++; atualizarModalRoleta(); } });
         function checarStatusPagamento() {
             if (isPago || !TOKEN) return;
             $.get(`/api/public/pedidos/${TOKEN}/status`)
