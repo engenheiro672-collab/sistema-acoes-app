@@ -1018,9 +1018,10 @@ app.post('/api/public/roletas/:giroId/girar', async (req, res) => {
     let corSorteada, valorFinal = giro.valor_premio, pagoDobro = false, quase = false;
 
     if (ganhou) {
-      // Ganhou de verdade — 20% de chance de a bolinha cair no verde (prêmio em dobro),
-      // senão cai em vermelho ou preto (não muda o valor do prêmio).
-      corSorteada = Math.random() < 0.2 ? 'verde' : (Math.random() < 0.5 ? 'vermelho' : 'preto');
+      // Ganhou de verdade — a bolinha cai EXATAMENTE na cor que a pessoa escolheu (não é sorteio,
+      // é uma entrega garantida — faz sentido parar onde ela apontou). Só quando ela escolheu o
+      // próprio verde é que o prêmio sai em dobro; escolher vermelho/preto não muda o valor.
+      corSorteada = corEscolhida || (Math.random() < 0.2 ? 'verde' : (Math.random() < 0.5 ? 'vermelho' : 'preto'));
       if (corSorteada === 'verde') {
         const valorNum = parseValorMoedaBR(giro.valor_premio);
         if (valorNum !== null) { valorFinal = formatarValorMoedaBR(valorNum * 2); pagoDobro = true; }
