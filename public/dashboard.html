@@ -381,7 +381,7 @@
 
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
                     <h4 class="font-semibold text-white mb-1">🔓 Liberar cota numa data</h4>
-                    <p class="text-xs text-gray-500 mb-3">A cota fica bloqueada até a data/hora escolhida. Depois que passar (e a condição bater, se houver), ela é <b>entregue garantidamente</b> na próxima compra que se encaixar — não é sorteio, é uma entrega certa. Você também pode condicionar: só entrega pra quem comprar acima ou abaixo de X cotas naquele pedido.</p>
+                    <p class="text-xs text-gray-500 mb-3">A cota fica bloqueada até a data/hora escolhida. Você também pode condicionar: só libera pra quem comprar acima ou abaixo de X cotas naquele pedido.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                         <input id="inp-lib-cota" placeholder="Número da cota" class="input-dark">
                         <input id="inp-lib-data" type="datetime-local" class="input-dark" title="Data/hora a partir da qual libera">
@@ -394,16 +394,6 @@
                     </div>
                     <button type="button" class="btn-primary" onclick="addAgendamento()">Agendar Liberação</button>
                     <div id="lista-agendamentos" class="max-h-40 overflow-y-auto space-y-2 mt-3"></div>
-                </div>
-
-                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
-                    <h4 class="font-semibold text-white mb-1">🔍 Verificar status de uma cota agora</h4>
-                    <p class="text-xs text-gray-500 mb-3">Confere na hora se essa cota está bloqueada, agendada (e se já liberou ou não, e por quê), se já foi vendida, e se é um prêmio. Não depende de comprar de teste.</p>
-                    <div class="flex gap-2 mb-2">
-                        <input id="inp-verificar-cota" placeholder="Número da cota" class="input-dark" style="max-width:200px">
-                        <button type="button" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg" onclick="verificarCota(SORTEIO_BILHETE_ID, 'resultado-verificar-cota')">Verificar</button>
-                    </div>
-                    <div id="resultado-verificar-cota" class="text-sm"></div>
                 </div>
                 </div>
             </div>
@@ -498,16 +488,6 @@
                     </div>
                     <button type="button" class="btn-primary" onclick="addAgendamentoRoleta()">Agendar Liberação</button>
                     <div id="lista-agendamentos-roleta" class="max-h-40 overflow-y-auto space-y-2 mt-3"></div>
-                </div>
-
-                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
-                    <h4 class="font-semibold text-white mb-1">🔍 Verificar status de uma cota agora</h4>
-                    <p class="text-xs text-gray-500 mb-3">Confere na hora se essa cota está bloqueada, agendada (e se já liberou ou não, e por quê), se já foi vendida, e se é um prêmio. Não depende de comprar de teste.</p>
-                    <div class="flex gap-2 mb-2">
-                        <input id="inp-verificar-cota-roleta" placeholder="Número da cota" class="input-dark" style="max-width:200px">
-                        <button type="button" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg" onclick="verificarCota(SORTEIO_ROLETA_ID, 'resultado-verificar-cota-roleta', true)">Verificar</button>
-                    </div>
-                    <div id="resultado-verificar-cota-roleta" class="text-sm"></div>
                 </div>
 
                 <div>
@@ -1065,13 +1045,14 @@
                             <th class="p-3">Link</th><th class="p-3">Sorteio</th><th class="p-3">Canal</th>
                             <th class="p-3 sortable-th" data-campo="cliques">Acessos <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="pedidos_pagos">Pedidos <span class="sort-arrow"></span></th>
+                            <th class="p-3 sortable-th" data-campo="total_clientes">Clientes <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="faturamento">Faturamento <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="pendente">Pendente <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="ticket_medio">Ticket Médio <span class="sort-arrow"></span></th>
                             <th class="p-3 sortable-th" data-campo="conversao">Conversão <span class="sort-arrow"></span></th>
                             <th class="p-3">Ação</th>
                         </tr></thead>
-                        <tbody id="tabela-links-comparativo"><tr><td colspan="11" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
+                        <tbody id="tabela-links-comparativo"><tr><td colspan="12" class="p-4 text-center text-gray-400">Carregando...</td></tr></tbody>
                     </table>
                 </div>
                 <p class="text-xs text-gray-500 mt-2">Clique em qualquer linha pra ver o detalhe completo com gráfico. Marque duas caixinhas pra comparar lado a lado.</p>
@@ -1311,21 +1292,6 @@ const DOMINIO_PUBLICO = 'https://premiosderrets.com.br';
 
 function escapeHtml(texto) {
     return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// ⚡ Correção de fuso horário: um <input type="datetime-local"> guarda a hora "crua", sem fuso
-// (ex: "2026-08-20T15:30"). Se mandar isso direto pro servidor, e o servidor rodar em UTC (como
-// no Render), ele lê "15:30" como se já fosse UTC — e o horário salvo sai errado (geralmente
-// 3h adiantado, já que o Brasil é UTC-3). Essas duas funções resolvem isso nos dois sentidos.
-function localParaISO(valorLocal) {
-    if (!valorLocal) return null;
-    return new Date(valorLocal).toISOString();
-}
-function isoParaLocal(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function api(method, url, data, isForm) {
@@ -2332,7 +2298,7 @@ function addAgendamento() {
     if (!SORTEIO_BILHETE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!numero_cota || !liberar_em) return notificar('Preencha a cota e a data/hora de liberação.', 'erro');
     if (condicao_tipo && !condicao_quantidade) return notificar('Informe a quantidade da condição.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/agendamentos`, { numero_cota, liberar_em: localParaISO(liberar_em), condicao_tipo, condicao_quantidade }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_BILHETE_ID}/agendamentos`, { numero_cota, liberar_em, condicao_tipo, condicao_quantidade }).then(() => {
         $('#inp-lib-cota, #inp-lib-data, #inp-lib-quantidade').val('');
         $('#inp-lib-condicao').val('');
         carregarBloqueios(SORTEIO_BILHETE_ID);
@@ -2375,7 +2341,7 @@ function addAgendamentoRoleta() {
     if (!SORTEIO_ROLETA_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!numero_cota || !liberar_em) return notificar('Preencha a cota e a data/hora de liberação.', 'erro');
     if (condicao_tipo && !condicao_quantidade) return notificar('Informe a quantidade da condição.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/agendamentos`, { numero_cota, liberar_em: localParaISO(liberar_em), condicao_tipo, condicao_quantidade }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/agendamentos`, { numero_cota, liberar_em, condicao_tipo, condicao_quantidade }).then(() => {
         $('#inp-lib-cota-roleta, #inp-lib-data-roleta, #inp-lib-quantidade-roleta').val('');
         $('#inp-lib-condicao-roleta').val('');
         carregarBloqueiosRoleta(SORTEIO_ROLETA_ID);
@@ -2384,60 +2350,6 @@ function addAgendamentoRoleta() {
 }
 function removerBloqueioRoleta(id) { api('DELETE', `/api/admin/bloqueios/${id}`).then(() => carregarBloqueiosRoleta(SORTEIO_ROLETA_ID)); }
 function removerAgendamentoRoleta(id) { api('DELETE', `/api/admin/agendamentos/${id}`).then(() => carregarBloqueiosRoleta(SORTEIO_ROLETA_ID)); }
-
-// Verifica na hora o status real de uma cota: bloqueio permanente, agendamento (e se já liberou
-// ou não, e por quê), se já foi vendida, e se é um prêmio. Não depende de "comprar de teste pra
-// ver se ganha" — mostra o estado exato guardado no banco, agora mesmo.
-function verificarCota(sorteioId, idResultado, campoComSufixoRoleta) {
-    const inputId = campoComSufixoRoleta ? 'inp-verificar-cota-roleta' : 'inp-verificar-cota';
-    const numero = $(`#${inputId}`).val();
-    if (!sorteioId) return notificar('Selecione um sorteio primeiro.', 'erro');
-    if (!numero) return notificar('Informe o número da cota.', 'erro');
-    $(`#${idResultado}`).html('<p class="opacity-60">Verificando...</p>');
-    api('GET', `/api/admin/sorteios/${sorteioId}/verificar-cota?numero=${encodeURIComponent(numero)}`).then(d => {
-        let html = `<div class="p-3 bg-gray-900 rounded-lg space-y-2"><p class="font-semibold text-white">Cota ${d.numero}</p>`;
-
-        if (d.bloqueio_permanente) {
-            html += `<p class="text-red-400">🔒 Bloqueada permanentemente — nunca sai até você remover manualmente.</p>`;
-        }
-
-        if (d.agendamentos && d.agendamentos.length > 0) {
-            d.agendamentos.forEach(a => {
-                const cor = a.bloqueada_agora ? 'text-yellow-400' : 'text-green-400';
-                const icone = a.bloqueada_agora ? '⏳' : '✅';
-                const dataLocal = a.liberar_em ? new Date(a.liberar_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-                let motivo = '';
-                if (a.motivo_tipo === 'aguardando_data') motivo = `Ainda bloqueada — libera em ${dataLocal} (seu horário)`;
-                else if (a.motivo_tipo === 'aguardando_condicao_acima') motivo = `Data (${dataLocal}) já passou, mas só libera pra compras acima de ${a.condicao_quantidade} cotas`;
-                else if (a.motivo_tipo === 'aguardando_condicao_abaixo') motivo = `Data (${dataLocal}) já passou, mas só libera pra compras abaixo de ${a.condicao_quantidade} cotas`;
-                else motivo = `Pronta desde ${dataLocal} — vai ser entregue garantidamente na próxima compra que bater os critérios`;
-                html += `<p class="${cor}">${icone} ${motivo}</p>`;
-            });
-        }
-
-        if (!d.bloqueio_permanente && (!d.agendamentos || d.agendamentos.length === 0)) {
-            html += `<p class="text-green-400">✅ Sem nenhum bloqueio — livre pra ser sorteada normalmente.</p>`;
-        }
-
-        if (d.ja_vendida) {
-            html += `<p class="text-blue-400">🛒 Já foi vendida (pedido ${d.ja_vendida.pedido_id || '-'}).</p>`;
-        } else {
-            html += `<p class="opacity-60">Ainda não foi vendida a ninguém.</p>`;
-        }
-
-        if (d.premios && d.premios.length > 0) {
-            d.premios.forEach(p => {
-                html += `<p class="text-purple-300">🏆 É um prêmio de ${p.tipo === 'roleta' ? 'roleta' : 'bilhete premiado'} — status: <b>${p.status}</b>${p.valor_premio ? ` (${p.valor_premio})` : ''}</p>`;
-            });
-        } else {
-            html += `<p class="opacity-60">Não é um número de prêmio configurado.</p>`;
-        }
-
-        html += '</div>';
-        $(`#${idResultado}`).html(html);
-    }).catch(err => $(`#${idResultado}`).html(`<p class="text-red-400">Erro: ${err.error || 'não foi possível verificar'}</p>`));
-}
-
 
 // ==================== ROLETA (página própria) ====================
 let SORTEIO_ROLETA_ID = null;
@@ -2625,7 +2537,7 @@ function criarChanceDobro() {
     if (!SORTEIO_CHANCE_ID) return notificar('Selecione um sorteio primeiro.', 'erro');
     if (!data_inicio || !data_fim) return notificar('Preencha o início e o fim.', 'erro');
     if (new Date(data_fim) <= new Date(data_inicio)) return notificar('O fim precisa ser depois do início.', 'erro');
-    api('POST', `/api/admin/sorteios/${SORTEIO_CHANCE_ID}/chance-dobro`, { titulo, data_inicio: localParaISO(data_inicio), data_fim: localParaISO(data_fim) }).then(() => {
+    api('POST', `/api/admin/sorteios/${SORTEIO_CHANCE_ID}/chance-dobro`, { titulo, data_inicio, data_fim }).then(() => {
         $('#cd-titulo, #cd-inicio, #cd-fim').val('');
         carregarChanceDobro(SORTEIO_CHANCE_ID);
         notificar('Chance em Dobro criada!', 'sucesso');
@@ -2681,7 +2593,7 @@ function salvarAvisoUrgencia() {
     if (!data_inicio || !data_fim) return notificar('Preencha o início e o fim.', 'erro');
     if (new Date(data_fim) <= new Date(data_inicio)) return notificar('O fim precisa ser depois do início.', 'erro');
 
-    const payload = { titulo, descricao, data_inicio: localParaISO(data_inicio), data_fim: localParaISO(data_fim) };
+    const payload = { titulo, descricao, data_inicio, data_fim };
     const chamada = editId
         ? api('PUT', `/api/admin/avisos-urgencia/${editId}`, payload)
         : api('POST', `/api/admin/sorteios/${SORTEIO_URGENCIA_ID}/avisos-urgencia`, payload);
@@ -2699,8 +2611,8 @@ function editarUrgencia(id) {
         $('#urg-edit-id').val(aviso.id);
         $('#urg-titulo').val(aviso.titulo);
         $('#urg-descricao').val(aviso.descricao);
-        $('#urg-inicio').val(isoParaLocal(aviso.data_inicio));
-        $('#urg-fim').val(isoParaLocal(aviso.data_fim));
+        $('#urg-inicio').val(aviso.data_inicio ? aviso.data_inicio.slice(0, 16) : '');
+        $('#urg-fim').val(aviso.data_fim ? aviso.data_fim.slice(0, 16) : '');
         $('#urgencia-form-titulo').text('Editando aviso');
         $('#urg-btn-salvar').text('Salvar alterações');
         $('#urg-btn-cancelar').removeClass('hidden');
@@ -3142,7 +3054,7 @@ function renderTabelaComparativo() {
             return ORDENACAO_ATUAL.direcao === 'asc' ? va - vb : vb - va;
         });
     }
-    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
+    if (links.length === 0) { $('#tabela-links-comparativo').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Nenhum link registrado ainda.</td></tr>'); return; }
     $('#tabela-links-comparativo').html(links.map(l => `
         <tr class="link-row border-b border-gray-800/60" style="cursor:pointer" onclick="abrirDetalheLink('${l.id}')">
             <td class="p-3" onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleSelecaoLink('${l.id}', this.checked)" ${LINKS_SELECIONADOS.has(l.id) ? 'checked' : ''}></td>
@@ -3151,6 +3063,7 @@ function renderTabelaComparativo() {
             <td class="p-3"><span class="badge badge-outro">${canalLabel(l.canal)}</span></td>
             <td class="p-3">${l.cliques || 0}</td>
             <td class="p-3">${l.pedidos_pagos || 0}</td>
+            <td class="p-3">${l.total_clientes || 0}</td>
             <td class="p-3 text-green-400 font-semibold">${formatBR(l.faturamento)}</td>
             <td class="p-3 text-yellow-400">${formatBR(l.pendente)}</td>
             <td class="p-3">${formatBR(l.ticket_medio)}</td>

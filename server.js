@@ -1329,47 +1329,105 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
     }
 
     let attempts = 0;
-    const maxAttempts = Math.max(quantidade * 200, 20000);
-
-    // ⚡ Antes, cada tentativa varria o array `rows` inteiro pra conferir duplicata (`rows.some(...)`)
-    // — com poucas cotas isso nem se sentia, mas em compras de milhares de cotas isso virava uma
-    // conta gigantesca (quadrática: quantidade × quantidade), e era isso que travava a geração em
-    // compras grandes. Essa checagem no array era redundante: todo número aceito já entra no Set
-    // `invalidos` na sequência — então só checar o Set (que é instantâneo) já é suficiente e 100%
-    // seguro contra repetição, sem precisar mais do `.some()`.
-    while (rows.length < quantidade && attempts < maxAttempts) {
-      attempts++;
-      const numeroInt = Math.floor(Math.random() * totalCotas);
-      const numero = padCota(numeroInt, totalCotas);
-
-      if (!invalidos.has(numero)) {
+    const restantesLivres = totalCotas - invalidos.size;
+    const faltam = quantidade - rows.length;
+    // ⚡ Chutar um número aleatório e conferir se está livre fica cada vez mais lento (ou nunca
+    // termina) conforme a "sobra" de números livres vai ficando pequena perto da quantidade pedida
+    // — é a diferença entre "achar uma agulha rara" e "sortear de uma caixa cheia". Quando a sobra
+    // está apertada (menos de 5x o que falta gerar), listamos de uma vez só os números realmente
+    // livres e sorteamos direto dessa lista — sempre rápido, sempre termina. Só não fazemos isso pra
+    // totais gigantescos (o custo de listar tudo também cresce, então mantemos o sorteio direto
+    // quando a sobra é folgada, que já é rápido nesse caso).
+    if (faltam > 0 && totalCotas <= 2_000_000 && restantesLivres > 0 && restantesLivres < faltam * 5) {
+      const livres = [];
+      for (let i = 0; i < totalCotas; i++) {
+        const numero = padCota(i, totalCotas);
+        if (!invalidos.has(numero)) livres.push(numero);
+      }
+      const quantosPegar = Math.min(faltam, livres.length);
+      for (let i = 0; i < quantosPegar; i++) {
+        const j = i + Math.floor(Math.random() * (livres.length - i));
+        [livres[i], livres[j]] = [livres[j], livres[i]];
+        const numero = livres[i];
         rows.push({ sorteio_id, pedido_id: pedido.id, user_id, numero_cota: numero, created_at: new Date().toISOString() });
         invalidos.add(numero);
+      }
+    } else if (faltam > 0) {
+      // ⚡ Antes, cada tentativa varria o array `rows` inteiro pra conferir duplicata (`rows.some(...)`)
+      // — com poucas cotas isso nem se sentia, mas em compras de milhares de cotas isso virava uma
+      // conta gigantesca (quadrática: quantidade × quantidade), e era isso que travava a geração em
+      // compras grandes. Essa checagem no array era redundante: todo número aceito já entra no Set
+      // `invalidos` na sequência — então só checar o Set (que é instantâneo) já é suficiente e 100%
+      // seguro contra repetição, sem precisar mais do `.some()`.
+      const maxAttempts = Math.max(faltam * 200, 20000);
+      while (rows.length < quantidade && attempts < maxAttempts) {
+        attempts++;
+        const numeroInt = Math.floor(Math.random() * totalCotas);
+        const numero = padCota(numeroInt, totalCotas);
+
+        if (!invalidos.has(numero)) {
+          rows.push({ sorteio_id, pedido_id: pedido.id, user_id, numero_cota: numero, created_at: new Date().toISOString() });
+          invalidos.add(numero);
+        }
       }
     }
 
     if (rows.length === 0) return [];
 
-    // Insere em lote. Se colidir com outra cota já inserida por um pagamento aprovado ao mesmo tempo
-    // (protegido por UNIQUE INDEX no banco — veja o SQL), insere uma por uma e troca só as que colidiram.
+    // Insere em lote. Compras grandes (milhares de cotas) vão em pedaços menores, em paralelo — mais
+    // rápido e evita esbarrar num limite de tamanho de requisição de uma inserção gigante só.
+    // Se algum pedaço colidir com outra cota já inserida por um pagamento aprovado ao mesmo tempo
+    // (protegido por UNIQUE INDEX no banco — veja o SQL), insere uma por uma só o que sobrou.
     let inserted = [];
-    const { data: insertedBulk, error: bulkError } = await supabase.from('cotas').insert(rows).select('id, numero_cota');
-    if (!bulkError && insertedBulk) {
-      inserted = insertedBulk;
+    const TAMANHO_LOTE = 2000;
+    if (rows.length <= TAMANHO_LOTE) {
+      const { data: insertedBulk, error: bulkError } = await supabase.from('cotas').insert(rows).select('id, numero_cota');
+      if (!bulkError && insertedBulk) inserted = insertedBulk;
+      else {
+        console.warn('⚠️ Conflito na inserção em lote (provável corrida entre pagamentos simultâneos). Tentando uma a uma...', bulkError?.message);
+        for (const row of rows) {
+          let tentativas = 0;
+          let ok = false;
+          let candidato = row;
+          while (!ok && tentativas < 50) {
+            tentativas++;
+            const { data: ins, error: insErr } = await supabase.from('cotas').insert(candidato).select('id, numero_cota').single();
+            if (!insErr && ins) { inserted.push(ins); ok = true; }
+            else {
+              // Colidiu (outra requisição pegou esse número primeiro) — sorteia outro e tenta de novo
+              const novoNumero = padCota(Math.floor(Math.random() * totalCotas), totalCotas);
+              candidato = { ...candidato, numero_cota: novoNumero };
+            }
+          }
+        }
+      }
     } else {
-      console.warn('⚠️ Conflito na inserção em lote (provável corrida entre pagamentos simultâneos). Tentando uma a uma...', bulkError?.message);
-      for (const row of rows) {
-        let tentativas = 0;
-        let ok = false;
-        let candidato = row;
-        while (!ok && tentativas < 50) {
-          tentativas++;
-          const { data: ins, error: insErr } = await supabase.from('cotas').insert(candidato).select('id, numero_cota').single();
-          if (!insErr && ins) { inserted.push(ins); ok = true; }
-          else {
-            // Colidiu (outra requisição pegou esse número primeiro) — sorteia outro e tenta de novo
-            const novoNumero = padCota(Math.floor(Math.random() * totalCotas), totalCotas);
-            candidato = { ...candidato, numero_cota: novoNumero };
+      // Compra grande — insere em pedaços de 2000, todos ao mesmo tempo (em paralelo), bem mais
+      // rápido que um pedido só gigantesco.
+      const lotes = [];
+      for (let i = 0; i < rows.length; i += TAMANHO_LOTE) lotes.push(rows.slice(i, i + TAMANHO_LOTE));
+      const resultadosLotes = await Promise.all(lotes.map(lote => supabase.from('cotas').insert(lote).select('id, numero_cota')));
+      let houveErroEmAlgumLote = false;
+      for (const r of resultadosLotes) {
+        if (r.error) { houveErroEmAlgumLote = true; console.warn('⚠️ Erro num lote de inserção (provável corrida entre pagamentos simultâneos):', r.error.message); }
+        else inserted.push(...(r.data || []));
+      }
+      if (houveErroEmAlgumLote) {
+        // Só o que faltou entrar tenta de novo, uma cota por vez (bem mais raro, então tudo bem ser mais lento aqui)
+        const numerosJaInseridos = new Set(inserted.map(r => r.numero_cota));
+        const faltantes = rows.filter(r => !numerosJaInseridos.has(r.numero_cota));
+        for (const row of faltantes) {
+          let tentativas = 0;
+          let ok = false;
+          let candidato = row;
+          while (!ok && tentativas < 50) {
+            tentativas++;
+            const { data: ins, error: insErr } = await supabase.from('cotas').insert(candidato).select('id, numero_cota').single();
+            if (!insErr && ins) { inserted.push(ins); ok = true; }
+            else {
+              const novoNumero = padCota(Math.floor(Math.random() * totalCotas), totalCotas);
+              candidato = { ...candidato, numero_cota: novoNumero };
+            }
           }
         }
       }
@@ -1751,14 +1809,15 @@ app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
 
     const resultados = [];
     for (const link of (links || [])) {
-      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status, expira_em').eq('link_id', link.id);
+      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status, expira_em, user_id').eq('link_id', link.id);
       const nowISOLink = new Date().toISOString();
       const pagos = (pedidos || []).filter(p => p.status === 'pago');
       const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISOLink));
       const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const pendente = pendentes.reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const total_pedidos = (pedidos || []).length;
-      const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
+      const total_clientes = new Set(pagos.map(p => p.user_id).filter(Boolean)).size;
+      const ticket_medio = total_clientes > 0 ? faturamento / total_clientes : 0;
       const conversao = link.cliques > 0 ? (pagos.length / link.cliques) * 100 : 0;
       const caminho = link.funis?.slug ? `/sorteio/${sorteio?.slug || ''}/${link.funis.slug}` : `/sorteio/${sorteio?.slug || ''}`;
       resultados.push({
@@ -1767,6 +1826,7 @@ app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
         cliques: link.cliques || 0,
         pedidos_pagos: pagos.length,
         total_pedidos,
+        total_clientes,
         faturamento,
         pendente,
         ticket_medio,
@@ -1809,7 +1869,7 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
     const resultados = [];
     for (const link of (links || [])) {
       let acessosQ = supabase.from('acessos_log').select('*', { head: true, count: 'exact' }).eq('link_id', link.id);
-      let pedidosQ = supabase.from('pedidos').select('valor_total, status').eq('link_id', link.id);
+      let pedidosQ = supabase.from('pedidos').select('valor_total, status, user_id').eq('link_id', link.id);
       if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
       if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
 
@@ -1823,7 +1883,8 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
       const expirados = (pedidos || []).filter(p => p.status === 'aguardando' && p.expira_em && p.expira_em < nowISO).length;
       const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
       const pendente = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISO)).reduce((s, p) => s + Number(p.valor_total || 0), 0);
-      const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
+      const total_clientes = new Set(pagos.map(p => p.user_id).filter(Boolean)).size;
+      const ticket_medio = total_clientes > 0 ? faturamento / total_clientes : 0;
       const conversao = cliques > 0 ? (pagos.length / cliques) * 100 : 0;
       // Link oficial (auto-direto do sorteio, sem funil) tem URL limpa; links criados manualmente usam ?lk=
       let url = null;
@@ -1832,7 +1893,7 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
         if (link.codigo === 'auto-direto') url = `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${slug}`;
         else if (!link.codigo.startsWith('auto-')) url = `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${slug}?lk=${link.codigo}`;
       }
-      resultados.push({ ...link, url, cliques, pedidos_pagos: pagos.length, expirados, faturamento, pendente, ticket_medio, conversao });
+      resultados.push({ ...link, url, cliques, pedidos_pagos: pagos.length, total_clientes, expirados, faturamento, pendente, ticket_medio, conversao });
     }
     return ok(res, { links: resultados });
   } catch (e) { console.error('GET comparativo', e); return fail(res); }
@@ -1846,7 +1907,7 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
     if (!link) return fail(res, 'Link não encontrado', 404);
 
     let acessosQ = supabase.from('acessos_log').select('created_at').eq('link_id', link.id);
-    let pedidosQ = supabase.from('pedidos').select('valor_total, status, created_at, expira_em').eq('link_id', link.id);
+    let pedidosQ = supabase.from('pedidos').select('valor_total, status, created_at, expira_em, user_id').eq('link_id', link.id);
     if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
     if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
     const { data: acessos } = await acessosQ;
@@ -1872,11 +1933,12 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
     const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const pendente = pendentes.reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const totalAcessos = (acessos || []).length || link.cliques || 0;
+    const total_clientes = new Set(pagos.map(p => p.user_id).filter(Boolean)).size;
 
     return ok(res, {
       link, serie,
       acessos: totalAcessos, pedidos_pagos: pagos.length, pendentes: pendentes.length, expirados: expirados.length,
-      faturamento, pendente, ticket_medio: pagos.length > 0 ? faturamento / pagos.length : 0,
+      faturamento, pendente, total_clientes, ticket_medio: total_clientes > 0 ? faturamento / total_clientes : 0,
       conversao: totalAcessos > 0 ? (pagos.length / totalAcessos) * 100 : 0
     });
   } catch (e) { console.error('GET link detalhe', e); return fail(res); }
@@ -2294,7 +2356,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     const pendente = (pend || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const total_pedidos = (all || []).length;
     const total_clientes = new Set((paid || []).map(p => p.user_id).filter(Boolean)).size;
-    const ticket_medio = total_pedidos > 0 ? (faturamento / total_pedidos) : 0;
+    const ticket_medio = total_clientes > 0 ? (faturamento / total_clientes) : 0;
 
     let qa = supabase.from('acessos_log').select('*', { head: true, count: 'exact' });
     if (sorteio_id && sorteio_id !== 'todos') qa = qa.eq('sorteio_id', sorteio_id);
@@ -2313,7 +2375,7 @@ app.get('/api/admin/dashboard/por-sorteio', ensureAdminAuth, async (req, res) =>
     const { data: sorteios } = await supabase.from('sorteios').select('id, nome').order('created_at', { ascending: false });
     const resultados = [];
     for (const s of (sorteios || [])) {
-      let qp = supabase.from('pedidos').select('valor_total, status, expira_em').eq('sorteio_id', s.id);
+      let qp = supabase.from('pedidos').select('valor_total, status, expira_em, user_id').eq('sorteio_id', s.id);
       if (start_date) qp = qp.gte('created_at', start_date);
       if (end_date) qp = qp.lte('created_at', end_date);
       const { data: pedidos } = await qp;
@@ -2322,7 +2384,8 @@ app.get('/api/admin/dashboard/por-sorteio', ensureAdminAuth, async (req, res) =>
       const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISORel));
       const faturamento = pagos.reduce((s2, p) => s2 + Number(p.valor_total || 0), 0);
       const pendente = pendentes.reduce((s2, p) => s2 + Number(p.valor_total || 0), 0);
-      const ticket_medio = pagos.length > 0 ? faturamento / pagos.length : 0;
+      const total_clientes = new Set(pagos.map(p => p.user_id).filter(Boolean)).size;
+      const ticket_medio = total_clientes > 0 ? faturamento / total_clientes : 0;
 
       let qa = supabase.from('acessos_log').select('*', { head: true, count: 'exact' }).eq('sorteio_id', s.id);
       if (start_date) qa = qa.gte('created_at', start_date);
@@ -2330,7 +2393,7 @@ app.get('/api/admin/dashboard/por-sorteio', ensureAdminAuth, async (req, res) =>
       const { count: acessos } = await qa;
 
       const conversao = (acessos || 0) > 0 ? (pagos.length / acessos) * 100 : 0;
-      resultados.push({ sorteio_id: s.id, nome: s.nome, acessos: acessos || 0, total_pedidos: (pedidos || []).length, faturamento, pendente, ticket_medio, conversao });
+      resultados.push({ sorteio_id: s.id, nome: s.nome, acessos: acessos || 0, total_pedidos: (pedidos || []).length, total_clientes, faturamento, pendente, ticket_medio, conversao });
     }
     resultados.sort((a, b) => b.faturamento - a.faturamento);
     return ok(res, { sorteios: resultados });
