@@ -1156,7 +1156,14 @@ async function criarPagamentoMercadoPago(pedido, usuario) {
     console.warn('⚠️ Mercado Pago: Token não encontrado!');
     return null;
   }
+  // ⚡ Antes, só limpava espaço/quebra de linha SE o valor começasse com "bearer " — mas é super
+  // comum colar uma credencial no Render (ou em qualquer campo de configuração) com um espaço ou
+  // quebra de linha escondida no final, sem começar com "bearer" nenhum. Isso "quebra" o cabeçalho
+  // de autorização por dentro, e o Mercado Pago recusa dizendo que a autorização "não está presente"
+  // — mesmo com o token certo configurado. Agora limpa SEMPRE, não só nesse caso específico.
+  ACCESS_TOKEN = ACCESS_TOKEN.trim();
   if (ACCESS_TOKEN.toLowerCase().startsWith('bearer ')) ACCESS_TOKEN = ACCESS_TOKEN.slice(7).trim();
+  console.log(`[MP] Token carregado — tamanho: ${ACCESS_TOKEN.length} caracteres, começa com: "${ACCESS_TOKEN.slice(0, 8)}..."`);
 
   const API_URL = (process.env.MERCADOPAGO_API_URL || 'https://api.mercadopago.com').replace(/\/+$/, '');
   const emailValido = (usuario.email && usuario.email.includes('@') && usuario.email.length > 5) ? usuario.email : `c${usuario.telefone.replace(/\D/g, '')}@email.com`;
