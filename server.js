@@ -1228,7 +1228,13 @@ async function criarPagamentoMercadoPago(pedido, usuario) {
     }
     const data = await resp.json();
     if (data.id && data.point_of_interaction?.transaction_data?.qr_code) {
-      return { gateway_payment_id: String(data.id), pix_copia_cola: data.point_of_interaction.transaction_data.qr_code, pix_qr_code_base64: data.point_of_interaction.transaction_data.qr_code_base64 || '', provider: 'mercadopago' };
+      // ⚡ O Mercado Pago manda o QR code como base64 "cru", sem o prefixo que o navegador precisa
+      // pra reconhecer aquilo como uma imagem (senão o <img> fica com endereço inválido e não
+      // mostra nada — era exatamente esse o motivo do QR code não aparecer, mesmo o Pix copia-e-
+      // cola funcionando normalmente, já que esse não depende desse prefixo).
+      const qrCru = data.point_of_interaction.transaction_data.qr_code_base64 || '';
+      const qrComPrefixo = qrCru && !qrCru.startsWith('data:') ? `data:image/png;base64,${qrCru}` : qrCru;
+      return { gateway_payment_id: String(data.id), pix_copia_cola: data.point_of_interaction.transaction_data.qr_code, pix_qr_code_base64: qrComPrefixo, provider: 'mercadopago' };
     }
     console.error('❌ Mercado Pago respondeu OK mas sem QR code de Pix:', JSON.stringify(data));
     return null;
@@ -1696,10 +1702,18 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     }).select().single();
 
     const pagamento = await criarPagamentoGateway(pedido, usuario);
+    // ⚡ Corrige de uma vez por todas, pra QUALQUER gateway (Mercado Pago, Pay2m, Paggue, etc.):
+    // o QR code do PIX vem como base64 "cru" da maioria das APIs de pagamento, e o navegador só
+    // consegue mostrar isso como imagem se vier com o prefixo "data:image/png;base64,". Sem isso,
+    // o <img> fica com endereço inválido e não aparece nada — mesmo o Pix copia-e-cola funcionando
+    // normalmente (por isso um funcionava e o outro não).
+    const qrCodeNormalizado = pagamento.pix_qr_code_base64 && !pagamento.pix_qr_code_base64.startsWith('data:')
+      ? `data:image/png;base64,${pagamento.pix_qr_code_base64}`
+      : (pagamento.pix_qr_code_base64 || null);
     await supabase.from('pedidos').update({
       gateway_payment_id: pagamento.gateway_payment_id,
       pix_copia_cola: pagamento.pix_copia_cola || null,
-      pix_qr_code_base64: pagamento.pix_qr_code_base64 || null,
+      pix_qr_code_base64: qrCodeNormalizado,
       payment_provider: pagamento.provider || null,
       updated_at: new Date().toISOString()
     }).eq('id', pedido.id);
@@ -1712,7 +1726,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       pedido: {
         ...pedido,
         pix_copia_cola: pagamento.pix_copia_cola || null,
-        pix_qr_code_base64: pagamento.pix_qr_code_base64 || null
+        pix_qr_code_base64: qrCodeNormalizado
       }
     });
   } catch (err) { console.error('POST /api/public/pedidos/iniciar', err); return fail(res); }
