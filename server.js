@@ -243,6 +243,25 @@ function gerarCpfValido() {
   return `${n1}${n2}${n3}${n4}${n5}${n6}${n7}${n8}${n9}${d1}${d2}`;
 }
 
+// Confere se um CPF é matematicamente válido (dígitos verificadores batem) antes de mandar pro
+// Mercado Pago — sem isso, um CPF digitado errado (ou de teste) faz a API deles recusar o pedido
+// inteiro com "Invalid user identification number", e o comprador nunca recebe o PIX de verdade.
+function cpfEhValido(cpf) {
+  const c = String(cpf || '').replace(/\D/g, '');
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(c[i], 10) * (10 - i);
+  let resto = (soma * 10) % 11;
+  if (resto === 10) resto = 0;
+  if (resto !== parseInt(c[9], 10)) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(c[i], 10) * (11 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10) resto = 0;
+  if (resto !== parseInt(c[10], 10)) return false;
+  return true;
+}
+
 // ==================================================================
 // ⚙️ SETUP SERVIDOR
 // ==================================================================
@@ -1172,7 +1191,11 @@ async function criarPagamentoMercadoPago(pedido, usuario) {
   // Pago recusar o pagamento no antifraude deles. Só cai pro CPF gerado se realmente não tiver um
   // CPF real disponível (sorteio que não pede CPF no checkout).
   const cpfLimpoUsuario = usuario.cpf ? String(usuario.cpf).replace(/\D/g, '') : '';
-  const cpfEnvio = (cpfLimpoUsuario.length === 11) ? cpfLimpoUsuario : gerarCpfValido();
+  // ⚡ Só usa o CPF real se ele for matematicamente válido de verdade (dígitos verificadores
+  // batem) — um CPF digitado errado (ou de teste, tipo "111.111.111-11") faz o Mercado Pago
+  // recusar o pedido inteiro. Nesse caso, cai pro CPF gerado (sempre válido) em vez de travar
+  // a compra por causa de um dado que a pessoa digitou errado.
+  const cpfEnvio = cpfEhValido(cpfLimpoUsuario) ? cpfLimpoUsuario : gerarCpfValido();
 
   const body = {
     transaction_amount: Number(parseFloat(pedido.valor_total).toFixed(2)),
