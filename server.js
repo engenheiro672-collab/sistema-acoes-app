@@ -282,7 +282,11 @@ app.use((_req, res, next) => {
 
 app.use(cookieParser());
 // Necessário no Render (e qualquer host atrás de proxy/HTTPS) pra sessão/cookies funcionarem certo
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+// ⚡ Sempre ativa (não depende mais de NODE_ENV estar configurado certinho no Render) — no Render
+// você está SEMPRE atrás do proxy deles, então isso precisa estar ligado sempre, em qualquer
+// ambiente. Sem isso, o rate-limit (limite de tentativas) pode tratar todo mundo que acessa o site
+// como se fosse a mesma pessoa/IP, o que pode bloquear visitantes de verdade sem motivo.
+app.set('trust proxy', 1);
 
 // 🔒 Em produção, exige que SESSION_SECRET esteja configurado de verdade — nunca usa um valor
 // padrão conhecido, porque isso permitiria forjar sessões de admin se alguém descobrisse essa chave.
@@ -1156,7 +1160,12 @@ async function criarPagamentoMercadoPago(pedido, usuario) {
 
   const API_URL = (process.env.MERCADOPAGO_API_URL || 'https://api.mercadopago.com').replace(/\/+$/, '');
   const emailValido = (usuario.email && usuario.email.includes('@') && usuario.email.length > 5) ? usuario.email : `c${usuario.telefone.replace(/\D/g, '')}@email.com`;
-  const cpfEnvio = gerarCpfValido();
+  // ⚡ Usa o CPF real da pessoa (quando o sorteio coleta isso no checkout) em vez de sempre inventar
+  // um CPF aleatório — mandar um CPF que não é de ninguém de verdade é um motivo comum do Mercado
+  // Pago recusar o pagamento no antifraude deles. Só cai pro CPF gerado se realmente não tiver um
+  // CPF real disponível (sorteio que não pede CPF no checkout).
+  const cpfLimpoUsuario = usuario.cpf ? String(usuario.cpf).replace(/\D/g, '') : '';
+  const cpfEnvio = (cpfLimpoUsuario.length === 11) ? cpfLimpoUsuario : gerarCpfValido();
 
   const body = {
     transaction_amount: Number(parseFloat(pedido.valor_total).toFixed(2)),
@@ -1178,11 +1187,20 @@ async function criarPagamentoMercadoPago(pedido, usuario) {
       body: JSON.stringify(body)
     });
 
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      // ⚡ Antes, um erro aqui só virava "não retornou pagamento" sem detalhe nenhum — impossível
+      // saber o motivo real (token errado, conta não habilitada, CPF recusado, etc.). Agora o motivo
+      // exato que o Mercado Pago mandou fica registrado no log do Render.
+      let corpoErro = '';
+      try { corpoErro = await resp.text(); } catch {}
+      console.error(`❌ Mercado Pago recusou o pagamento (HTTP ${resp.status}):`, corpoErro);
+      return null;
+    }
     const data = await resp.json();
     if (data.id && data.point_of_interaction?.transaction_data?.qr_code) {
       return { gateway_payment_id: String(data.id), pix_copia_cola: data.point_of_interaction.transaction_data.qr_code, pix_qr_code_base64: data.point_of_interaction.transaction_data.qr_code_base64 || '', provider: 'mercadopago' };
     }
+    console.error('❌ Mercado Pago respondeu OK mas sem QR code de Pix:', JSON.stringify(data));
     return null;
   } catch (err) { console.error('❌ Erro Conexão MP:', err.message); return null; }
 }
