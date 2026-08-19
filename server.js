@@ -604,7 +604,13 @@ app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-pr
 // novo normalmente — continua sendo uma visita nova de verdade.
 function trackearAcesso(req, res, next) {
   const slugAtual = req.params.slug || 'geral';
-  const cookieKey = `acesso_${slugAtual}`;
+  // ⚡ O selo de "já contei essa visita" precisa ser por ORIGEM, não só por sorteio — senão, quem
+  // visita primeiro por um link rastreado (ex: Instagram) e depois testa o link oficial (sem
+  // parâmetro) tem a segunda visita ignorada, porque o selo do sorteio já existia. Com o selo
+  // separado por origem, cada fonte de tráfego tem sua própria janela de 6h, então trocar de link
+  // (ou usar o oficial depois de outro) sempre conta certinho na primeira vez.
+  const origemChave = req.query.lk ? String(req.query.lk) : 'oficial';
+  const cookieKey = `acesso_${slugAtual}_${origemChave}`;
   const jaContabilizado = !!(req.cookies && req.cookies[cookieKey]);
   if (!jaContabilizado) {
     try { res.cookie(cookieKey, '1', { maxAge: 6 * 60 * 60 * 1000, httpOnly: false, sameSite: 'lax' }); } catch (e) {}
