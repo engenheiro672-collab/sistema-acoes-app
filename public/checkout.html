@@ -551,7 +551,14 @@
 
             try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
 
-            if (typeof fbq === 'function' && data.pixel_data) {
+            // ⚡ Evita mandar "Purchase" de novo pro Meta se a pessoa atualizar a página (ou reabrir
+            // o link) depois de já ter pago — sem isso, cada F5 na tela de "pago" contava como uma
+            // venda nova, inflando o valor de conversão reportado. Só dispara uma vez por pedido,
+            // guardado no navegador dela.
+            let jaDisparouPurchase = false;
+            try { jaDisparouPurchase = TOKEN && localStorage.getItem('purchase_disparado_' + TOKEN) === '1'; } catch (e) {}
+
+            if (typeof fbq === 'function' && data.pixel_data && !jaDisparouPurchase) {
                 fbq('track', 'Purchase', {
                     value: data.pixel_data.value,
                     currency: data.pixel_data.currency,
@@ -559,6 +566,7 @@
                     content_name: data.pixel_data.sorteio_nome,
                     content_category: 'Raffle'
                 });
+                try { if (TOKEN) localStorage.setItem('purchase_disparado_' + TOKEN, '1'); } catch (e) {}
             }
 
             try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/aprovado`); } catch (e) {}
