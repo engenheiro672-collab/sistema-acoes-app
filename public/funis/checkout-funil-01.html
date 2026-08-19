@@ -434,7 +434,15 @@
                 s.parentNode.insertBefore(t,s)}(window, document,'script',
                 'https://connect.facebook.net/en_US/fbevents.js');
                 fbq('init', pixels.facebook_pixel_id);
-                fbq('track', 'PageView');
+                // ⚡ Dispara o PageView só uma vez por sessão de navegador (não a cada F5) — assim
+                // o número bate com visitas de verdade, e sorteio/funil/checkout da mesma visita
+                // não somam PageView separado um do outro.
+                let jaDisparouPageView = false;
+                try { jaDisparouPageView = sessionStorage.getItem('pageview_disparado') === '1'; } catch (e) {}
+                if (!jaDisparouPageView) {
+                    fbq('track', 'PageView');
+                    try { sessionStorage.setItem('pageview_disparado', '1'); } catch (e) {}
+                }
             }
             if (pixels.google_ads_id) {
                 const s1 = document.createElement('script'); s1.async = true; s1.src = `https://www.googletagmanager.com/gtag/js?id=${pixels.google_ads_id}`;

@@ -596,8 +596,21 @@ app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-pr
 // a carregar), e só depois disso é que as consultas de rastreamento rodam, "por trás". Antes, essas
 // até 5 idas ao banco (uma atrás da outra) aconteciam ANTES da página nem começar a ser buscada —
 // agora elas não atrasam mais nada que a pessoa vê.
+// ⚡ Antes, toda vez que a pessoa dava F5 na página do sorteio, isso contava como um acesso novo
+// (tanto no seu painel quanto — indiretamente — nos números que você olha pra decidir se o
+// anúncio está indo bem). Agora só conta a PRIMEIRA vez dentro de uma janela de 6 horas: marca
+// isso com um cookiezinho no navegador da pessoa, e enquanto ele existir, um F5 (ou reabrir a
+// mesma aba) não soma outro acesso. Depois de 6 horas (ou numa visita de outro dia), conta de
+// novo normalmente — continua sendo uma visita nova de verdade.
 function trackearAcesso(req, res, next) {
+  const slugAtual = req.params.slug || 'geral';
+  const cookieKey = `acesso_${slugAtual}`;
+  const jaContabilizado = !!(req.cookies && req.cookies[cookieKey]);
+  if (!jaContabilizado) {
+    try { res.cookie(cookieKey, '1', { maxAge: 6 * 60 * 60 * 1000, httpOnly: false, sameSite: 'lax' }); } catch (e) {}
+  }
   next();
+  if (jaContabilizado) return;
   (async () => {
     try {
       const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', req.params.slug).maybeSingle();
@@ -2410,7 +2423,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     vp = baseFilter(vp);
     const { data: pend } = await vp;
 
-    let qt = supabase.from('pedidos').select('id').neq('status', 'cancelado');
+    let qt = supabase.from('pedidos').select('id').eq('status', 'pago');
     qt = baseFilter(qt);
     const { data: all } = await qt;
 
@@ -2455,7 +2468,7 @@ app.get('/api/admin/dashboard/por-sorteio', ensureAdminAuth, async (req, res) =>
       const { count: acessos } = await qa;
 
       const conversao = (acessos || 0) > 0 ? (pagos.length / acessos) * 100 : 0;
-      resultados.push({ sorteio_id: s.id, nome: s.nome, acessos: acessos || 0, total_pedidos: (pedidos || []).length, total_clientes, faturamento, pendente, ticket_medio, conversao });
+      resultados.push({ sorteio_id: s.id, nome: s.nome, acessos: acessos || 0, total_pedidos: pagos.length, total_clientes, faturamento, pendente, ticket_medio, conversao });
     }
     resultados.sort((a, b) => b.faturamento - a.faturamento);
     return ok(res, { sorteios: resultados });
