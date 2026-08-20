@@ -2673,7 +2673,7 @@ app.get('/api/admin/pixels-meta-extras', ensureAdminAuth, async (_req, res) => {
   try {
     const { data, error } = await supabase.from('pixels_meta_extras').select('*').order('created_at', { ascending: false });
     if (error) return fail(res, 'Erro ao listar pixels');
-    return ok(res, data || []);
+    return res.json(data || []);
   } catch (e) { return fail(res); }
 });
 
