@@ -239,6 +239,8 @@ create table if not exists roleta_giros (
   bilhete_premiado_id uuid references bilhetes_premiados(id) on delete set null, -- se bateu com um prêmio pré-configurado
   premio_titulo text,
   valor_premio text,
+  cor_sorteada text,                        -- 'verde' | 'vermelho' | 'preto' — cor onde a bolinha parou (roleta por cores)
+  pago_dobro boolean default false,         -- true quando caiu no verde (prêmio pago em dobro)
   girado boolean default false,
   girado_em timestamptz,
   created_at timestamptz default now()
@@ -249,6 +251,11 @@ create index if not exists idx_roleta_giros_pedido on roleta_giros(pedido_id);
 -- conseguia; todo mundo depois falhava silenciosamente ("duplicate key"). O certo é ser único só
 -- DENTRO de cada pedido (giro 1, 2, 3... da compra específica de cada pessoa).
 create unique index if not exists idx_roleta_giros_pedido_numero on roleta_giros(pedido_id, numero_giro);
+
+-- Se seu banco já existia ANTES da roleta por cores (verde/vermelho/preto) ser implementada, essas
+-- duas linhas garantem que as colunas apareçam mesmo sem recriar a tabela do zero:
+alter table roleta_giros add column if not exists cor_sorteada text;
+alter table roleta_giros add column if not exists pago_dobro boolean default false;
 
 -- ============================================================================
 -- 13) CONFIGURACOES — chave/valor genérico (gateway, pixels, nome do sistema, etc.)

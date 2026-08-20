@@ -16,12 +16,13 @@
     <link rel="stylesheet" href="/css/tailwind-estatico.css?v=3">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://code.jquery.com">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preload" href="https://code.jquery.com/jquery-3.7.1.min.js" as="script" crossorigin>
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"></noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
 
     <style>
         html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; }
@@ -144,7 +145,7 @@
 
         <section class="relative carrossel" id="carrossel-box">
             <div class="carrossel-track" id="carrossel-track">
-                <div class="carrossel-slide"><img id="sorteio-img" src="" alt="Prêmio" fetchpriority="high" loading="eager"></div>
+                <div class="carrossel-slide"><img id="sorteio-img" src="__OG_IMAGE__" alt="Prêmio" fetchpriority="high" loading="eager"></div>
             </div>
             <div class="absolute bottom-0 left-0 w-full caption-header" style="pointer-events:none;">
                 <span id="sorteio-tag" class="tag-ending">Corre que está acabando!</span>
@@ -403,7 +404,6 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.15/jquery.mask.min.js"></script>
     <script>
         // --- Lê slug do sorteio e (opcionalmente) slug do funil pela URL ---
         // Suporta: /sorteio/:slug  e  /sorteio/:slug/:funilSlug
@@ -939,10 +939,10 @@
             }
 
             if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
-            injetarPixels(pixels);
 
             $('#page-title').text(`${sorteio.nome || ''} - Sorteios`);
             renderCarrossel(sorteio);
+            injetarPixels(pixels);
             $('#sorteio-nome').text(sorteio.nome || '');
             $('#preco-cota').text(PRECO ? formatarMoeda(PRECO) : 'R$ 0,00');
             $('#input-qtd').attr('min', MIN_QTY).attr('max', MAX_QTY);
@@ -1057,19 +1057,10 @@
             document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
         })();
 
-        // No Android, se detectar que está dentro do navegador embutido do Instagram/Facebook,
-        // manda sair pro Chrome (preservando a URL inteira, com fbclid, pra não quebrar o rastreio do Meta).
-        // No iPhone não faz nada disso — a Apple não permite saída automática, e forçar geraria fricção sem necessidade.
-        (function tentarSairDoNavegadorEmbutidoAndroid() {
-            const ua = navigator.userAgent || '';
-            const isAndroid = /Android/i.test(ua);
-            const isNavegadorEmbutido = /Instagram|FBAN|FBAV|FB_IAB/i.test(ua);
-            if (isAndroid && isNavegadorEmbutido) {
-                const urlAtual = window.location.href;
-                const semEsquema = urlAtual.replace(/^https?:\/\//, '');
-                window.location.href = `intent://${semEsquema}#Intent;scheme=https;package=com.android.chrome;end`;
-            }
-        })();
+        // ⚡ Removido de propósito: existia aqui um redirecionamento automático que tirava o Android
+        // do navegador do Instagram/Facebook e mandava pro Chrome. Isso quebrava a experiência (saía
+        // do app, recarregava tudo do zero) e prejudicava a conversão — por decisão do dono do
+        // negócio, o lead permanece no navegador embutido, em qualquer aparelho.
 
         $(document).ready(function() {
             // ⚡ Registra o Service Worker pra TODO visitante (não só quem ativa notificação push) —
@@ -1081,17 +1072,41 @@
 
             carregarSorteio();
 
-            var SPMaskBehavior = function (val) {
-                return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009';
-            };
-            var spOptions = {
-                onKeyPress: function(val, e, field, options) {
-                    field.mask(SPMaskBehavior.apply({}, arguments), options);
+            // ⚡ Substituído o plugin externo (jquery.mask, vinha de cdnjs.cloudflare.com) por um
+            // código próprio equivalente — remove uma conexão externa inteira do carregamento da
+            // página, sem mudar em nada o comportamento pro usuário (mesmas máscaras de sempre).
+            function formatarTelefoneBR(digitos) {
+                digitos = digitos.slice(0, 11);
+                if (!digitos) return '';
+                const ddd = digitos.slice(0, 2);
+                if (digitos.length <= 2) return `(${ddd}`;
+                const resto = digitos.slice(2);
+                if (resto.length <= 4) return `(${ddd}) ${resto}`;
+                if (digitos.length <= 10) {
+                    const p1 = resto.slice(0, 4), p2 = resto.slice(4, 8);
+                    return p2 ? `(${ddd}) ${p1}-${p2}` : `(${ddd}) ${p1}`;
                 }
-            };
-            $('#checkout-tel').mask(SPMaskBehavior, spOptions);
-            $('#phone-input-modal').mask(SPMaskBehavior, spOptions);
-            $('#checkout-cpf').mask('000.000.000-00');
+                const p1 = resto.slice(0, 5), p2 = resto.slice(5, 9);
+                return p2 ? `(${ddd}) ${p1}-${p2}` : `(${ddd}) ${p1}`;
+            }
+            function formatarCpfBR(digitos) {
+                digitos = digitos.slice(0, 11);
+                let out = digitos.slice(0, 3);
+                if (digitos.length > 3) out += '.' + digitos.slice(3, 6);
+                if (digitos.length > 6) out += '.' + digitos.slice(6, 9);
+                if (digitos.length > 9) out += '-' + digitos.slice(9, 11);
+                return out;
+            }
+            function vincularMascara(seletorOuElemento, formatador) {
+                $(seletorOuElemento).on('input', function() {
+                    const noFim = this.selectionEnd === this.value.length;
+                    this.value = formatador(this.value.replace(/\D/g, ''));
+                    if (noFim) { const p = this.value.length; this.setSelectionRange(p, p); }
+                });
+            }
+            vincularMascara('#checkout-tel', formatarTelefoneBR);
+            vincularMascara('#phone-input-modal', formatarTelefoneBR);
+            vincularMascara('#checkout-cpf', formatarCpfBR);
 
             $('#btn-toggle-regulamento').on('click', function() {
                 $('#corpo-regulamento').slideToggle(200);

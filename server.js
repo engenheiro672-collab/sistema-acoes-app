@@ -818,13 +818,18 @@ app.get('/checkout/:token/:status?', async (req, res) => {
     // inteira bem na página onde a pessoa está prestes a pagar.
     const html = lerHtmlComCache(arquivoRelativo);
     let htmlFinal = html;
+    let imagemSorteio = '';
     try {
       const dados = await getCheckoutPublicData(req.params.token);
       if (dados) {
+        imagemSorteio = dados.pedido?.sorteios?.foto_url || '';
         const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
         htmlFinal = html.replace('</head>', `<script>window.__DADOS_INICIAIS_CHECKOUT__ = ${dadosSeguro};</script></head>`);
       }
     } catch (errDados) { console.error('Erro ao pré-carregar dados do checkout', errDados); }
+    // A foto do sorteio já vem preenchida no HTML — começa a baixar assim que a página chega no
+    // navegador, sem esperar o jQuery carregar e processar os dados pra só então setar a imagem.
+    htmlFinal = htmlFinal.replace('__CHECKOUT_IMG__', escaparAtributoHtml(imagemSorteio));
 
     res.set('Content-Type', 'text/html');
     res.set('Cache-Control', 'no-cache');
