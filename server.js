@@ -622,8 +622,12 @@ function trackearAcesso(req, res, next) {
       const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', req.params.slug).maybeSingle();
       if (sorteio) {
         let funil = null;
-        if (req.params.funilSlug) {
-          const { data: f } = await supabase.from('funis').select('id, nome, slug').eq('sorteio_id', sorteio.id).eq('slug', req.params.funilSlug).maybeSingle();
+        // ⚡ req.funilResolvidoPorAtribuicao existe quando a pessoa já tinha um funil "gravado" de
+        // uma visita anterior — antes isso só era conhecido depois de um redirecionamento; agora
+        // resolverAtribuicaoLinkOficial já deixa essa informação pronta aqui, sem redirecionar.
+        const funilSlugParaBuscar = req.params.funilSlug || req.funilResolvidoPorAtribuicao;
+        if (funilSlugParaBuscar) {
+          const { data: f } = await supabase.from('funis').select('id, nome, slug').eq('sorteio_id', sorteio.id).eq('slug', funilSlugParaBuscar).maybeSingle();
           funil = f || null;
         }
         if (req.query.lk) {
@@ -708,8 +712,16 @@ function gravarAtribuicao(res, slug, lk, funilSlug) {
 }
 
 // Roda ANTES de qualquer contagem de acesso, só na rota "pura" (sem funil na URL) — decide se
-// essa visita precisa ser redirecionada pro link já gravado (sem contar acesso duplicado no
-// meio do caminho), ou se grava um link novo.
+// essa visita precisa usar um link/funil já gravado antes, ou se grava um link novo.
+//
+// ⚡ Antes, quando já existia uma atribuição gravada, isso mandava um REDIRECIONAMENTO HTTP pro
+// navegador (302) — ou seja, o navegador precisava fazer uma ida-e-volta inteira ao servidor só
+// pra descobrir a URL final, e SÓ DEPOIS fazer a ida-e-volta de verdade que traz a página. Numa
+// rede de celular (e principalmente dentro do navegador embutido do Instagram/Facebook), isso
+// dobra o tempo de rede antes de qualquer coisa aparecer na tela — exatamente a "tela branca de
+// alguns segundos antes de abrir" que foi relatada. Agora isso é resolvido por dentro, na MESMA
+// resposta, sem nunca redirecionar: a URL que a pessoa vê continua igual, só o conteúdo entregue
+// já é decidido direto.
 function resolverAtribuicaoLinkOficial(req, res, next) {
   const slug = req.params.slug;
   if (req.query.lk) {
@@ -721,11 +733,8 @@ function resolverAtribuicaoLinkOficial(req, res, next) {
   // Não veio nenhum ?lk= novo — confere se já tem algum link gravado de antes.
   const cravado = lerAtribuicaoCravada(req, slug);
   if (cravado && (cravado.lk || cravado.funilSlug)) {
-    const destino = cravado.funilSlug ? `/sorteio/${slug}/${cravado.funilSlug}` : `/sorteio/${slug}`;
-    const params = new URLSearchParams(req.query);
-    if (cravado.lk) params.set('lk', cravado.lk);
-    const queryString = params.toString();
-    return res.redirect(302, `${destino}${queryString ? '?' + queryString : ''}`);
+    if (cravado.lk) req.query.lk = cravado.lk;
+    req.funilResolvidoPorAtribuicao = cravado.funilSlug || null;
   }
   next();
 }
@@ -737,11 +746,37 @@ function gravarAtribuicaoDoFunil(req, res, next) {
   next();
 }
 
-app.get('/sorteio/:slug', resolverAtribuicaoLinkOficial, trackearAcesso, async (req, res) => {
-  try {
-    const dados = await getSorteioPublicData(req.params.slug, req.query.funil || null);
+// ⚡ Função compartilhada — resolve e entrega a página certa (padrão ou arquivo customizado de um
+// funil) pro sorteio. Usada tanto na rota "pura" (/sorteio/:slug, quando tem atribuição gravada
+// apontando pra um funil) quanto na rota explícita de funil (/sorteio/:slug/:funilSlug) — assim
+// as duas nunca ficam com lógicas parecidas-mas-diferentes espalhadas pelo código.
+async function servirPaginaSorteio(req, res, slug, funilSlug) {
+  if (!funilSlug) {
+    const dados = await getSorteioPublicData(slug, null);
     if (!dados) return res.status(404).send('Sorteio não encontrado');
     return enviarSorteioComOg(res, dados, req);
+  }
+  const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();
+  if (!sorteio) return res.status(404).send('Sorteio não encontrado');
+  const { data: funil } = await supabase.from('funis').select('arquivo_html').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).maybeSingle();
+  if (!funil) console.warn(`[funil] Nenhum funil encontrado com slug "${funilSlug}" pro sorteio "${slug}" — servindo a página padrão.`);
+  const arquivo = funil?.arquivo_html || 'sorteio.html';
+  // Arquivos customizados ficam em public/funis/; 'sorteio.html' é o layout padrão em public/
+  if (arquivo && arquivo !== 'sorteio.html') {
+    const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
+    if (fs.existsSync(customPath)) {
+      const dados = await getSorteioPublicData(slug, funilSlug);
+      return enviarSorteioComOg(res, dados, req, path.join('funis', arquivo));
+    }
+    console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
+  }
+  const dados = await getSorteioPublicData(slug, funilSlug);
+  return enviarSorteioComOg(res, dados, req);
+}
+
+app.get('/sorteio/:slug', resolverAtribuicaoLinkOficial, trackearAcesso, async (req, res) => {
+  try {
+    return await servirPaginaSorteio(req, res, req.params.slug, req.funilResolvidoPorAtribuicao || null);
   } catch (err) {
     console.error('Erro ao montar preview do sorteio', err);
     return sendPage(res, 'sorteio.html');
@@ -751,29 +786,11 @@ app.get('/sorteio/:slug', resolverAtribuicaoLinkOficial, trackearAcesso, async (
 // Serve o HTML correto para o funil: cada funil pode apontar pra um arquivo diferente em public/funis/
 app.get('/sorteio/:slug/:funilSlug', gravarAtribuicaoDoFunil, trackearAcesso, async (req, res) => {
   try {
-    const { slug, funilSlug } = req.params;
-    const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();
-    if (sorteio) {
-      const { data: funil } = await supabase.from('funis').select('arquivo_html').eq('sorteio_id', sorteio.id).eq('slug', funilSlug).maybeSingle();
-      if (!funil) {
-        console.warn(`[funil] Nenhum funil encontrado com slug "${funilSlug}" pro sorteio "${slug}" — servindo a página padrão.`);
-      }
-      const arquivo = funil?.arquivo_html || 'sorteio.html';
-      // Arquivos customizados ficam em public/funis/; 'sorteio.html' é o layout padrão em public/
-      if (arquivo && arquivo !== 'sorteio.html') {
-        const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
-        if (fs.existsSync(customPath)) {
-          console.log(`[funil] Servindo arquivo customizado "${arquivo}" pro sorteio "${slug}" (funil slug: "${funilSlug}")`);
-          const dados = await getSorteioPublicData(slug, funilSlug);
-          return enviarSorteioComOg(res, dados, req, path.join('funis', arquivo));
-        }
-        console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
-      }
-      const dados = await getSorteioPublicData(slug, funilSlug);
-      return enviarSorteioComOg(res, dados, req);
-    }
-  } catch (err) { console.error('Erro ao resolver arquivo do funil', err); }
-  return sendPage(res, 'sorteio.html');
+    return await servirPaginaSorteio(req, res, req.params.slug, req.params.funilSlug);
+  } catch (err) {
+    console.error('Erro ao resolver arquivo do funil', err);
+    return sendPage(res, 'sorteio.html');
+  }
 });
 
 // Link de TESTE A/B: distribui o tráfego entre os funis de um "grupo_teste" conforme o peso configurado,
@@ -856,8 +873,11 @@ async function getSorteioPublicData(slug, funilSlug) {
   // Tudo que NÃO depende do resultado de outra consulta roda de uma vez só, em paralelo —
   // antes disso, cada uma dessas ia uma atrás da outra, e cada "ida e volta" ao banco custa tempo.
   const nowISO2 = new Date().toISOString();
+  // ⚡ Antes, isso contava (COUNT) todas as linhas da tabela "cotas" a cada visita — rápido em
+  // sorteios pequenos, mas cada vez mais lento conforme o sorteio cresce (a causa real de "3
+  // segundos" em sorteios grandes). Agora só lê o contador pronto (sorteio.cotas_vendidas),
+  // atualizado a cada compra em gerarCotasUnicas — leitura instantânea, não importa o tamanho.
   const [
-    { count: vendidas },
     { data: bloqueadas },
     { data: agendadas },
     { data: bilhetesTudo },
@@ -868,7 +888,6 @@ async function getSorteioPublicData(slug, funilSlug) {
     { data: promocoesAtivas },
     meta
   ] = await Promise.all([
-    supabase.from('cotas').select('*', { head: true, count: 'exact' }).eq('sorteio_id', sorteio.id),
     supabase.from('cotas_bloqueadas').select('numero_cota').eq('sorteio_id', sorteio.id),
     supabase.from('cotas_agendadas').select('numero_cota, liberar_em').eq('sorteio_id', sorteio.id),
     supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio.id).order('status', { ascending: false }),
@@ -883,6 +902,7 @@ async function getSorteioPublicData(slug, funilSlug) {
     supabase.from('promocoes').select('*').eq('sorteio_id', sorteio.id).eq('ativo', true).order('quantidade_cotas', { ascending: true }),
     getPublicMeta()
   ]);
+  const vendidas = Number(sorteio.cotas_vendidas || 0);
 
   // ⚡ Essa correção de segurança (bilhete marcado errado por alguma inconsistência rara) NÃO
   // precisa fazer a pessoa esperar — ela roda "por trás", sem atrasar a resposta. Se corrigir
@@ -1511,6 +1531,13 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
       }
     }
     if (inserted.length === 0) return [];
+
+    // ⚡ Soma no contador pronto de cotas vendidas — é essa soma que deixa a leitura da página do
+    // sorteio instantânea (lê um número já pronto, em vez de contar tudo de novo a cada visita).
+    // Roda "por trás", sem atrasar a resposta pro comprador — se falhar por algum motivo raro, não
+    // trava a compra, só fica pra sincronização de segurança da próxima leitura acertar de novo.
+    supabase.rpc('incrementar_cotas_vendidas', { p_sorteio_id: sorteio_id, p_quantidade: inserted.length })
+      .then(({ error }) => { if (error) console.error('Erro ao incrementar cotas_vendidas', error); });
 
     // As cotas agendadas que realmente entraram nesta compra saem da fila de agendamentos — já
     // foram entregues, não podem ser prometidas de novo pra outra pessoa no futuro.
@@ -2591,11 +2618,11 @@ app.get('/api/admin/sorteios', ensureAdminAuth, async (_req, res) => {
   try {
     const { data, error } = await supabase.from('sorteios').select('*').order('created_at', { ascending: false });
     if (error) return fail(res, 'Erro ao listar sorteios');
-    const results = [];
-    for (const s of (data || [])) {
-      const { count } = await supabase.from('cotas').select('*', { head: true, count: 'exact' }).eq('sorteio_id', s.id);
-      results.push({ ...s, cotas_vendidas: count || 0 });
-    }
+    // ⚡ Antes, isso fazia uma consulta de CONTAGEM separada pra CADA sorteio da lista, uma atrás da
+    // outra — em painéis com muitos sorteios, isso demorava bastante. Como cotas_vendidas já vem
+    // pronto na própria linha do sorteio (contador sempre atualizado a cada venda), nem precisa
+    // mais perguntar nada a mais aqui.
+    const results = (data || []).map(s => ({ ...s, cotas_vendidas: s.cotas_vendidas || 0 }));
     return res.json(results);
   } catch { return fail(res); }
 });
