@@ -660,6 +660,21 @@
                 s.parentNode.insertBefore(t,s)}(window, document,'script',
                 'https://connect.facebook.net/en_US/fbevents.js');
                 fbq('init', pixels.facebook_pixel_id);
+                // ⚡ Pixels adicionais configurados no painel — recebem exatamente os mesmos
+                // eventos (PageView, Lead, InitiateCheckout, Purchase) e valores que o principal,
+                // automaticamente (é assim que o próprio SDK do Meta funciona: um fbq('track', ...)
+                // já manda pra todo pixel que foi inicializado antes).
+                // ⚡ Nunca inicializa o MESMO id de pixel duas vezes (nem repetido dentro da lista de extras,
+                // nem igual ao pixel principal) — isso garante que nenhum pixel específico receba o
+                // mesmo evento em dobro, mesmo se alguém cadastrar sem querer um ID repetido no painel.
+                const idsJaInicializados = new Set([String(pixels.facebook_pixel_id || '')]);
+                (pixels.facebook_pixel_ids_extras || []).forEach(function(idExtra) {
+                    const idLimpo = String(idExtra || '').trim();
+                    if (idLimpo && !idsJaInicializados.has(idLimpo)) {
+                        fbq('init', idLimpo);
+                        idsJaInicializados.add(idLimpo);
+                    }
+                });
                 // ⚡ Dispara o PageView só uma vez por sessão de navegador (não a cada F5) — assim
                 // o número bate com visitas de verdade, e sorteio/funil/checkout da mesma visita
                 // não somam PageView separado um do outro.

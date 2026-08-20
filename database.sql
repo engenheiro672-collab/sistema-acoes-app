@@ -43,6 +43,12 @@ create table if not exists sorteios (
   descricao text,
   preco_cota numeric(12,2) not null default 0,
   total_cotas integer not null default 1000000,
+  -- ⚡ Contador pronto de quantas cotas já foram vendidas — atualizado a cada compra (veja a função
+  -- incrementar_cotas_vendidas mais abaixo). Sem isso, toda visita à página do sorteio precisava
+  -- CONTAR todas as linhas da tabela "cotas" na hora — rápido com poucas cotas, mas cada vez mais
+  -- lento conforme o sorteio cresce (num sorteio de milhões de números, isso sozinho já explica
+  -- vários segundos de demora). Ler um número já pronto é instantâneo, não importa o tamanho.
+  cotas_vendidas integer not null default 0,
   tempo_pagamento integer default 15,          -- minutos (0 = sem tempo limite)
   minimo_cotas_compra integer default 1,
   maximo_cotas_compra integer default 1000000,
@@ -171,6 +177,22 @@ create unique index if not exists idx_cotas_sorteio_numero on cotas(sorteio_id, 
 create index if not exists idx_cotas_pedido on cotas(pedido_id);
 create index if not exists idx_cotas_user on cotas(user_id);
 
+-- ⚡ Soma cotas_vendidas de forma ATÔMICA (segura mesmo com várias compras acontecendo ao mesmo
+-- tempo — o banco garante isso a nível de linha, sem risco de duas compras simultâneas "pisarem"
+-- uma na contagem da outra). Chamada pelo server.js logo depois de gerar as cotas de uma compra.
+create or replace function incrementar_cotas_vendidas(p_sorteio_id uuid, p_quantidade integer)
+returns void as $$
+begin
+  update sorteios set cotas_vendidas = coalesce(cotas_vendidas, 0) + p_quantidade where id = p_sorteio_id;
+end;
+$$ language plpgsql;
+
+-- Se o seu banco já existia ANTES desse contador ser criado, essas duas linhas garantem que ele
+-- apareça (sem recriar nada) e já venha com o valor certo, contado uma única vez aqui — nunca
+-- mais precisa contar de novo depois disso, só somar a cada nova venda.
+alter table sorteios add column if not exists cotas_vendidas integer not null default 0;
+update sorteios s set cotas_vendidas = (select count(*) from cotas c where c.sorteio_id = s.id);
+
 -- ============================================================================
 -- 9) COTAS_BLOQUEADAS — bloqueio permanente (só sai se você remover manualmente)
 -- ============================================================================
@@ -263,6 +285,18 @@ alter table roleta_giros add column if not exists pago_dobro boolean default fal
 create table if not exists configuracoes (
   chave text primary key,
   valor text
+);
+
+-- ⚡ Pixels adicionais do Meta — além do pixel principal (guardado em "configuracoes" ou por
+-- sorteio), você pode adicionar quantos pixels extras quiser aqui. Todos eles recebem exatamente
+-- os mesmos eventos (PageView, Lead, InitiateCheckout, Purchase) com os mesmos valores — é como
+-- ter várias "câmeras" gravando o mesmo rastreamento, cada uma pra uma conta de anúncio diferente.
+create table if not exists pixels_meta_extras (
+  id uuid primary key default gen_random_uuid(),
+  nome text,
+  pixel_id text not null,
+  ativo boolean not null default true,
+  created_at timestamptz default now()
 );
 
 -- ============================================================================

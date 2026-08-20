@@ -422,14 +422,32 @@ async function loadConfigToEnv() {
 }
 await loadConfigToEnv();
 
+// ⚡ Mesmo esquema de cache já usado pra "configuracoes" — os pixels extras quase nunca mudam,
+// então guardar por 60s evita bater no banco em toda visita de todo mundo.
+let _pixelsExtrasCache = null;
+let _pixelsExtrasCacheEm = 0;
+function invalidarCachePixelsExtras() { _pixelsExtrasCache = null; }
+async function fetchPixelsExtrasDoBanco() {
+  if (_pixelsExtrasCache && (Date.now() - _pixelsExtrasCacheEm) < CONFIG_CACHE_MS) return _pixelsExtrasCache;
+  try {
+    const { data } = await supabase.from('pixels_meta_extras').select('pixel_id').eq('ativo', true);
+    const ids = (data || []).map(r => r.pixel_id).filter(Boolean);
+    _pixelsExtrasCache = ids;
+    _pixelsExtrasCacheEm = Date.now();
+    return ids;
+  } catch { return _pixelsExtrasCache || []; }
+}
+
 async function getPublicMeta() {
   const cfg = await fetchConfigFromDB();
+  const pixelIdsExtras = await fetchPixelsExtrasDoBanco();
   return {
     logo_url: cfg.LOGO_URL || process.env.LOGO_URL || '',
     pixel_id: cfg.FACEBOOK_PIXEL_ID || process.env.FACEBOOK_PIXEL_ID || '',
     pixel_google: cfg.GOOGLE_ADS_ID || '',
     pixel_tiktok: cfg.TIKTOK_PIXEL_ID || '',
     pixel_gtm: cfg.GTM_ID || '',
+    pixel_ids_extras: pixelIdsExtras,
     redes_sociais: {
       instagram: { ativo: cfg.SOCIAL_INSTAGRAM_ATIVO === 'true', url: cfg.SOCIAL_INSTAGRAM_URL || '' },
       telegram: { ativo: cfg.SOCIAL_TELEGRAM_ATIVO === 'true', url: cfg.SOCIAL_TELEGRAM_URL || '' },
@@ -569,7 +587,7 @@ async function getInicioPublicData() {
     supabase.from('sorteios').select('id,nome,slug,ganhador_nome,ganhador_cota').eq('status', 'concluido').not('ganhador_nome', 'is', null).limit(5).order('updated_at', { ascending: false }),
     getPublicMeta()
   ]);
-  const pixels = { facebook_pixel_id: meta.pixel_id, google_ads_id: meta.pixel_google, tiktok_pixel_id: meta.pixel_tiktok, gtm_id: meta.pixel_gtm };
+  const pixels = { facebook_pixel_id: meta.pixel_id, facebook_pixel_ids_extras: meta.pixel_ids_extras || [], google_ads_id: meta.pixel_google, tiktok_pixel_id: meta.pixel_tiktok, gtm_id: meta.pixel_gtm };
   return { sorteios: sorteios || [], ganhadores: ganhadores || [], ...meta, pixels };
 }
 
@@ -1036,6 +1054,7 @@ async function getSorteioPublicData(slug, funilSlug) {
 
   const pixels = {
     facebook_pixel_id: sorteio.pixel_fb_override || meta.pixel_id || '',
+    facebook_pixel_ids_extras: meta.pixel_ids_extras || [],
     google_ads_id: sorteio.pixel_google_override || meta.pixel_google || '',
     tiktok_pixel_id: sorteio.pixel_tiktok_override || meta.pixel_tiktok || '',
     gtm_id: sorteio.pixel_gtm_override || meta.pixel_gtm || ''
@@ -1089,6 +1108,7 @@ async function getCheckoutPublicData(token) {
   const funil = funilData || null;
   const pixels = {
     facebook_pixel_id: sorteioDoPedido.pixel_fb_override || meta.pixel_id || '',
+    facebook_pixel_ids_extras: meta.pixel_ids_extras || [],
     google_ads_id: sorteioDoPedido.pixel_google_override || meta.pixel_google || '',
     tiktok_pixel_id: sorteioDoPedido.pixel_tiktok_override || meta.pixel_tiktok || '',
     gtm_id: sorteioDoPedido.pixel_gtm_override || meta.pixel_gtm || ''
@@ -2643,6 +2663,59 @@ app.post('/api/admin/configuracoes', ensureAdminAuth, async (req, res) => {
     invalidarCacheConfig();
     await loadConfigToEnv();
     return ok(res, { msg: 'Configurações salvas!' });
+  } catch (e) { return fail(res); }
+});
+
+// ⚡ Pixels adicionais do Meta — lista, adiciona e remove. Todos os que estiverem "ativos" aqui
+// recebem exatamente os mesmos eventos e valores que o pixel principal já recebe, em todas as
+// páginas (sorteio, funil, checkout) — sem precisar mexer em mais nada quando adiciona um novo.
+app.get('/api/admin/pixels-meta-extras', ensureAdminAuth, async (_req, res) => {
+  try {
+    const { data, error } = await supabase.from('pixels_meta_extras').select('*').order('created_at', { ascending: false });
+    if (error) return fail(res, 'Erro ao listar pixels');
+    return ok(res, data || []);
+  } catch (e) { return fail(res); }
+});
+
+app.post('/api/admin/pixels-meta-extras', ensureAdminAuth, async (req, res) => {
+  try {
+    const { nome, pixel_id } = req.body || {};
+    const pixelLimpo = String(pixel_id || '').trim();
+    if (!pixelLimpo) return res.status(400).json({ error: 'Informe o ID do pixel.' });
+    if (!/^\d+$/.test(pixelLimpo)) return res.status(400).json({ error: 'O ID do pixel do Meta só tem números (confere se não colou nada a mais).' });
+    // ⚡ Bloqueia cadastro duplicado já na origem — nem repetido dentro da lista de extras, nem
+    // igual ao pixel principal já configurado. Evita qualquer chance de um pixel receber o mesmo
+    // evento em dobro por causa de um cadastro duplicado sem querer.
+    const cfgAtual = await fetchConfigFromDB();
+    const pixelPrincipal = cfgAtual.FACEBOOK_PIXEL_ID || process.env.FACEBOOK_PIXEL_ID || '';
+    if (pixelLimpo === String(pixelPrincipal).trim()) {
+      return res.status(400).json({ error: 'Esse ID já é o seu pixel principal — não precisa cadastrar de novo aqui.' });
+    }
+    const { data: jaExiste } = await supabase.from('pixels_meta_extras').select('id').eq('pixel_id', pixelLimpo).maybeSingle();
+    if (jaExiste) return res.status(400).json({ error: 'Esse pixel já está cadastrado na lista.' });
+    const { error } = await supabase.from('pixels_meta_extras').insert({ nome: nome || null, pixel_id: pixelLimpo, ativo: true });
+    if (error) return fail(res, error.message);
+    invalidarCachePixelsExtras();
+    return ok(res, { msg: 'Pixel adicionado!' });
+  } catch (e) { return fail(res); }
+});
+
+app.patch('/api/admin/pixels-meta-extras/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { ativo } = req.body || {};
+    const { error } = await supabase.from('pixels_meta_extras').update({ ativo: !!ativo }).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    invalidarCachePixelsExtras();
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+
+app.delete('/api/admin/pixels-meta-extras/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { error } = await supabase.from('pixels_meta_extras').delete().eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    invalidarCachePixelsExtras();
+    return ok(res);
   } catch (e) { return fail(res); }
 });
 

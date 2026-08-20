@@ -1210,6 +1210,17 @@
                     <button type="submit" class="btn-primary">Salvar</button>
                 </form>
             </div>
+
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-2xl mt-6">
+                <h3 class="font-semibold text-white mb-1">🔁 Pixels adicionais do Meta</h3>
+                <p class="text-gray-500 text-xs mb-4">Adicione quantos pixels extras quiser (testar contas diferentes, por exemplo). Todos recebem exatamente os mesmos eventos e valores que o pixel principal — em todas as páginas, automaticamente.</p>
+                <div class="flex gap-2 mb-4">
+                    <input id="novo-pixel-nome" placeholder="Nome (opcional, só pra você identificar)" class="input-dark" style="flex:1;">
+                    <input id="novo-pixel-id" placeholder="ID do pixel (só números)" class="input-dark" style="max-width:220px;">
+                    <button type="button" class="btn-primary" onclick="adicionarPixelExtra()">Adicionar</button>
+                </div>
+                <div id="lista-pixels-extras" class="space-y-2"></div>
+            </div>
         </div>
 
         <!-- ===================== CONTA & LOGO ===================== -->
@@ -3624,6 +3635,7 @@ function carregarMarketing() {
         $('#conf-tiktok-id').val(cfg.TIKTOK_PIXEL_ID || '');
         $('#conf-gtm-id').val(cfg.GTM_ID || '');
     });
+    carregarPixelsExtras();
 }
 $('#form-marketing').on('submit', function(e) {
     e.preventDefault();
@@ -3636,6 +3648,46 @@ $('#form-marketing').on('submit', function(e) {
     };
     api('POST', '/api/admin/configuracoes', payload).then(() => notificar('Configurações salvas!', 'sucesso'));
 });
+
+// Pixels adicionais do Meta — lista livre, sem limite, todos recebem os mesmos eventos/valores
+function carregarPixelsExtras() {
+    api('GET', '/api/admin/pixels-meta-extras').then(lista => {
+        if (!lista || lista.length === 0) {
+            $('#lista-pixels-extras').html('<p class="text-gray-500 text-sm">Nenhum pixel adicional cadastrado ainda.</p>');
+            return;
+        }
+        $('#lista-pixels-extras').html(lista.map(p => `
+            <div class="flex items-center justify-between bg-gray-900 rounded-lg px-4 py-2">
+                <div>
+                    <span class="text-white font-semibold">${p.nome || 'Sem nome'}</span>
+                    <span class="text-gray-500 text-sm ml-2">${p.pixel_id}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer">
+                        <input type="checkbox" ${p.ativo ? 'checked' : ''} onchange="alternarPixelExtra('${p.id}', this.checked)"> Ativo
+                    </label>
+                    <button type="button" class="text-red-400 hover:text-red-300" onclick="removerPixelExtra('${p.id}')" title="Remover"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        `).join(''));
+    });
+}
+function adicionarPixelExtra() {
+    const nome = $('#novo-pixel-nome').val().trim();
+    const pixel_id = $('#novo-pixel-id').val().trim();
+    if (!pixel_id) return notificar('Informe o ID do pixel.', 'erro');
+    api('POST', '/api/admin/pixels-meta-extras', { nome, pixel_id }).then(() => {
+        $('#novo-pixel-nome, #novo-pixel-id').val('');
+        carregarPixelsExtras();
+        notificar('Pixel adicionado!', 'sucesso');
+    }).catch(err => notificar(err.error || 'Erro ao adicionar pixel.', 'erro'));
+}
+function alternarPixelExtra(id, ativo) {
+    api('PATCH', `/api/admin/pixels-meta-extras/${id}`, { ativo }).then(() => notificar(ativo ? 'Pixel ativado!' : 'Pixel desativado!', 'sucesso'));
+}
+function removerPixelExtra(id) {
+    api('DELETE', `/api/admin/pixels-meta-extras/${id}`).then(() => { carregarPixelsExtras(); notificar('Pixel removido!', 'sucesso'); });
+}
 
 function carregarConta() {
     checkSession().then(d => { $('#conta-email').val(d.admin?.email || ''); });
