@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">__OG_TITLE__</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:description" content="__OG_DESCRIPTION__">
+    <meta property="og:image" content="__OG_IMAGE__">
+    <meta property="og:url" content="__OG_URL__">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="__OG_TITLE__">
+    <meta name="twitter:description" content="__OG_DESCRIPTION__">
+    <meta name="twitter:image" content="__OG_IMAGE__">
+    <link rel="stylesheet" href="/css/tailwind-estatico.css?v=3">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://code.jquery.com">
+    <link rel="preload" href="https://code.jquery.com/jquery-3.7.1.min.js" as="script" crossorigin>
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"></noscript>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+
+    <style>
+        html { touch-action: pan-y; } body { background-color: #eef0f2; color: #212b36; font-family: 'Montserrat', sans-serif; overflow-x: hidden; touch-action: pan-y; }
+        .header-bar { background-color: #000; height: 70px; display: flex; align-items: center; }
+        #logo-box img { max-height: 40px; max-width: 280px; }
+        .main-image { width: 100%; height: 350px; object-fit: cover; background-color: #111; }
+        .title-bar { color: #212b36; }
+        .btn-meus-titulos-full { width: 100%; background: linear-gradient(90deg, #000, #2c2c2c); color: #fff; font-weight: 500; font-size: 0.8125rem; padding: 8px 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-transform: uppercase; }
+        .cota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; padding: 1rem; box-sizing: border-box; overflow: visible; max-width: 100%; }
+        @media (max-width: 480px) { .cota-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; padding: 0.75rem; } .cota-num { font-size: 1.6rem !important; } .cota-label { font-size: 0.7rem !important; } }
+        .cota-num { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cota-btn { background-color: #000; border: 1px solid #000; border-radius: 8px; padding: 0.75rem 1rem; text-align: center; cursor: pointer; transition: background-color 0.2s; position: relative; }
+        .cota-btn:hover { background-color: #111; }
+        .cota-btn.popular { background-color: #c8facd; }
+        .cota-btn.popular .cota-num { color: rgba(0,0,0,.87); }
+        .cota-btn.popular .cota-label { color: rgba(0,0,0,.87); }
+        .cota-btn.selecionado { box-shadow: 0 0 0 2px #1a8754; }
+        .cota-badge { font-size: 0.875em; font-weight: 400; background-color: #1a8754; color: #ffffff; padding: 0 7px; border-radius: 5px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
+        .cota-num { font-size: 2.25rem; font-weight: 500; color: #fff; }
+        .cota-label { font-size: 0.85rem; font-weight: 300; color: rgba(160,174,192,0.75); }
+        .purchase-grid { display: grid; grid-template-columns: 2fr 3fr; gap: 0.6rem; padding: 0 1rem 1rem 1rem; align-items: stretch; }
+        .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #ffffff; border-radius: 8px; padding: 0.4rem; }
+        .manual-selector button { font-size: 1.4rem; font-weight: 300; color: #a0aec0; width: 36px; height: 36px; flex-shrink: 0; }
+        .manual-selector input { width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600; color: #212b36; background: none; border: none; outline: none; min-width: 0; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .btn-participar { background-color: #1a8754; color: #fff; width: 100%; height: 100%; border-radius: 8px; padding: 3px 12px; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; }
+        .btn-participar i { font-size: 1.4rem; flex-shrink: 0; }
+        .btn-participar-price { font-size: 1.15rem; font-weight: 700; display: block; }
+        .btn-participar i { font-size: 1.2rem; margin-right: 0.25rem; }
+        .btn-participar span:nth-child(2) { flex: 1; text-align: left; }
+        .btn-participar-price { font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
+        .titulos-premiados { padding: 1.5rem 1rem; }
+        .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; margin-bottom: 6px; border-radius: 8px; background-color: #1a8754; box-shadow: rgba(0,0,0,0.2) 0px 0px 2px 0px, rgba(0,0,0,0.12) 0px 12px 24px -4px; }
+        .premio-item.disponivel { background-color: #f4f6f8; }
+        .premio-item.disponivel .premio-nome, .premio-item.disponivel .premio-status { color: #212b36; }
+        .premio-cota { height: 22px; line-height: 22px; padding: 0 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background-color: #fff; color: #000; min-width: 20%; max-width: 40%; text-align: center; white-space: nowrap; }
+        .premio-item.disponivel .premio-cota { background-color: #919eab; color: #fff; }
+        .premio-nome { font-weight: 400; color: #fff; flex-grow: 1; text-align: center; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .premio-status { font-weight: 400; color: #fff; font-size: 14px; text-align: right; white-space: nowrap; max-width: 30%; overflow: hidden; text-overflow: ellipsis; }
+        .premio-status .trofeu { color: #fbbf24; margin-left: 4px; }
+        .modal { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
+        .caption-header { display: flex; flex-direction: column; padding: 8px; background: linear-gradient(254deg, rgba(29,86,255,0.01), rgba(0,0,0,0.85)); min-height: 88px; justify-content: flex-end; }
+        .caption-header .tag-ending { margin-top: 4px; margin-bottom: 4px; align-self: flex-start; }
+        .caption-header h1 { font-weight: 500; font-size: 1.4rem; line-height: 1.25; margin: 0; padding: 0; word-break: break-word; text-align: left; text-transform: uppercase; color: #fff; }
+        .tag-ending { background-color: #1a8754; color: #fff; font-size: 0.95rem; font-weight: 500; height: 32px; line-height: 32px; padding: 0 14px; border-radius: 8px; display: inline-block; animation: blink 2s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+        .sino-balancando { animation: balancar-sino 1.8s ease-in-out infinite; transform-origin: top center; display: inline-block; }
+        @keyframes balancar-sino { 0%, 100% { transform: rotate(0deg); } 10% { transform: rotate(-15deg); } 20% { transform: rotate(12deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 50% { transform: rotate(-4deg); } 60%, 100% { transform: rotate(0deg); } }
+        .banner-push-pulse { animation: pulsar-gradiente-verde 3s ease-in-out infinite; }
+        @keyframes pulsar-gradiente-verde { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .countdown-card { background: linear-gradient(135deg, #1a8754, #5be584); border-radius: 10px; color: #fff; text-align: center; box-shadow: rgba(0,0,0,0.35) 0px 10px 30px; padding: 1rem; }
+        .countdown-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
+        .countdown-subtitle { font-size: 0.9rem; font-weight: 500; opacity: 0.9; margin: 0; }
+        .countdown-warning { margin-top: 12px; font-size: 0.75rem; opacity: 0.9; }
+        .urgencia-tempo-pill { position: relative; background: rgba(0,0,0,0.2); border-radius: 8px; margin: 10px auto; display: block; width: 92%; overflow: hidden; height: 34px; }
+        .urgencia-tempo-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.4); border-radius: 8px; transition: width 1s linear; }
+        .urgencia-tempo-texto { position: relative; z-index: 2; height: 34px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #fff; }
+        .time-number-inline { font-weight: 800; }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
+        .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 86%; overflow: visible; }
+        .combo-pulse { animation: pulse-opacity 2.5s infinite; }
+        .input-icon-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+        .input-icon { position: absolute; left: 0.75rem; color: #a0aec0; font-size: 1.25rem; z-index: 10; }
+        .input-com-icon { padding-left: 3rem !important; width: 100%; }
+        .erro-msg { color: #f87171; font-size: 0.875rem; margin-top: 0.25rem; }
+        .toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-track { position: absolute; inset: 0; background: #cbd5e0; border-radius: 999px; transition: background .2s; }
+        .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .toggle-switch input:checked + .toggle-track { background: #1a8754; }
+        .toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
+        @keyframes pulsarEntrada { 0% { opacity: 0; transform: scale(0.9); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+        .entrada-pulsante:not(.hidden) { animation: pulsarEntrada 0.45s ease-out; }
+        .upsell-card { background: linear-gradient(135deg, #145c37 0%, #1a8754 55%, #2fb673 100%); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; transition: background 0.35s ease; box-shadow: 0 4px 14px rgba(20,92,55,0.25); }
+        .upsell-card.ativado { background: linear-gradient(135deg, #061a10 0%, #0d2818 55%, #14361f 100%); box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+        .upsell-titulo { font-size: 1.05rem; font-weight: 800; color: #fff; margin: 0; }
+        .upsell-descricao { font-size: 0.88rem; color: #d1f5e0; margin: 2px 0 0 0; }
+        .upsell-card.ativado .upsell-descricao { color: #9ae6b4; }
+        .upsell-preco-linha { margin: 0; }
+        .upsell-preco-riscado { color: #b3e6c9; font-size: 0.8rem; text-decoration: line-through; margin-right: 6px; }
+        .upsell-preco-final { color: #fff; font-size: 1.15rem; font-weight: 800; }
+        .upsell-toggle-label { font-size: 0.72rem; color: #d1f5e0; margin: 2px 0 0 0; font-weight: 600; }
+        .upsell-card.ativado .upsell-toggle-label { color: #9ae6b4; }
+        .confirm-bar { display: flex; align-items: flex-start; background-color: #2f855a; color: #fff; padding: 1rem 1.1rem; border-radius: 10px; margin-bottom: 1.5rem; font-weight: 600; line-height: 1.5; }
+        .confirm-bar-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background-color: #fff; color: #2f855a; border-radius: 50%; width: 26px; height: 26px; margin-right: 0.75rem; margin-top: 2px; font-weight: bold; }
+        .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
+        @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        /* Carrossel de imagens */
+        .carrossel { position: relative; overflow: hidden; height: 310px; max-height: 310px; margin-top: -1px; }
+        .carrossel-track { display: flex; transition: transform 0.35s ease; }
+        .carrossel-slide { width: 100%; flex-shrink: 0; }
+        .carrossel-slide img, #sorteio-img { width: 100%; height: 310px !important; max-height: 310px !important; object-fit: cover; display: block; filter: contrast(1.08) saturate(1.12) brightness(1.02); }
+        .carrossel-dots { position: absolute; bottom: 8px; left: 0; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 10; }
+        .carrossel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; }
+        .carrossel-dot.active { background: #fff; }
+        .carrossel-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: #fff; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
+        .carrossel-arrow.prev { left: 8px; }
+        .carrossel-arrow.next { right: 8px; }
+        /* Menu dropdown */
+        .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
+        .menu-dropdown a, .menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 16px; color: #e6edf3; font-size: 0.9rem; }
+        .menu-dropdown a:hover, .menu-dropdown button:hover { background: #343c4a; }
+    </style>
+</head>
+<body class="pb-8">
+
+    <header class="header-bar shadow-lg sticky top-0 z-50 relative hidden">
+        <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
+            <a href="/" id="logo-link"><div id="logo-box" class="text-2xl font-bold text-white">LOGO</div></a>
+            <button id="btn-menu" class="text-gray-300 hover:text-white" style="font-size:2rem; padding:8px;"><i class="bi bi-list"></i></button>
+        </nav>
+        <div id="menu-dropdown" class="menu-dropdown hidden">
+            <button id="menu-meus-titulos"><i class="bi bi-cart3"></i> Meus Títulos</button>
+            <a id="menu-whatsapp-suporte" href="#" target="_blank" class="hidden"><i class="bi bi-whatsapp"></i> Suporte via WhatsApp</a>
+        </div>
+    </header>
+
+    <main id="sorteio-container" class="container mx-auto max-w-2xl">
+
+        <section class="relative carrossel" id="carrossel-box">
+            <div class="carrossel-track" id="carrossel-track">
+                <div class="carrossel-slide"><img id="sorteio-img" src="__OG_IMAGE__" alt="Prêmio" fetchpriority="high" loading="eager"></div>
+            </div>
+            <div class="absolute bottom-0 left-0 w-full caption-header" style="pointer-events:none;">
+                <span id="sorteio-tag" class="tag-ending">Corre que está acabando!</span>
+                <h1 id="sorteio-nome">Carregando...</h1>
+            </div>
+            <div id="redes-sociais-flutuantes" class="absolute flex flex-col gap-2" style="right:10px; top:16px;"></div>
+        </section>
+
+        <button id="btn-meus-numeros" class="btn-meus-titulos-full">
+            <i class="bi bi-cart3"></i> Meus títulos
+        </button>
+
+        <div class="title-bar flex justify-center items-center" style="padding:10px 1rem;">
+            <h6 style="margin:0; font-weight:600; font-size:12.3px; color:#212b36;">Por apenas</h6>
+            <span id="preco-cota" style="margin-left:8px; min-height:26px; padding:4px 10px; border-radius:6px; background:#000; color:#fff; font-weight:700; font-size:1rem; white-space:nowrap; display:inline-flex; align-items:center; line-height:1;">R$ 0,00</span>
+        </div>
+
+        <div id="banner-urgencia" class="mx-4 mt-4 hidden countdown-card">
+            <p id="urgencia-titulo" class="countdown-title">🚨 CORRE QUE ESTÁ ACABANDO 🚨</p>
+            <div id="urgencia-barra-tempo" class="urgencia-tempo-pill">
+                <div id="urgencia-fill" class="urgencia-tempo-fill" style="width:0%;"></div>
+                <div class="urgencia-tempo-texto"><span style="margin-right:6px;">Encerra em</span><span id="urgencia-contagem" class="time-number-inline">--:--:--</span></div>
+            </div>
+            <p id="urgencia-descricao" class="countdown-subtitle mt-1"></p>
+            <p id="urgencia-validade" class="countdown-warning"></p>
+        </div>
+
+        <div id="banner-chance-dobro" class="mx-4 mt-4 hidden combo-roleta">
+            <div class="flex items-center gap-2 mb-1">
+                <span style="font-size:1.3rem;">🔥</span>
+                <h3 id="chance-dobro-titulo" class="font-bold text-base leading-tight text-gray-800">Chance em Dobro!</h3>
+            </div>
+            <p class="text-xs text-green-100 mb-2">Compre agora e leve o DOBRO de títulos pelo mesmo preço!</p>
+            <div style="background:rgba(0,0,0,0.2); border-radius:999px; height:8px; overflow:hidden; margin-bottom:6px;">
+                <div id="chance-dobro-barra" style="height:100%; background:#fff; width:0%; transition:width 1s linear;"></div>
+            </div>
+            <p class="text-xs font-bold text-center text-gray-800">Acaba em <span id="chance-dobro-contagem">--:--:--</span></p>
+        </div>
+
+        <section class="mt-2">
+            <p class="text-center text-gray-600 mx-4 mb-4 bg-white rounded-lg" style="font-weight:400; padding:0.6rem 1rem;">Quanto mais títulos, mais chances de ganhar!</p>
+
+            <div class="cota-grid" id="cota-grid"></div>
+
+            <div class="purchase-grid">
+                <div class="manual-selector">
+                    <button id="btn-remove-cota" class="btn-control"><i class="bi bi-dash-circle"></i></button>
+                    <input id="input-qtd" type="number" value="30">
+                    <button id="btn-add-cota" class="btn-control"><i class="bi bi-plus-circle"></i></button>
+                </div>
+
+                <button id="btn-participar" class="btn-participar">
+                    <i class="bi bi-check-circle"></i>
+                    <span style="text-align:left;">
+                        <span id="btn-participar-label" style="display:block;">Quero participar</span>
+                        <span class="btn-participar-price" id="cta-preco-total">R$ 0,00</span>
+                    </span>
+                </button>
+            </div>
+            <p id="erro-limite" class="text-center text-red-400 text-sm mt-2 hidden">
+                A compra mínima é de <strong id="erro-min">1</strong> cota e a máxima é de <strong id="erro-max">1000000</strong> cotas.
+            </p>
+
+            <div id="secao-regulamento" class="mx-4 mt-4 hidden">
+                <button id="btn-toggle-regulamento" type="button" class="w-full flex justify-between items-center bg-white rounded-lg px-4 py-3 text-left">
+                    <span class="font-semibold text-gray-800"><i class="bi bi-file-earmark-text"></i> Regulamento</span>
+                    <i id="icone-regulamento" class="bi bi-chevron-down text-gray-500"></i>
+                </button>
+                <div id="corpo-regulamento" class="hidden bg-[#eef0f2] border border-[#2a303c] rounded-b-lg px-4 py-3 text-sm text-gray-600 whitespace-pre-line"></div>
+            </div>
+        </section>
+
+        <section id="secao-promocoes" class="mt-6 px-1 hidden">
+            <h3 class="text-xl font-semibold mb-3">🏷️ Promoção <span class="text-sm text-gray-500 font-normal">combos</span></h3>
+            <div id="lista-promocoes-site" class="space-y-3"></div>
+        </section>
+
+        <section class="titulos-premiados mt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-semibold"><i class="bi bi-trophy-fill text-yellow-400"></i> Títulos Premiados <span class="text-sm text-gray-500 font-normal">instantâneos</span></h3>
+                <span id="contador-premiados" class="text-gray-200 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">0/0</span>
+            </div>
+            <div id="lista-premios"></div>
+            <button id="btn-mostrar-mais-premios" class="w-full text-center text-gray-500 mt-4 font-semibold hover:text-gray-800 hidden">
+                <i class="bi bi-chevron-down"></i> Mostrar Mais
+            </button>
+            <button id="btn-mostrar-menos-premios" class="w-full text-center text-gray-500 mt-2 font-semibold hover:text-gray-800 hidden">
+                <i class="bi bi-chevron-up"></i> Mostrar Menos
+            </button>
+        </section>
+
+        <section id="secao-roleta-resultados" class="titulos-premiados mt-2 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-semibold">⚡ Roletas Instantâneas</h3>
+                <span id="contador-roleta" class="text-gray-200 font-semibold bg-gray-700 px-3 py-1 rounded-full text-sm">0/0</span>
+            </div>
+            <div id="lista-roleta-vencedores"></div>
+            <button id="btn-mostrar-mais-roleta" class="w-full text-center text-gray-500 mt-4 font-semibold hover:text-gray-800 hidden">
+                <i class="bi bi-chevron-down"></i> Mostrar Mais
+            </button>
+            <button id="btn-mostrar-menos-roleta" class="w-full text-center text-gray-500 mt-2 font-semibold hover:text-gray-800 hidden">
+                <i class="bi bi-chevron-up"></i> Mostrar Menos
+            </button>
+        </section>
+
+        <div id="banner-ativar-push" class="hidden mx-4 my-6 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:3rem;">🔔</div>
+            <h3 class="text-white font-black text-xl mt-2">Ative as notificações</h3>
+            <p class="text-green-50 text-sm mt-1 opacity-90">Para receber promoções exclusivas, ative a notificação!</p>
+            <button id="btn-ativar-push" class="mt-4 bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+                <i class="bi bi-bell-fill"></i> Ativar Notificação
+            </button>
+        </div>
+
+        <div id="banner-grupo-vip-novo" class="hidden mx-4 my-6 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:18px; padding:1.75rem 1.5rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:3rem;">👥</div>
+            <h3 class="text-white font-black text-xl mt-2">Entre para o nosso Grupo VIP</h3>
+            <p class="text-green-50 text-sm mt-1 opacity-90">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
+            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-4 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full" style="box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+                <i class="bi bi-whatsapp"></i> Entrar no Grupo
+            </a>
+        </div>
+
+        <div style="width:100vw; margin-left:calc(50% - 50vw); background:#ffffff; margin-top:8rem;">
+            <div style="max-width:560px; margin:0 auto; padding:2rem 2rem 0; color:#718096; font-size:0.68rem; line-height:1.7; opacity:0.55;">
+                <div style="padding-top:1rem;"></div>
+                <p><strong style="color:#2d3748; text-decoration:underline;">A comercialização é proibida para menores de 18 anos</strong>, em conformidade com a legislação vigente. Sorteios e entrega dos prêmios: todos os sorteios e a entrega dos prêmios serão realizados conforme os critérios estabelecidos no regulamento. Participação em múltiplos sorteios: o adquirente do bilhete digital participará de todos os sorteios previstos, mesmo que já tenha sido contemplado anteriormente. Autorização de uso de imagem: ao adquirir o bilhete, o titular autoriza, sem ônus, o uso de seu nome, voz e imagem para divulgação da campanha promocional associada.</p>
+            </div>
+            <footer style="text-align:center; padding:1rem 1rem 2.5rem; color:#a0aec0; font-size:0.78rem;">
+                <a href="/termos-de-uso" target="_blank" style="color:#4a5568; font-weight:800;">Termos de Uso</a> e <a href="/politica-de-privacidade" target="_blank" style="color:#4a5568; font-weight:800;">Política de Privacidade</a>
+            </footer>
+        </div>
+    </main>
+
+    <div id="modal-meus-numeros" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Consultar Meus Bilhetes</h3>
+                <button id="close-modal-meus-numeros" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <form id="form-meus-bilhetes">
+                <label class="block text-sm mb-2 text-gray-600" for="phone-input-modal">Digite seu telefone (com DDD):</label>
+                <input id="phone-input-modal" type="tel" class="w-full p-2 rounded bg-white text-gray-800 border border-gray-300" placeholder="(11) 99999-9999" required>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4">
+                    Buscar
+                </button>
+            </form>
+            <div id="resultado-bilhetes" class="mt-4 max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="modal-checkout" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95" style="max-height:90vh; overflow-y:auto;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Finalizar Pedido</h3>
+                <button id="close-modal-checkout" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+
+            <!-- ETAPA 1: só telefone. Se já for um comprador conhecido, pula direto pra etapa de confirmar -->
+            <form id="form-checkout-telefone">
+                <label class="block text-sm mb-2 text-gray-600" for="checkout-tel">Telefone (com DDD):</label>
+                <div class="input-icon-wrapper">
+                    <i class="bi bi-phone input-icon"></i>
+                    <input id="checkout-tel" type="tel" class="input-com-icon w-full p-2 rounded bg-white text-gray-800 border border-gray-300" placeholder="(11) 99999-9999" required>
+                </div>
+                <p class="text-xs text-red-400 font-semibold mt-2">IMPORTANTE, DIGITE SEU NÚMERO CORRETAMENTE!</p>
+                <button type="submit" id="btn-continuar-telefone" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded mt-4 text-lg">
+                    Continuar
+                </button>
+            </form>
+
+            <!-- ETAPA FINAL: confirmar tudo antes de pagar — só aparece aqui, depois dos dados preenchidos -->
+            <div id="etapa-confirmar-comprador" class="hidden">
+                <div id="checkout-confirm-bar" class="confirm-bar entrada-pulsante hidden">
+                    <span class="confirm-bar-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8.5L6 12.5L14 3.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <span id="checkout-confirm-text"></span>
+                </div>
+
+                <div id="upsell-box" class="hidden entrada-pulsante upsell-card">
+                    <p id="upsell-titulo" class="upsell-titulo">🎯 Leve 200 títulos</p>
+                    <p id="upsell-descricao" class="upsell-descricao">Quanto mais títulos, mais altas são suas chances de ganhar.</p>
+                    <div class="flex justify-between items-center gap-3 mt-3">
+                        <div style="flex:1; min-width:0;">
+                            <p class="upsell-preco-linha">
+                                <span id="upsell-preco-riscado" class="upsell-preco-riscado"></span>
+                                <span id="upsell-preco-final" class="upsell-preco-final"></span>
+                            </p>
+                            <p id="upsell-toggle-label" class="upsell-toggle-label">Turbinar suas chances</p>
+                        </div>
+                        <label class="toggle-switch"><input type="checkbox" id="upsell-toggle" onchange="aplicarToggleUpsell(this.checked)"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                    </div>
+                </div>
+
+                <p class="text-gray-600 mb-3">Você está adquirindo <strong id="confirmar-qtd-cotas" class="text-gray-800">0</strong> título(s) por <strong id="confirmar-valor-total" class="text-green-700">R$ 0,00</strong><span id="confirmar-valor-riscado-box" class="hidden"> <span id="confirmar-valor-riscado" class="text-gray-500 text-sm" style="text-decoration:line-through;"></span></span>.</p>
+                <div class="bg-white border border-gray-700 rounded-lg p-4 mb-4 flex items-center gap-4">
+                    <div style="width:42px; height:42px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#718096" stroke-width="2"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#718096" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div style="min-width:0;">
+                        <p class="text-gray-800 font-semibold" id="confirmar-nome-cliente">—</p>
+                        <p class="text-gray-600 text-sm" id="confirmar-tel-cliente">—</p>
+                    </div>
+                </div>
+                <p style="font-size:0.72rem; color:#718096; text-align:center; margin-bottom:0.75rem; line-height:1.4;">
+                    Ao efetuar o pagamento e confirmar a compra deste título, declaro que li e concordo com os <a href="/termos-de-uso" target="_blank" style="color:#2d3748; font-weight:700;">Termos de Uso</a>.
+                </p>
+                <button type="button" id="btn-finalizar-pedido-conhecido" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded text-lg">
+                    Finalizar Pedido
+                </button>
+                <button type="button" id="btn-usar-outra-conta" class="w-full text-gray-500 hover:text-gray-800 text-sm mt-3 py-2">
+                    Usar outra conta
+                </button>
+            </div>
+
+            <!-- ETAPA 2: dados adicionais — só aparece se for comprador novo, ou faltar algum dado ativado pro sorteio -->
+            <form id="form-checkout-dados" class="hidden">
+                <div id="campo-nome" class="mb-4">
+                    <label class="block text-sm mb-2 text-gray-600" for="checkout-nome">Nome Completo:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-person input-icon"></i>
+                        <input id="checkout-nome" type="text" class="input-com-icon w-full p-2 rounded bg-white text-gray-800 border border-gray-300">
+                    </div>
+                    <p id="erro-nome" class="erro-msg hidden">Por favor, insira seu nome e sobrenome.</p>
+                </div>
+
+                <div id="campo-cpf" class="mb-4 hidden">
+                    <label class="block text-sm mb-2 text-gray-600" for="checkout-cpf">CPF:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-card-text input-icon"></i>
+                        <input id="checkout-cpf" type="text" class="input-com-icon w-full p-2 rounded bg-white text-gray-800 border border-gray-300" placeholder="000.000.000-00" maxlength="14">
+                    </div>
+                </div>
+
+                <div id="campo-email" class="mb-4 hidden">
+                    <label class="block text-sm mb-2 text-gray-600" for="checkout-email">Email:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-envelope input-icon"></i>
+                        <input id="checkout-email" type="email" class="input-com-icon w-full p-2 rounded bg-white text-gray-800 border border-gray-300" placeholder="seuemail@exemplo.com">
+                    </div>
+                </div>
+
+                <div id="campo-endereco" class="mb-4 hidden">
+                    <label class="block text-sm mb-2 text-gray-600" for="checkout-endereco">Endereço:</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-geo-alt input-icon"></i>
+                        <input id="checkout-endereco" type="text" class="input-com-icon w-full p-2 rounded bg-white text-gray-800 border border-gray-300" placeholder="Rua, número, bairro, cidade">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-gray-800 font-bold py-3 px-4 rounded mt-4 text-lg">
+                    Concluir Reserva
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        // --- Lê slug do sorteio e (opcionalmente) slug do funil pela URL ---
+        // Suporta: /sorteio/:slug  e  /sorteio/:slug/:funilSlug
+        const pathParts = window.location.pathname.split('/').filter(Boolean); // ['sorteio', slug, funilSlug?]
+        const SORTEIO_SLUG = pathParts[1] || '';
+        const FUNIL_SLUG = pathParts[2] || null;
+        const URL_PARAMS = new URLSearchParams(window.location.search);
+        const LK_DA_URL = URL_PARAMS.get('lk');
+        if (LK_DA_URL) {
+            try { localStorage.setItem('lk_cravado', JSON.stringify({ codigo: LK_DA_URL, expira: Date.now() + 7 * 24 * 60 * 60 * 1000 })); } catch (e) {}
+        }
+        const LINK_CODIGO = LK_DA_URL || (function() {
+            try {
+                const salvo = JSON.parse(localStorage.getItem('lk_cravado') || 'null');
+                if (salvo && salvo.expira > Date.now()) return salvo.codigo;
+            } catch (e) {}
+            return null;
+        })();
+
+        let SORTEIO_DATA = {};
+        let CHANCE_DOBRO_ATIVA = null;
+        let PROMOCOES_ATIVAS = [];
+        let PUSH_ATIVO_GLOBAL = false;
+        let VEIO_DE_COMBO_ROLETA = false;
+        let GIROS_DO_COMBO_ATUAL = null;
+        let OFERTA_UPSELL_ATUAL = null;
+        let QUANTIDADE_ANTES_DO_UPSELL = null;
+        let VEIO_DE_COMBO_ANTES_DO_UPSELL = false;
+        let GIROS_ANTES_DO_UPSELL = null;
+        let PENDENTE_NOME = null, PENDENTE_CPF = null, PENDENTE_EMAIL = null, PENDENTE_ENDERECO = null;
+        let BILHETES_PREMIADOS = [];
+        let FUNIL_DATA = null;
+        let PRECO = 0, MIN_QTY = 1, MAX_QTY = 1000000, MIN_VISIBLE = 30, TOTAL = 100;
+        let quantidadeCotas = 30;
+
+        // 🔒 Protege contra código malicioso escondido em textos configurados pelo administrador
+        // (nome do sorteio, título de promoção, etc.) que aparecem direto na tela do cliente.
+        function escapeHtml(texto) {
+            return String(texto ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function formatarMoeda(valor) { return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+        function carregarOfertaUpsell(qtd) {
+            $('#upsell-box').addClass('hidden').removeClass('ativado');
+            $('#upsell-toggle').prop('checked', false);
+            OFERTA_UPSELL_ATUAL = null;
+            QUANTIDADE_ANTES_DO_UPSELL = null;
+            const valorAtual = qtd * PRECO;
+            const telefoneAtual = ($('#checkout-tel').val() || '').replace(/\D/g, '');
+            const params = new URLSearchParams({ valor_atual: valorAtual });
+            if (telefoneAtual) params.set('telefone', telefoneAtual);
+            $.get(`/api/public/upsell/${SORTEIO_DATA.id}?${params.toString()}`)
+                .done(function(resp) {
+                    if (!resp.oferta) return;
+                    OFERTA_UPSELL_ATUAL = resp.oferta;
+                    const o = resp.oferta;
+                    const temRoleta = Number(o.quantidade_giros_roleta) > 0;
+
+                    if (temRoleta) {
+                        $('#upsell-titulo').text(`🎯 Leve ${o.quantidade_cotas} títulos + ${o.quantidade_giros_roleta} giro(s) de roleta`);
+                        $('#upsell-descricao').text(`Leve mais títulos e ganhe roletas extras pra tentar a sorte de novo.`);
+                        $('#upsell-toggle-label').text(`Turbinar com roleta: ${o.quantidade_cotas} títulos`);
+                    } else {
+                        $('#upsell-titulo').text(`🎯 Leve ${o.quantidade_cotas} títulos`);
+                        $('#upsell-descricao').text(`Quanto mais títulos, mais altas são suas chances de ganhar.`);
+                        $('#upsell-toggle-label').text(`Turbinar suas chances: ${o.quantidade_cotas} títulos`);
+                    }
+
+                    const precoOriginal = Number(o.quantidade_cotas) * PRECO;
+                    const precoPromo = Number(o.preco_promocional);
+                    $('#upsell-preco-final').text(`por ${formatarMoeda(precoPromo)}`);
+                    if (precoOriginal > precoPromo) {
+                        $('#upsell-preco-riscado').text(formatarMoeda(precoOriginal)).removeClass('hidden');
+                    } else {
+                        $('#upsell-preco-riscado').text('');
+                    }
+                    $('#upsell-box').removeClass('hidden');
+                })
+                .fail(function() {});
+        }
+        function montarConfirmacao(qtd) {
+            const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === qtd);
+            let valorRiscado = null, valorFinal = qtd * PRECO;
+
+            if (CHANCE_DOBRO_ATIVA) {
+                $('#checkout-confirm-text').html(`🔥 Você está adquirindo <strong>${qtd}</strong> título(s) por <strong>${formatarMoeda(valorFinal)}</strong> — e leva o <strong>DOBRO</strong>: <strong>${qtd * 2}</strong> título(s) no total, graças à promoção "${escapeHtml(CHANCE_DOBRO_ATIVA.titulo) || 'Chance em Dobro'}" ativa agora!`);
+            } else if (VEIO_DE_COMBO_ROLETA && GIROS_DO_COMBO_ATUAL) {
+                $('#checkout-confirm-text').html(`🎯 Você está adquirindo <strong>${qtd}</strong> título(s) por <strong>${formatarMoeda(valorFinal)}</strong> e vai ganhar <strong>${GIROS_DO_COMBO_ATUAL}</strong> giro(s) na roleta!`);
+            } else if (promoAtiva) {
+                valorRiscado = PRECO * qtd;
+                valorFinal = Number(promoAtiva.preco_promocional);
+                $('#checkout-confirm-text').html(`🏷️ Você está comprando com a promoção <strong>"${escapeHtml(promoAtiva.titulo)}"</strong>: <strong>${qtd}</strong> título(s) por apenas <strong>${formatarMoeda(valorFinal)}</strong>`);
+            } else {
+                $('#checkout-confirm-text').html(`Você está adquirindo <strong>${qtd}</strong> título(s) por <strong>${formatarMoeda(valorFinal)}</strong>`);
+            }
+            $('#checkout-confirm-bar').removeClass('hidden');
+            $('#confirmar-qtd-cotas').text(qtd);
+            $('#confirmar-valor-total').text(formatarMoeda(valorFinal));
+            if (valorRiscado && valorRiscado > valorFinal) {
+                $('#confirmar-valor-riscado').text(formatarMoeda(valorRiscado));
+                $('#confirmar-valor-riscado-box').removeClass('hidden');
+            } else {
+                $('#confirmar-valor-riscado-box').addClass('hidden');
+            }
+        }
+        function aplicarToggleUpsell(ativado) {
+            if (!OFERTA_UPSELL_ATUAL) return;
+            $('#upsell-box').toggleClass('ativado', ativado);
+            if (ativado) {
+                QUANTIDADE_ANTES_DO_UPSELL = quantidadeCotas;
+                VEIO_DE_COMBO_ANTES_DO_UPSELL = VEIO_DE_COMBO_ROLETA;
+                GIROS_ANTES_DO_UPSELL = GIROS_DO_COMBO_ATUAL;
+                quantidadeCotas = Number(OFERTA_UPSELL_ATUAL.quantidade_cotas);
+                if (Number(OFERTA_UPSELL_ATUAL.quantidade_giros_roleta) > 0) {
+                    VEIO_DE_COMBO_ROLETA = true;
+                    GIROS_DO_COMBO_ATUAL = OFERTA_UPSELL_ATUAL.quantidade_giros_roleta;
+                } else {
+                    VEIO_DE_COMBO_ROLETA = false;
+                    GIROS_DO_COMBO_ATUAL = null;
+                }
+                const valorOriginal = quantidadeCotas * PRECO;
+                const valorPromo = Number(OFERTA_UPSELL_ATUAL.preco_promocional);
+                $('#checkout-confirm-text').html(`🏷️ Você está adquirindo <strong>${quantidadeCotas}</strong> título(s) por <strong>${formatarMoeda(valorPromo)}</strong>${Number(OFERTA_UPSELL_ATUAL.quantidade_giros_roleta) > 0 ? ` — e vai ganhar <strong>${OFERTA_UPSELL_ATUAL.quantidade_giros_roleta}</strong> giro(s) na roleta!` : ''}`);
+                $('#confirmar-qtd-cotas').text(quantidadeCotas);
+                $('#confirmar-valor-total').text(formatarMoeda(valorPromo));
+                if (valorOriginal > valorPromo) {
+                    $('#confirmar-valor-riscado').text(formatarMoeda(valorOriginal));
+                    $('#confirmar-valor-riscado-box').removeClass('hidden');
+                }
+            } else if (QUANTIDADE_ANTES_DO_UPSELL !== null) {
+                quantidadeCotas = QUANTIDADE_ANTES_DO_UPSELL;
+                VEIO_DE_COMBO_ROLETA = VEIO_DE_COMBO_ANTES_DO_UPSELL;
+                GIROS_DO_COMBO_ATUAL = GIROS_ANTES_DO_UPSELL;
+                montarConfirmacao(quantidadeCotas);
+            }
+        }
+        // Mostra o primeiro nome completo + só a inicial do segundo (evita nome grande vazando do card)
+        function nomeCurto(nomeCompleto) {
+            if (!nomeCompleto) return '';
+            const partes = String(nomeCompleto).trim().split(/\s+/);
+            if (partes.length === 1) return partes[0];
+            return `${partes[0]} ${partes[1][0]}.`;
+        }
+
+        // ---------------- NOTIFICAÇÃO PUSH ----------------
+        function urlBase64ParaUint8Array(base64String) {
+            const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+        }
+        async function verificarSuportePush() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+            if (Notification.permission === 'denied') return false;
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                const sub = reg ? await reg.pushManager.getSubscription() : null;
+                if (sub) return false; // já está inscrito, não precisa mostrar de novo
+            } catch (e) {}
+            return true;
+        }
+        async function mostrarBannerPushSeAplicavel() {
+            const linkGrupo = SORTEIO_DATA?.link_grupo_vip;
+            const pushAtivadoNoSite = PUSH_ATIVO_GLOBAL === true;
+            let mostrouPush = false;
+
+            if (pushAtivadoNoSite) {
+                const podeMostrar = await verificarSuportePush();
+                if (podeMostrar) { $('#banner-ativar-push').removeClass('hidden'); mostrouPush = true; }
+            }
+            // Se o banner de notificação não apareceu (não suportado, já inscrito, ou desativado), mostra o do grupo direto
+            if (!mostrouPush && linkGrupo) {
+                $('#btn-entrar-grupo-vip-novo').attr('href', linkGrupo);
+                $('#banner-grupo-vip-novo').removeClass('hidden');
+            }
+        }
+        // Depois que a pessoa ativa a notificação, revela o banner do grupo (se tiver link configurado)
+        function revelarBannerGrupoVipAposPush() {
+            const linkGrupo = SORTEIO_DATA?.link_grupo_vip;
+            if (linkGrupo) {
+                $('#btn-entrar-grupo-vip-novo').attr('href', linkGrupo);
+                $('#banner-grupo-vip-novo').removeClass('hidden').hide().fadeIn(400);
+            }
+        }
+        async function ativarNotificacaoPush() {
+            try {
+                $('#btn-ativar-push').prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Ativando...');
+                const permissao = await Notification.requestPermission();
+                if (permissao !== 'granted') {
+                    notificar('Você precisa permitir as notificações pra ativar.', 'aviso');
+                    $('#btn-ativar-push').prop('disabled', false).html('<i class="bi bi-bell-fill"></i> Ativar Notificação');
+                    return;
+                }
+                const reg = await navigator.serviceWorker.register('/sw.js');
+                const resp = await fetch('/api/public/push/vapid-public-key');
+                if (!resp.ok) throw new Error('Push não configurado no servidor');
+                const { publicKey } = await resp.json();
+
+                const subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ParaUint8Array(publicKey)
+                });
+
+                const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
+                await fetch('/api/public/push/subscribe', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subscription, telefone: salvo?.telefone || null, sorteio_id: SORTEIO_DATA?.id || null })
+                });
+
+                notificar('Notificações ativadas! 🔔', 'sucesso');
+                $('#banner-ativar-push').fadeOut(300, revelarBannerGrupoVipAposPush);
+            } catch (e) {
+                console.error('ativarNotificacaoPush', e);
+                notificar('Não foi possível ativar as notificações agora.', 'erro');
+                $('#btn-ativar-push').prop('disabled', false).html('<i class="bi bi-bell-fill"></i> Ativar Notificação');
+            }
+        }
+        $(document).on('click', '#btn-ativar-push', ativarNotificacaoPush);
+
+        // Notificação bonitinha no lugar do alert() feio do navegador
+        function notificar(mensagem, tipo) {
+            const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
+            const cor = cores[tipo] || cores.aviso;
+            const $toast = $(`<div style="position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px); opacity:0; transition: opacity .25s, transform .25s; z-index:9999; background:${cor}; color:#fff; padding:12px 20px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.4); font-size:0.9rem; font-weight:600; max-width:90vw; text-align:center;">${mensagem}</div>`);
+            $('body').append($toast);
+            requestAnimationFrame(() => { $toast.css({ opacity: 1, transform: 'translateX(-50%) translateY(0)' }); });
+            setTimeout(() => {
+                $toast.css({ opacity: 0, transform: 'translateX(-50%) translateY(-20px)' });
+                setTimeout(() => $toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Injeta os 4 pixels suportados (Facebook, Google Ads, TikTok, GTM), cada um só se tiver ID configurado
+        function injetarPixels(pixels) {
+            if (!pixels) return;
+            if (pixels.facebook_pixel_id) {
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                fbq('init', pixels.facebook_pixel_id);
+                // ⚡ Pixels adicionais configurados no painel — recebem exatamente os mesmos
+                // eventos (PageView, Lead, InitiateCheckout, Purchase) e valores que o principal,
+                // automaticamente (é assim que o próprio SDK do Meta funciona: um fbq('track', ...)
+                // já manda pra todo pixel que foi inicializado antes).
+                // ⚡ Nunca inicializa o MESMO id de pixel duas vezes (nem repetido dentro da lista de extras,
+                // nem igual ao pixel principal) — isso garante que nenhum pixel específico receba o
+                // mesmo evento em dobro, mesmo se alguém cadastrar sem querer um ID repetido no painel.
+                const idsJaInicializados = new Set([String(pixels.facebook_pixel_id || '')]);
+                (pixels.facebook_pixel_ids_extras || []).forEach(function(idExtra) {
+                    const idLimpo = String(idExtra || '').trim();
+                    if (idLimpo && !idsJaInicializados.has(idLimpo)) {
+                        fbq('init', idLimpo);
+                        idsJaInicializados.add(idLimpo);
+                    }
+                });
+                // ⚡ Dispara o PageView só uma vez por sessão de navegador (não a cada F5) — assim
+                // o número bate com visitas de verdade, e sorteio/funil/checkout da mesma visita
+                // não somam PageView separado um do outro.
+                let jaDisparouPageView = false;
+                try { jaDisparouPageView = sessionStorage.getItem('pageview_disparado') === '1'; } catch (e) {}
+                if (!jaDisparouPageView) {
+                    fbq('track', 'PageView');
+                    try { sessionStorage.setItem('pageview_disparado', '1'); } catch (e) {}
+                }
+            }
+            if (pixels.google_ads_id) {
+                const s1 = document.createElement('script'); s1.async = true; s1.src = `https://www.googletagmanager.com/gtag/js?id=${pixels.google_ads_id}`;
+                document.head.appendChild(s1);
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = function(){ dataLayer.push(arguments); };
+                gtag('js', new Date()); gtag('config', pixels.google_ads_id);
+            }
+            if (pixels.tiktok_pixel_id) {
+                (function (w, d, t) { w.TiktokAnalyticsObject = t; var ttq = w[t] = w[t] || []; ttq.methods = ["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"]; ttq.setAndDefer = function (t, e) { t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))) } }; for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]); ttq.load = function (e, n) { var i = "https://analytics.tiktok.com/i18n/pixel/events.js"; ttq._i = ttq._i || {}; ttq._i[e] = []; ttq._i[e]._u = i; ttq._t = ttq._t || {}; ttq._t[e] = +new Date; ttq._o = ttq._o || {}; ttq._o[e] = n || {}; var o = document.createElement("script"); o.type = "text/javascript"; o.async = true; o.src = i + "?sdkid=" + e + "&lib=" + t; var a = document.getElementsByTagName("script")[0]; a.parentNode.insertBefore(o, a) }; ttq.load(pixels.tiktok_pixel_id); ttq.page(); })(window, document, 'ttq');
+            }
+            if (pixels.gtm_id) {
+                (function (w, d, s, l, i) { w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' }); var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f); })(window, document, 'script', 'dataLayer', pixels.gtm_id);
+            }
+        }
+
+        // Marca como Lead assim que a pessoa chega na tela de confirmar os dados (preencheu nome
+        // e/ou telefone) — antes disso ainda não é um lead de verdade, e daqui pra frente ainda não
+        // é uma compra (por isso não manda valor nenhum, só marca o evento). Guardado no navegador
+        // dela (não só na memória da página) pra nunca duplicar — mesmo se ela der F5 bem na hora
+        // de confirmar os dados, ou voltar e repetir o fluxo, só conta como um Lead só por sorteio.
+        function dispararLeadUmaVez() {
+            const chave = 'lead_disparado_' + (SORTEIO_DATA?.id || 'geral');
+            let jaDisparou = false;
+            try { jaDisparou = localStorage.getItem(chave) === '1'; } catch (e) {}
+            if (jaDisparou) return;
+            if (typeof fbq === 'function') fbq('track', 'Lead');
+            try { localStorage.setItem(chave, '1'); } catch (e) {}
+        }
+
+        function atualizarPreco() {
+            $('#input-qtd').val(quantidadeCotas);
+
+            const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === quantidadeCotas);
+            if (promoAtiva) {
+                const precoNormal = quantidadeCotas * PRECO;
+                $('#cta-preco-total').html(`<span style="text-decoration:line-through; opacity:0.6; font-size:0.85em; margin-right:6px;">${formatarMoeda(precoNormal)}</span>${formatarMoeda(promoAtiva.preco_promocional)}`);
+            } else {
+                const total = quantidadeCotas * PRECO;
+                $('#cta-preco-total').text(formatarMoeda(total));
+            }
+
+            const $erro = $('#erro-limite');
+            if (quantidadeCotas < MIN_QTY || quantidadeCotas > MAX_QTY) {
+                $erro.removeClass('hidden');
+                $('#erro-min').text(MIN_QTY);
+                $('#erro-max').text(MAX_QTY);
+            } else {
+                $erro.addClass('hidden');
+            }
+        }
+
+        function renderCarrossel(sorteio) {
+            const imagens = [sorteio.foto_url, ...(sorteio.fotos_galeria || [])].filter(Boolean);
+            const $track = $('#carrossel-track');
+            if (imagens.length <= 1) {
+                $('#sorteio-img').attr('src', imagens[0] || '');
+                return;
+            }
+            $track.html(imagens.map(img => `<div class="carrossel-slide"><img src="${img}" alt="Prêmio"></div>`).join(''));
+            $('#carrossel-box').append(`
+                <div class="carrossel-arrow prev"><i class="bi bi-chevron-left"></i></div>
+                <div class="carrossel-arrow next"><i class="bi bi-chevron-right"></i></div>
+                <div class="carrossel-dots">${imagens.map((_, i) => `<span class="carrossel-dot ${i === 0 ? 'active' : ''}" data-i="${i}"></span>`).join('')}</div>
+            `);
+            let atual = 0;
+            let autoplay;
+            function reiniciarAutoplay() {
+                clearInterval(autoplay);
+                autoplay = setInterval(() => irPara(atual + 1), 3000);
+            }
+            function irPara(i) {
+                atual = (i + imagens.length) % imagens.length;
+                $track.css('transform', `translateX(-${atual * 100}%)`);
+                $('.carrossel-dot').removeClass('active').eq(atual).addClass('active');
+            }
+            $('#carrossel-box .prev').on('click', () => { irPara(atual - 1); reiniciarAutoplay(); });
+            $('#carrossel-box .next').on('click', () => { irPara(atual + 1); reiniciarAutoplay(); });
+            $('#carrossel-box').on('click', '.carrossel-dot', function() { irPara(Number($(this).data('i'))); reiniciarAutoplay(); });
+            reiniciarAutoplay();
+        }
+
+        // Renderiza uma lista com "Mostrar Mais" progressivo (5 em 5), reaproveitado pra bilhetes e roleta
+        function renderListaPaginada(seletorLista, seletorBotaoMais, itens, passo, templateFn, seletorBotaoMenos) {
+            let visiveis = passo;
+            function desenhar() {
+                $(seletorLista).html(itens.slice(0, visiveis).map(templateFn).join(''));
+                $(seletorBotaoMais).toggleClass('hidden', visiveis >= itens.length);
+                if (seletorBotaoMenos) $(seletorBotaoMenos).toggleClass('hidden', visiveis <= passo);
+            }
+            $(seletorBotaoMais).off('click').on('click', function() { visiveis += passo; desenhar(); });
+            if (seletorBotaoMenos) $(seletorBotaoMenos).off('click').on('click', function() { visiveis = passo; desenhar(); window.scrollTo({ top: $(seletorLista).offset().top - 80, behavior: 'smooth' }); });
+            desenhar();
+        }
+
+        // Lê a config de botões (JSON novo com "popular", ou CSV antigo) e desenha até 6 botões dinâmicos
+        function renderRedesSociaisFlutuantes(redes) {
+            if (!redes) return;
+            const cores = { instagram: '#E1306C', telegram: '#229ED9', facebook: '#1877F2', whatsapp_grupo: '#25D366', whatsapp_suporte: '#25D366' };
+            const icones = { instagram: 'bi-instagram', telegram: 'bi-telegram', facebook: 'bi-facebook', whatsapp_grupo: 'bi-whatsapp', whatsapp_suporte: 'bi-headset' };
+            const itens = [];
+            if (redes.instagram?.ativo && redes.instagram.url) itens.push({ tipo: 'instagram', href: redes.instagram.url });
+            if (redes.telegram?.ativo && redes.telegram.url) itens.push({ tipo: 'telegram', href: redes.telegram.url });
+            if (redes.facebook?.ativo && redes.facebook.url) itens.push({ tipo: 'facebook', href: redes.facebook.url });
+            if (redes.whatsapp_grupo?.ativo && redes.whatsapp_grupo.url) itens.push({ tipo: 'whatsapp_grupo', href: redes.whatsapp_grupo.url });
+            if (redes.whatsapp_suporte?.ativo && redes.whatsapp_suporte.numero) itens.push({ tipo: 'whatsapp_suporte', href: `https://wa.me/${redes.whatsapp_suporte.numero}` });
+
+            $('#redes-sociais-flutuantes').html(itens.map(it => `
+                <a href="${it.href}" target="_blank" style="background:${cores[it.tipo]}; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.2rem; box-shadow:0 4px 10px rgba(0,0,0,0.5); flex-shrink:0;">
+                    <i class="bi ${icones[it.tipo]}"></i>
+                </a>
+            `).join(''));
+        }
+
+
+        let urgenciaInterval = null;
+        function iniciarUrgencia(aviso) {
+            clearInterval(urgenciaInterval);
+            if (!aviso) { $('#banner-urgencia').addClass('hidden'); return; }
+
+            const inicio = new Date(aviso.data_inicio).getTime();
+            const fim = new Date(aviso.data_fim).getTime();
+
+            $('#urgencia-titulo').text(aviso.titulo || '🚨 CORRE QUE ESTÁ ACABANDO 🚨');
+            $('#urgencia-descricao').text(aviso.descricao || '');
+            const fmt = ts => new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
+            $('#urgencia-validade').text(`Válido de ${fmt(inicio)} até ${fmt(fim)}`);
+            $('#banner-urgencia').removeClass('hidden');
+
+            function atualizar() {
+                const restanteMs = fim - Date.now();
+                if (restanteMs <= 0) { $('#banner-urgencia').addClass('hidden'); clearInterval(urgenciaInterval); return; }
+                const h = Math.floor(restanteMs / 3600000);
+                const m = Math.floor((restanteMs % 3600000) / 60000);
+                const s = Math.floor((restanteMs % 60000) / 1000);
+                $('#urgencia-contagem').text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+                // Preenche a barra conforme o tempo já passou (do início até agora) — igual ao efeito visual da referência
+                const percentualDecorrido = Math.min(100, Math.max(0, ((Date.now() - inicio) / (fim - inicio)) * 100));
+                $('#urgencia-fill').css('width', percentualDecorrido + '%');
+            }
+            atualizar();
+            urgenciaInterval = setInterval(atualizar, 1000);
+        }
+
+        function iniciarChanceDobro(chance) {
+            clearInterval(chanceDobroInterval);
+            if (!chance) { $('#banner-chance-dobro').addClass('hidden'); return; }
+
+            const inicio = new Date(chance.data_inicio).getTime();
+            const fim = new Date(chance.data_fim).getTime();
+            $('#chance-dobro-titulo').text(chance.titulo || 'Chance em Dobro!');
+            $('#banner-chance-dobro').removeClass('hidden');
+
+            function atualizar() {
+                const agora = Date.now();
+                if (agora >= fim) { $('#banner-chance-dobro').addClass('hidden'); clearInterval(chanceDobroInterval); return; }
+                const progresso = Math.min(100, Math.max(0, ((agora - inicio) / (fim - inicio)) * 100));
+                $('#chance-dobro-barra').css('width', progresso + '%');
+                const restanteMs = fim - agora;
+                const h = Math.floor(restanteMs / 3600000);
+                const m = Math.floor((restanteMs % 3600000) / 60000);
+                const s = Math.floor((restanteMs % 60000) / 1000);
+                $('#chance-dobro-contagem').text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+            }
+            atualizar();
+            chanceDobroInterval = setInterval(atualizar, 1000);
+        }
+
+        function renderPromocoes(promocoes) {
+            if (!promocoes || promocoes.length === 0) { $('#secao-promocoes').addClass('hidden'); return; }
+            $('#secao-promocoes').removeClass('hidden');
+            $('#lista-promocoes-site').html(promocoes.map(p => {
+                const precoOriginal = p.quantidade_cotas * PRECO;
+                const economia = precoOriginal - Number(p.preco_promocional);
+                return `
+                    <div class="combo-roleta combo-pulse" style="cursor:pointer;" onclick="selecionarQuantidade(${p.quantidade_cotas})">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:0.5rem; flex-wrap:wrap;">
+                            <div style="min-width:0;">
+                                <div class="text-xs text-green-100">🏷️ ${p.titulo}</div>
+                                <div class="text-lg font-bold text-white">${p.quantidade_cotas} títulos</div>
+                                ${economia > 0 ? `<div class="text-xs text-yellow-200 font-semibold mt-0.5">Economia de ${formatarMoeda(economia)}</div>` : ''}
+                            </div>
+                            <div class="text-right" style="min-width:0;">
+                                <div class="text-xs text-green-100 line-through">${formatarMoeda(precoOriginal)}</div>
+                                <div class="text-lg font-bold text-white">${formatarMoeda(p.preco_promocional)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join(''));
+        }
+        function selecionarQuantidade(qtd) {
+            quantidadeCotas = qtd;
+            atualizarPreco();
+            // Clicar num combo de promoção já avança direto pra tela de preencher os dados,
+            // como se tivesse clicado em "Quero participar" — sem precisar de um clique a mais.
+            $('#btn-participar').trigger('click');
+        }
+
+        function renderBotoesCota(config) {
+            let botoes = [];
+            if (config) {
+                try {
+                    const parsed = JSON.parse(config);
+                    if (Array.isArray(parsed) && parsed.length) botoes = parsed;
+                } catch (e) {
+                    const valores = String(config).split(',').map(x => parseInt(x)).filter(Boolean);
+                    botoes = valores.map((v, i) => ({ valor: v, popular: i === 1 || (valores.length === 1 && i === 0) }));
+                }
+            }
+            if (botoes.length === 0) botoes = [{ valor: 500 }, { valor: 1000, popular: true }, { valor: 2000 }, { valor: 5000 }];
+
+            $('#cota-grid').html(botoes.slice(0, 6).map(b => `
+                <div class="cota-btn btn-add-cota ${b.popular ? 'popular' : ''}" data-qtd="${b.valor}">
+                    ${b.popular ? '<span class="cota-badge">Mais popular</span>' : ''}
+                    <div class="cota-num ${b.popular ? 'text-[#15803D]' : ''}">+${b.valor}</div>
+                    <div class="cota-label ${b.popular ? 'text-[#15803D]' : ''}">SELECIONAR</div>
+                </div>
+            `).join(''));
+        }
+
+        function renderPagina(data) {
+            const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
+            SORTEIO_DATA = sorteio || {};
+            try {
+                const origemFoto = new URL(sorteio.foto_url).origin;
+                const link = document.createElement('link');
+                link.rel = 'preconnect';
+                link.href = origemFoto;
+                document.head.appendChild(link);
+            } catch (e) {}
+            CHANCE_DOBRO_ATIVA = data.chance_dobro_ativa || null;
+            PROMOCOES_ATIVAS = data.promocoes || [];
+            PUSH_ATIVO_GLOBAL = data.push_ativo === true;
+            BILHETES_PREMIADOS = bilhetes_premiados || [];
+            FUNIL_DATA = funil || null;
+
+            PRECO = Number(sorteio.preco_cota || 0);
+            MIN_QTY = Number(sorteio.minimo_cotas_compra || 1);
+            MAX_QTY = Number(sorteio.maximo_cotas_compra || 1000000);
+            MIN_VISIBLE = Number(sorteio.minimo_visivel_seletor || 30);
+            TOTAL = Number(sorteio.total_cotas || 100);
+            quantidadeCotas = MIN_VISIBLE;
+
+            // Se veio de um clique num combo de roleta lá no checkout, já chega com a quantidade certa selecionada
+            const qtdDaUrl = parseInt(URL_PARAMS.get('qtd'));
+            const girosDaUrl = URL_PARAMS.get('giros');
+            if (qtdDaUrl && qtdDaUrl > 0) {
+                quantidadeCotas = qtdDaUrl;
+                if (girosDaUrl) {
+                    VEIO_DE_COMBO_ROLETA = true;
+                    GIROS_DO_COMBO_ATUAL = girosDaUrl;
+                }
+                // Pula direto pra tela de confirmar dados — sem precisar clicar em "Quero Participar"
+                // de novo, já que a pessoa veio de um combo de roleta clicado no checkout.
+                setTimeout(() => {
+                    $('#btn-participar').trigger('click');
+                    try {
+                        const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
+                        if (salvo?.telefone) {
+                            $('#checkout-tel').val(salvo.telefoneFormatado || salvo.telefone);
+                            $('#form-checkout-telefone').trigger('submit');
+                        }
+                    } catch (e) {}
+                }, 300);
+            }
+
+            if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
+
+            $('#page-title').text(`${sorteio.nome || ''} - Sorteios`);
+            renderCarrossel(sorteio);
+            injetarPixels(pixels);
+            $('#sorteio-nome').text(sorteio.nome || '');
+            $('#preco-cota').text(PRECO ? formatarMoeda(PRECO) : 'R$ 0,00');
+            $('#input-qtd').attr('min', MIN_QTY).attr('max', MAX_QTY);
+
+            const textoCompleto = [sorteio.descricao, sorteio.regulamento].filter(t => t && t.trim()).join('\n\n');
+            if (textoCompleto) {
+                $('#secao-regulamento').removeClass('hidden');
+                $('#corpo-regulamento').text(textoCompleto).removeClass('hidden').hide();
+            } else {
+                $('#secao-regulamento').addClass('hidden');
+            }
+
+            // Essas três são "extras" — se alguma falhar, não pode derrubar o resto da página
+            try { renderBotoesCota(sorteio.botoes_rapidos); } catch (e) { console.error('renderBotoesCota', e); }
+            try { renderPromocoes(PROMOCOES_ATIVAS); } catch (e) { console.error('renderPromocoes', e); }
+            try { iniciarUrgencia(data.aviso_urgencia_ativo); } catch (e) { console.error('iniciarUrgencia', e); }
+            try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
+            try { iniciarChanceDobro(data.chance_dobro_ativa); } catch (e) { console.error('iniciarChanceDobro', e); }
+            try { renderRedesSociaisFlutuantes(data.redes_sociais); } catch (e) { console.error('renderRedesSociaisFlutuantes', e); }
+
+            const premiados = [...BILHETES_PREMIADOS].sort((a, b) => (b.status === 'reivindicada') - (a.status === 'reivindicada'));
+            const reivindicados = premiados.filter(p => p.status === 'reivindicada').length;
+            $('#contador-premiados').text(`${reivindicados}/${premiados.length}`);
+            renderListaPaginada('#lista-premios', '#btn-mostrar-mais-premios', premiados, 5, premio => `
+                <div class="premio-item ${premio.status === 'reivindicada' ? '' : 'disponivel'}">
+                    <span class="premio-cota">${premio.numero_cota}</span>
+                    <span class="premio-nome">${premio.premio_titulo}</span>
+                    ${premio.status === 'reivindicada'
+                        ? `<span class="premio-status">${premio.ganhador_nome ? nomeCurto(premio.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                        : `<span class="premio-status">Disponível</span>`}
+                </div>
+            `, '#btn-mostrar-menos-premios');
+
+            // Roletas já sorteadas (nunca mostra o número do giro, só o prêmio e quem ganhou)
+            if (sorteio.roleta_ativada && roleta_resultados && roleta_resultados.total > 0) {
+                $('#secao-roleta-resultados').removeClass('hidden');
+                $('#contador-roleta').text(`${roleta_resultados.ganhas}/${roleta_resultados.total}`);
+                const roletaOrdenada = [...(roleta_resultados.lista || [])].sort((a, b) => b.reivindicada - a.reivindicada);
+                renderListaPaginada('#lista-roleta-vencedores', '#btn-mostrar-mais-roleta', roletaOrdenada, 5, v => `
+                    <div class="premio-item ${v.reivindicada ? '' : 'disponivel'}">
+                        <span class="premio-nome" style="text-align:left; flex-grow:2;">${v.valor_premio || v.premio_titulo || 'Prêmio'}</span>
+                        ${v.reivindicada
+                            ? `<span class="premio-status">${v.ganhador_nome ? nomeCurto(v.ganhador_nome) + ' ' : ''}<i class="bi bi-trophy-fill trofeu"></i></span>`
+                            : `<span class="premio-status">Disponível</span>`}
+                    </div>
+                `, '#btn-mostrar-menos-roleta');
+            } else {
+                $('#secao-roleta-resultados').addClass('hidden');
+            }
+
+            if (sorteio.suporte_whatsapp) {
+                const msg = encodeURIComponent(`Olá, tenho uma dúvida sobre o sorteio ${sorteio.nome || ''}`);
+                $('#menu-whatsapp-suporte').attr('href', `https://wa.me/${sorteio.suporte_whatsapp}?text=${msg}`).removeClass('hidden');
+            }
+
+            $('#campo-cpf').toggleClass('hidden', !sorteio.coletar_cpf);
+            $('#checkout-cpf').prop('required', !!sorteio.coletar_cpf);
+            $('#campo-email').toggleClass('hidden', !sorteio.coletar_email);
+            $('#checkout-email').prop('required', !!sorteio.coletar_email);
+            $('#campo-endereco').toggleClass('hidden', !sorteio.coletar_endereco);
+            $('#checkout-endereco').prop('required', !!sorteio.coletar_endereco);
+
+            atualizarPreco();
+        }
+
+        function carregarSorteio() {
+            // ⚡ Se o servidor já mandou os dados prontos dentro da página, usa direto — sem
+            // esperar essa busca.
+            if (window.__DADOS_INICIAIS__) {
+                try { renderPagina(window.__DADOS_INICIAIS__); }
+                catch (e) {
+                    console.error('Erro ao renderizar página do sorteio', e);
+                    notificar('Ocorreu um erro ao carregar a página. Tente recarregar.', 'erro');
+                }
+                return;
+            }
+            const url = FUNIL_SLUG
+                ? `/api/public/sorteio/${SORTEIO_SLUG}/funil/${FUNIL_SLUG}`
+                : `/api/public/sorteio/${SORTEIO_SLUG}`;
+            $.get(url)
+                .done(function(resp) {
+                    try { renderPagina(resp); }
+                    catch (e) {
+                        console.error('Erro ao renderizar página do sorteio', e);
+                        notificar('Ocorreu um erro ao carregar a página. Tente recarregar.', 'erro');
+                    }
+                })
+                .fail(function() {
+                    $('#sorteio-nome').text('Sorteio não encontrado. Verifique o link e tente novamente.');
+                });
+        }
+
+        
+        // Bloqueia o zoom por toque duplo (o navegador ignora "user-scalable=no" em telas recentes)
+        // — só quando é o MESMO lugar sendo tocado de novo rapidinho (o gesto real de zoom).
+        // Cliques rápidos em botões DIFERENTES (tipo os de mais/menos cota) continuam funcionando normal.
+        (function() {
+            let ultimoToque = 0;
+            let ultimaPosX = 0;
+            let ultimaPosY = 0;
+            document.addEventListener('touchend', function(e) {
+                const agora = Date.now();
+                const toque = e.changedTouches && e.changedTouches[0];
+                const posX = toque ? toque.clientX : 0;
+                const posY = toque ? toque.clientY : 0;
+                const distancia = Math.hypot(posX - ultimaPosX, posY - ultimaPosY);
+                if (agora - ultimoToque <= 350 && distancia < 30) { e.preventDefault(); }
+                ultimoToque = agora;
+                ultimaPosX = posX;
+                ultimaPosY = posY;
+            }, { passive: false });
+            document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        })();
+
+        // ⚡ Removido de propósito: existia aqui um redirecionamento automático que tirava o Android
+        // do navegador do Instagram/Facebook e mandava pro Chrome. Isso quebrava a experiência (saía
+        // do app, recarregava tudo do zero) e prejudicava a conversão — por decisão do dono do
+        // negócio, o lead permanece no navegador embutido, em qualquer aparelho.
+
+        $(document).ready(function() {
+            // ⚡ Registra o Service Worker pra TODO visitante (não só quem ativa notificação push) —
+            // é ele que guarda jQuery/ícones/fontes no celular da pessoa, deixando a segunda visita
+            // bem mais rápida. Envolvido em try/catch pra nunca travar o resto da página se falhar.
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(function(e) { console.warn('SW não registrado', e); });
+            }
+
+            carregarSorteio();
+
+            // ⚡ Substituído o plugin externo (jquery.mask, vinha de cdnjs.cloudflare.com) por um
+            // código próprio equivalente — remove uma conexão externa inteira do carregamento da
+            // página, sem mudar em nada o comportamento pro usuário (mesmas máscaras de sempre).
+            function formatarTelefoneBR(digitos) {
+                digitos = digitos.slice(0, 11);
+                if (!digitos) return '';
+                const ddd = digitos.slice(0, 2);
+                if (digitos.length <= 2) return `(${ddd}`;
+                const resto = digitos.slice(2);
+                if (resto.length <= 4) return `(${ddd}) ${resto}`;
+                if (digitos.length <= 10) {
+                    const p1 = resto.slice(0, 4), p2 = resto.slice(4, 8);
+                    return p2 ? `(${ddd}) ${p1}-${p2}` : `(${ddd}) ${p1}`;
+                }
+                const p1 = resto.slice(0, 5), p2 = resto.slice(5, 9);
+                return p2 ? `(${ddd}) ${p1}-${p2}` : `(${ddd}) ${p1}`;
+            }
+            function formatarCpfBR(digitos) {
+                digitos = digitos.slice(0, 11);
+                let out = digitos.slice(0, 3);
+                if (digitos.length > 3) out += '.' + digitos.slice(3, 6);
+                if (digitos.length > 6) out += '.' + digitos.slice(6, 9);
+                if (digitos.length > 9) out += '-' + digitos.slice(9, 11);
+                return out;
+            }
+            function vincularMascara(seletorOuElemento, formatador) {
+                $(seletorOuElemento).on('input', function() {
+                    const noFim = this.selectionEnd === this.value.length;
+                    this.value = formatador(this.value.replace(/\D/g, ''));
+                    if (noFim) { const p = this.value.length; this.setSelectionRange(p, p); }
+                });
+            }
+            vincularMascara('#checkout-tel', formatarTelefoneBR);
+            vincularMascara('#phone-input-modal', formatarTelefoneBR);
+            vincularMascara('#checkout-cpf', formatarCpfBR);
+
+            $('#btn-toggle-regulamento').on('click', function() {
+                $('#corpo-regulamento').slideToggle(200);
+                $('#icone-regulamento').toggleClass('bi-chevron-down bi-chevron-up');
+            });
+
+            $('#cota-grid').on('click', '.btn-add-cota', function() {
+                const qtd = $(this).data('qtd');
+                if (qtd !== undefined) {
+                    quantidadeCotas = Math.min(MAX_QTY, quantidadeCotas + Number(qtd));
+                    VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null;
+                    atualizarPreco();
+                    $('.btn-add-cota').removeClass('selecionado');
+                    $(this).addClass('selecionado');
+                }
+            });
+            $('#btn-add-cota').on('click', function() {
+                if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+            });
+            $('#btn-remove-cota').on('click', function() {
+                if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
+            });
+            $('#input-qtd').on('change', function() {
+                let val = parseInt($(this).val());
+                if (isNaN(val) || val < MIN_QTY) val = MIN_QTY;
+                if (val > MAX_QTY) val = MAX_QTY;
+                quantidadeCotas = val;
+                VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null;
+                atualizarPreco();
+            });
+
+            $('#btn-participar').on('click', function() {
+                if (quantidadeCotas < MIN_QTY || quantidadeCotas > MAX_QTY) {
+                    notificar(`O número de cotas deve ser entre ${MIN_QTY} e ${MAX_QTY}.`, 'erro');
+                    return;
+                }
+                const modalCheckout = $('#modal-checkout');
+                const qtd = quantidadeCotas;
+                $('#checkout-confirm-bar').addClass('hidden');
+                $('#upsell-box').addClass('hidden').removeClass('ativado');
+                $('#upsell-toggle').prop('checked', false);
+
+                // Volta pra etapa 1 (telefone) toda vez que abre — mas já pré-preenche se tiver dado salvo
+                $('#form-checkout-dados').addClass('hidden');
+                $('#etapa-confirmar-comprador').addClass('hidden');
+                $('#form-checkout-telefone').removeClass('hidden');
+                PENDENTE_NOME = PENDENTE_CPF = PENDENTE_EMAIL = PENDENTE_ENDERECO = null;
+                const salvo = JSON.parse(localStorage.getItem('comprador_salvo') || 'null');
+                if (salvo?.telefone) $('#checkout-tel').val(salvo.telefoneFormatado || '');
+
+                modalCheckout.removeClass('hidden').css('opacity', 0).animate({ opacity: 1 }, 300);
+                modalCheckout.find('.modal-content').css('transform', 'scale(0.95)').animate({ transform: 'scale(1)' }, 300);
+            });
+            $('#close-modal-checkout').on('click', function() {
+                const modalCheckout = $('#modal-checkout');
+                modalCheckout.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden').css('display', ''); });
+                modalCheckout.find('.modal-content').animate({ transform: 'scale(0.95)' }, 300);
+            });
+
+            function abrirModalMeusNumeros() {
+                const modal = $('#modal-meus-numeros');
+                modal.removeClass('hidden').css('opacity', 0).animate({ opacity: 1 }, 300);
+                modal.find('.modal-content').css('transform', 'scale(0.95)').animate({ transform: 'scale(1)' }, 300);
+            }
+            $('#btn-meus-numeros').on('click', abrirModalMeusNumeros);
+            $('#menu-meus-titulos').on('click', function() { $('#menu-dropdown').addClass('hidden'); abrirModalMeusNumeros(); });
+            $('#btn-menu').on('click', function(e) { e.stopPropagation(); $('#menu-dropdown').toggleClass('hidden'); });
+            $(document).on('click', function() { $('#menu-dropdown').addClass('hidden'); });
+            $('#close-modal-meus-numeros').on('click', function() {
+                const modal = $('#modal-meus-numeros');
+                modal.animate({ opacity: 0 }, 300, function() { $(this).addClass('hidden').css('display', ''); });
+                modal.find('.modal-content').animate({ transform: 'scale(0.95)' }, 300);
+            });
+
+            $('#form-meus-bilhetes').on('submit', function(e) {
+                e.preventDefault();
+                const telefone = $('#phone-input-modal').val();
+                const resultadoContainer = $('#resultado-bilhetes');
+                resultadoContainer.html('<p class="text-center text-gray-800">Buscando...</p>');
+                $.ajax({
+                    url: '/api/public/meus-bilhetes',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ telefone: telefone.replace(/\D/g, '') }),
+                    success: function(pedidos) {
+                        resultadoContainer.empty();
+                        if (!pedidos || pedidos.length === 0) {
+                            resultadoContainer.html('<p class="text-center text-yellow-400">Nenhum pedido pago encontrado para este telefone.</p>');
+                            return;
+                        }
+                        pedidos.forEach(pedido => {
+                            const cotasVisiveis = (pedido.cotas || []).slice(0, 5);
+                            const cotasOcultas = (pedido.cotas || []).length - cotasVisiveis.length;
+                            const cotasHtml = cotasVisiveis.map(cota => `<span class="inline-block bg-gray-700 text-gray-100 px-2 py-1 rounded text-sm font-mono">${cota.numero_cota}</span>`).join(' ');
+                            resultadoContainer.append(`
+                                <div class="bg-white p-4 mb-4 rounded-lg">
+                                    <h4 class="font-semibold text-gray-800">${pedido.sorteios?.nome || ''}</h4>
+                                    <p class="text-sm text-gray-600">${pedido.quantidade_cotas} cotas - ${formatarMoeda(pedido.valor_total)}</p>
+                                    <div class="mt-4"><p class="text-sm text-gray-600 mb-2">Seus números:</p><div class="flex flex-wrap gap-2">${cotasHtml} ${cotasOcultas > 0 ? `<span class="text-xs text-gray-500 ml-2">(e mais ${cotasOcultas} cotas)</span>` : ''}</div></div>
+                                </div>
+                            `);
+                        });
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.error || 'Erro ao buscar bilhetes. Tente novamente.';
+                        resultadoContainer.html(`<p class="text-center text-red-400">${errorMsg}</p>`);
+                    }
+                });
+            });
+
+            // ETAPA 1: telefone. Verifica se é um comprador conhecido antes de pedir o resto dos dados.
+            let COMPRADOR_CONHECIDO = null;
+            let TELEFONE_ATUAL = null;
+            function formatarTelefoneExibicao(tel) {
+                const v = String(tel || '').replace(/\D/g, '');
+                if (v.length < 10) return tel;
+                return `(${v.slice(0, 2)}) ${v.slice(2, v.length - 4)}-${v.slice(-4)}`;
+            }
+            $('#form-checkout-telefone').on('submit', function(e) {
+                e.preventDefault();
+                const tel = $('#checkout-tel').val();
+                if (!tel || tel.replace(/\D/g, '').length < 10) { notificar('Por favor, insira um telefone válido com DDD.', 'erro'); return; }
+                const telLimpo = tel.replace(/\D/g, '');
+
+                $('#btn-continuar-telefone').prop('disabled', true).text('Localizando comprador no sistema...');
+                $.ajax({
+                    url: '/api/public/usuarios/verificar', type: 'POST', contentType: 'application/json',
+                    data: JSON.stringify({ telefone: telLimpo })
+                }).done(function(resp) {
+                    $('#btn-continuar-telefone').prop('disabled', false).text('Continuar');
+                    COMPRADOR_CONHECIDO = resp.existe ? resp : null;
+
+                    // Mostra só os campos que realmente faltam (nome só se for comprador novo)
+                    const precisaNome = !COMPRADOR_CONHECIDO;
+                    const precisaCpf = SORTEIO_DATA.coletar_cpf && !(COMPRADOR_CONHECIDO?.tem_cpf);
+                    const precisaEmail = SORTEIO_DATA.coletar_email && !(COMPRADOR_CONHECIDO?.tem_email);
+                    const precisaEndereco = SORTEIO_DATA.coletar_endereco && !(COMPRADOR_CONHECIDO?.tem_endereco);
+
+                    $('#campo-nome').toggleClass('hidden', !precisaNome);
+                    $('#campo-cpf').toggleClass('hidden', !precisaCpf);
+                    $('#campo-email').toggleClass('hidden', !precisaEmail);
+                    $('#campo-endereco').toggleClass('hidden', !precisaEndereco);
+
+                    if (!precisaNome && !precisaCpf && !precisaEmail && !precisaEndereco) {
+                        // Comprador já tem tudo — mostra a tela de confirmação (Finalizar Pedido / Usar outra conta)
+                        TELEFONE_ATUAL = telLimpo;
+                        montarConfirmacao(quantidadeCotas);
+                        carregarOfertaUpsell(quantidadeCotas);
+                        $('#confirmar-nome-cliente').text(COMPRADOR_CONHECIDO?.nome_completo || '');
+                        $('#confirmar-tel-cliente').text(formatarTelefoneExibicao(telLimpo));
+                        $('#form-checkout-telefone').addClass('hidden');
+                        $('#etapa-confirmar-comprador').removeClass('hidden');
+                        dispararLeadUmaVez();
+                    } else {
+                        $('#form-checkout-telefone').addClass('hidden');
+                        $('#form-checkout-dados').removeClass('hidden');
+                    }
+                }).fail(function() {
+                    $('#btn-continuar-telefone').prop('disabled', false).text('Continuar');
+                    // Se a verificação falhar, segue o fluxo normal pedindo tudo que estiver ativado
+                    $('#campo-nome').removeClass('hidden');
+                    $('#campo-cpf').toggleClass('hidden', !SORTEIO_DATA.coletar_cpf);
+                    $('#campo-email').toggleClass('hidden', !SORTEIO_DATA.coletar_email);
+                    $('#campo-endereco').toggleClass('hidden', !SORTEIO_DATA.coletar_endereco);
+                    $('#form-checkout-telefone').addClass('hidden');
+                    $('#form-checkout-dados').removeClass('hidden');
+                });
+            });
+
+            // ⚡ Trava contra clique duplo — sem isso, clicar duas vezes rápido (bem comum quando a
+            // pessoa quer ir logo) disparava o pedido duas vezes e criava duas compras no banco,
+            // mesmo mandando só um evento pro Meta (porque o evento é do clique, não da resposta).
+            let ENVIANDO_PEDIDO = false;
+            $('#btn-finalizar-pedido-conhecido').on('click', function() {
+                if (ENVIANDO_PEDIDO) return;
+                ENVIANDO_PEDIDO = true;
+                $(this).prop('disabled', true).text('Processando...');
+                finalizarCompra(TELEFONE_ATUAL, PENDENTE_NOME || (COMPRADOR_CONHECIDO?.nome_completo || ''), PENDENTE_CPF || '', PENDENTE_EMAIL || '', PENDENTE_ENDERECO || '');
+            });
+            $('#btn-usar-outra-conta').on('click', function() {
+                $('#checkout-nome, #checkout-cpf, #checkout-email, #checkout-endereco, #checkout-tel').val('');
+                COMPRADOR_CONHECIDO = null;
+                TELEFONE_ATUAL = null;
+                PENDENTE_NOME = PENDENTE_CPF = PENDENTE_EMAIL = PENDENTE_ENDERECO = null;
+                $('#etapa-confirmar-comprador').addClass('hidden');
+                $('#form-checkout-dados').addClass('hidden');
+                $('#form-checkout-telefone').removeClass('hidden');
+            });
+
+            // ETAPA 2: dados adicionais (só o que faltava) — depois de preencher, mostra a tela de
+            // confirmação (mesma dos clientes já conhecidos), em vez de finalizar direto.
+            $('#form-checkout-dados').on('submit', function(e) {
+                e.preventDefault();
+                const tel = $('#checkout-tel').val().replace(/\D/g, '');
+
+                let nome = COMPRADOR_CONHECIDO?.nome_completo || $('#checkout-nome').val();
+                if (!$('#campo-nome').hasClass('hidden')) {
+                    const $erroNome = $('#erro-nome');
+                    if (!nome || nome.trim().split(' ').length < 2) { $erroNome.removeClass('hidden'); return; }
+                    $erroNome.addClass('hidden');
+                }
+
+                const cpf = $('#checkout-cpf').val();
+                if (!$('#campo-cpf').hasClass('hidden') && (!cpf || cpf.replace(/\D/g, '').length !== 11)) { notificar('Por favor, insira um CPF válido.', 'erro'); return; }
+
+                const email = $('#checkout-email').val();
+                if (!$('#campo-email').hasClass('hidden') && !email) { notificar('Por favor, insira seu email.', 'erro'); return; }
+
+                const endereco = $('#checkout-endereco').val();
+                if (!$('#campo-endereco').hasClass('hidden') && !endereco) { notificar('Por favor, insira seu endereço.', 'erro'); return; }
+
+                TELEFONE_ATUAL = tel;
+                PENDENTE_NOME = nome; PENDENTE_CPF = cpf; PENDENTE_EMAIL = email; PENDENTE_ENDERECO = endereco;
+                montarConfirmacao(quantidadeCotas);
+                carregarOfertaUpsell(quantidadeCotas);
+                $('#confirmar-nome-cliente').text(nome || '');
+                $('#confirmar-tel-cliente').text(formatarTelefoneExibicao(tel));
+                $('#form-checkout-dados').addClass('hidden');
+                $('#etapa-confirmar-comprador').removeClass('hidden');
+                dispararLeadUmaVez();
+            });
+
+            function finalizarCompra(telefoneLimpo, nome, cpf, email, endereco) {
+                $.ajax({
+                    url: '/api/public/pedidos/iniciar',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        sorteio_id: SORTEIO_DATA.id,
+                        quantidade: quantidadeCotas,
+                        nome_completo: nome || null,
+                        telefone: telefoneLimpo,
+                        cpf: cpf || null,
+                        email: email || null,
+                        endereco: endereco || null,
+                        funil_id: FUNIL_DATA ? FUNIL_DATA.id : null,
+                        link_codigo: LINK_CODIGO,
+                        veio_de_combo_roleta: VEIO_DE_COMBO_ROLETA
+                    }),
+                    beforeSend: function() {
+                        $('#btn-participar').prop('disabled', true); $('#btn-participar-label').text('Processando...');
+                        $('#btn-add-cota').prop('disabled', true);
+                    },
+                    success: function(response) {
+                        // Lembra o comprador no navegador pra próxima visita já vir com o telefone pré-preenchido
+                        try {
+                            localStorage.setItem('comprador_salvo', JSON.stringify({ telefone: telefoneLimpo, telefoneFormatado: $('#checkout-tel').val(), nome: nome || '' }));
+                        } catch (e) {}
+
+                        if (typeof fbq === 'function' && response.pixel_data) {
+                            fbq('track', 'InitiateCheckout', {
+                                value: response.pixel_data.value,
+                                currency: 'BRL',
+                                num_items: response.pixel_data.num_items,
+                                content_name: SORTEIO_DATA.nome,
+                                content_category: 'Raffle'
+                            });
+                        }
+                        if (response.payment) {
+                            try {
+                                const token = (response.redirect || '').split('/').pop();
+                                sessionStorage.setItem('latest_payment_for_' + (token || ''), JSON.stringify(response.payment));
+                            } catch (e) { console.warn('sessionStorage write error', e); }
+                        }
+                        window.location.href = response.redirect;
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.error || 'Erro ao iniciar o checkout. Tente novamente.';
+                        notificar(errorMsg, 'erro');
+                        $('#btn-participar').prop('disabled', false); $('#btn-participar-label').text('Quero participar');
+                        $('#btn-add-cota').prop('disabled', false);
+                        ENVIANDO_PEDIDO = false;
+                        $('#btn-finalizar-pedido-conhecido').prop('disabled', false).text('Finalizar Pedido');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
