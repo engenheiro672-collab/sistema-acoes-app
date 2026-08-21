@@ -621,6 +621,10 @@ app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-pr
 // mesma aba) não soma outro acesso. Depois de 6 horas (ou numa visita de outro dia), conta de
 // novo normalmente — continua sendo uma visita nova de verdade.
 function trackearAcesso(req, res, next) {
+  // ⚡ Isso é uma busca "por trás dos panos" do Service Worker, só pra atualizar o cache — a pessoa
+  // não clicou em nada novo. Deixa a página ser gerada normalmente (pro cache pegar a versão
+  // fresca), mas não conta como acesso nem mexe em nenhum contador.
+  if (req.query._swrevalidate) return next();
   const slugAtual = req.params.slug || 'geral';
   // ⚡ O selo de "já contei essa visita" precisa ser por ORIGEM, não só por sorteio — senão, quem
   // visita primeiro por um link rastreado (ex: Instagram) e depois testa o link oficial (sem
@@ -683,12 +687,17 @@ function lerHtmlComCache(caminhoRelativo) {
 function enviarSorteioComOg(res, dadosCompletos, req, nomeArquivo = 'sorteio.html') {
   const html = lerHtmlComCache(nomeArquivo);
   const sorteio = dadosCompletos?.sorteio;
+  // ⚡ Título da ABA do navegador: só o nome do sorteio, puro e simples. Já o título usado quando
+  // o link é COMPARTILHADO (WhatsApp/Instagram/Facebook mostrando a prévia) continua mais completo
+  // — são duas coisas diferentes, cada uma com seu próprio texto agora.
+  const tituloAba = sorteio?.nome || 'Sorteio';
   const titulo = sorteio?.nome ? `${sorteio.nome} — Participe e concorra!` : 'Sorteio';
   const descricao = sorteio?.descricao ? String(sorteio.descricao).slice(0, 150) : 'Participe e concorra a prêmios incríveis!';
   const imagem = sorteio?.foto_url || '';
   const urlCompleta = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
   let htmlComOg = html
+    .replaceAll('__PAGE_TITLE__', escaparAtributoHtml(tituloAba))
     .replaceAll('__OG_TITLE__', escaparAtributoHtml(titulo))
     .replaceAll('__OG_DESCRIPTION__', escaparAtributoHtml(descricao))
     .replaceAll('__OG_IMAGE__', escaparAtributoHtml(imagem))
@@ -808,6 +817,7 @@ async function enviarSorteioComTelaDeEspera(req, res, slug) {
   // campanha já ativa, já que a prévia é gerada uma vez só quando o link é criado).
   const urlCompleta = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
   const parte1 = htmlBase.slice(0, idx + marcador.length)
+    .replaceAll('__PAGE_TITLE__', 'Sorteio')
     .replaceAll('__OG_TITLE__', 'Sorteio')
     .replaceAll('__OG_DESCRIPTION__', 'Participe e concorra a prêmios incríveis!')
     .replaceAll('__OG_IMAGE__', '')
@@ -823,6 +833,12 @@ async function enviarSorteioComTelaDeEspera(req, res, slug) {
     return;
   }
 
+  // ⚡ Avisa a página (sem precisar de mais nenhuma ida ao banco — é só um cálculo, não uma
+  // consulta) qual foi a origem que o SERVIDOR já usou pra contar esse acesso. Assim, se a pessoa
+  // comprar, a compra usa o MESMO código — nunca mais fica "clique contado aqui, compra atribuída
+  // ali", que era o motivo do link oficial aparecer com acesso mas sem nenhuma compra vinculada.
+  dados.codigo_rastreamento_resolvido = req.query.lk || detectarOrigemAutomatica(req.query, req.headers.referer, null).codigo;
+
   const resto = htmlBase.slice(idx + marcador.length);
   const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
   const scriptRevelar = `<script>(function(){var el=document.getElementById('tela-espera-inicial');if(el){el.classList.add('escondendo');setTimeout(function(){el.remove();},550);}})();</script>`;
@@ -832,9 +848,14 @@ async function enviarSorteioComTelaDeEspera(req, res, slug) {
 }
 
 async function servirPaginaSorteio(req, res, slug, funilSlug) {
+  // ⚡ Mesma correção da tela de espera: avisa a página qual código de rastreio o servidor já
+  // usou pra contar esse acesso, pra compra usar exatamente o mesmo (nunca mais desalinhado).
+  const codigoResolvido = req.query.lk || detectarOrigemAutomatica(req.query, req.headers.referer, funilSlug ? { slug: funilSlug, nome: funilSlug } : null).codigo;
+
   if (!funilSlug) {
     const dados = await getSorteioPublicData(slug, null);
     if (!dados) return res.status(404).send('Sorteio não encontrado');
+    dados.codigo_rastreamento_resolvido = codigoResolvido;
     return enviarSorteioComOg(res, dados, req);
   }
   const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();
@@ -847,11 +868,13 @@ async function servirPaginaSorteio(req, res, slug, funilSlug) {
     const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
     if (fs.existsSync(customPath)) {
       const dados = await getSorteioPublicData(slug, funilSlug);
+      dados.codigo_rastreamento_resolvido = codigoResolvido;
       return enviarSorteioComOg(res, dados, req, path.join('funis', arquivo));
     }
     console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
   }
   const dados = await getSorteioPublicData(slug, funilSlug);
+  dados.codigo_rastreamento_resolvido = codigoResolvido;
   return enviarSorteioComOg(res, dados, req);
 }
 
@@ -2015,7 +2038,7 @@ app.delete('/api/admin/funis/:id', ensureAdminAuth, async (req, res) => {
 app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
   try {
     const sorteio_id = req.params.id;
-    const { data: links } = await supabase.from('links_rastreamento').select('*, funis(nome, slug)').eq('sorteio_id', sorteio_id).order('cliques', { ascending: false });
+    const { data: links } = await supabase.from('links_rastreamento').select('*, funis(nome, slug)').eq('sorteio_id', sorteio_id).not('codigo', 'like', 'auto-%').order('cliques', { ascending: false });
     const { data: sorteio } = await supabase.from('sorteios').select('slug').eq('id', sorteio_id).maybeSingle();
 
     const resultados = [];
@@ -2073,7 +2096,7 @@ app.delete('/api/admin/links/:id', ensureAdminAuth, async (req, res) => {
 app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
   try {
     const { sorteio_id, start_date, end_date } = req.query;
-    let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug)');
+    let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug)').not('codigo', 'like', 'auto-%');
     if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
     const { data: links } = await q.order('cliques', { ascending: false });
 
