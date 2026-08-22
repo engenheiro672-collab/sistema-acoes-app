@@ -1168,7 +1168,13 @@
                                     <option value="outro">Outro</option>
                                 </select>
                             </div>
-                            <div></div>
+                            <div>
+                                <label class="text-xs text-gray-400">Tema da prévenda</label>
+                                <select id="cidade-tema" class="input-dark mt-1">
+                                    <option value="escuro">Fundo escuro</option>
+                                    <option value="claro">Fundo claro (combina com o funil-01)</option>
+                                </select>
+                            </div>
                             <div>
                                 <label class="text-xs text-gray-400">Pra qual funil manda (página inicial)</label>
                                 <select id="cidade-arquivo-html" class="input-dark mt-1">
@@ -3057,6 +3063,7 @@ function renderListaPrevendas() {
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 class="font-semibold text-white">${p.nome}</h4>
                             <span class="badge badge-outro">📍 ${p.cidade}</span>
+                            <span class="badge badge-outro">${p.tema === 'claro' ? '☀️ Claro' : '🌙 Escuro'}</span>
                             <span class="badge badge-outro">${canalLabel(p.canal)}</span>
                             ${p.ativo === false ? '<span class="badge badge-outro">Inativa</span>' : ''}
                         </div>
@@ -3081,6 +3088,7 @@ function criarPrevenda() {
     const payload = {
         nome, cidade,
         canal: $('#cidade-canal').val(),
+        tema: $('#cidade-tema').val(),
         arquivo_html: $('#cidade-arquivo-html').val(),
         arquivo_checkout_html: $('#cidade-arquivo-checkout').val()
     };

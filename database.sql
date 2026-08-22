@@ -115,11 +115,13 @@ create table if not exists prevendas (
   slug text not null,                 -- usado na URL da prévenda em si: /prevenda/<slug>
   cidade text not null,               -- nome exibido nos textos ("Atenção, Varginha!", "Entrega grátis em Varginha")
   canal text default 'facebook_ads',  -- Facebook Ads, WhatsApp, etc.
+  tema text default 'escuro',         -- 'escuro' (prevenda.html) | 'claro' (prevenda-clara.html)
   funil_id uuid references funis(id) on delete set null, -- funil de destino (criado automaticamente ao salvar)
   ativo boolean default true,
   created_at timestamptz default now()
 );
 create unique index if not exists idx_prevendas_sorteio_slug on prevendas(sorteio_id, slug);
+alter table prevendas add column if not exists tema text default 'escuro';
 
 -- ============================================================================
 -- 5) LINKS DE RASTREAMENTO — manuais (WhatsApp, Ads...) e automáticos (UTM)

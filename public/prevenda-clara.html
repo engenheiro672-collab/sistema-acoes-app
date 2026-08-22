@@ -13,13 +13,13 @@
            precisa abrir o mais rápido fisicamente possível. Fonte do sistema (já vem instalada
            no aparelho da pessoa, zero espera de rede) e só JavaScript puro. */
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; background: #20242e; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+        html, body { margin: 0; padding: 0; background: #eef0f2; color: #212b36; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
         .tela { position: relative; width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; }
 
         /* Caixa personalizada acima da foto: "Atenção, Cidade!" */
         .caixa-cidade { padding: 1.1rem 1rem 0.9rem; text-align: center; animation: entrar 0.5s ease both; }
         .caixa-cidade .atencao { display: inline-block; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.35rem; padding: 0.5rem 1.4rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(26,135,84,0.35); border: 2px solid rgba(255,255,255,0.15); }
-        .caixa-cidade .mensagem { margin-top: 0.7rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0; line-height: 1.4; padding: 0 0.5rem; }
+        .caixa-cidade .mensagem { margin-top: 0.7rem; font-size: 0.95rem; font-weight: 600; color: #454f5b; line-height: 1.4; padding: 0 0.5rem; }
         .caixa-cidade .cta-clique { margin-top: 0.6rem; display: inline-block; font-size: 0.8rem; font-weight: 700; color: #4ade80; border: 1.5px dashed rgba(74,222,128,0.5); border-radius: 8px; padding: 0.3rem 0.8rem; }
 
         /* Foto / carrossel */
@@ -35,20 +35,20 @@
         @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
         .rodape-foto { padding: 1rem; text-align: center; animation: entrar 0.6s ease both; animation-delay: 0.1s; }
-        .rodape-foto .caixa-titulo { background: #12151d; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .rodape-foto .caixa-titulo { background: #ffffff; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
         .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
-        .rodape-foto p { margin: 0.25rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.75); }
+        .rodape-foto p { margin: 0.25rem 0 0; font-size: 0.82rem; color: rgba(33,43,54,0.65); }
 
         @keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Tutorial / Como participar */
-        .tutorial-box { margin: 0.2rem 1rem 1.5rem; background: #262b38; border-radius: 16px; padding: 1.2rem 1.1rem; border: 1px solid rgba(255,255,255,0.06); animation: entrar 0.6s ease both; animation-delay: 0.2s; }
+        .tutorial-box { margin: 0.2rem 1rem 1.5rem; background: #ffffff; border-radius: 16px; padding: 1.2rem 1.1rem; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 8px 20px rgba(0,0,0,0.06); animation: entrar 0.6s ease both; animation-delay: 0.2s; }
         .tutorial-box h2 { font-size: 1rem; font-weight: 800; text-align: center; margin: 0 0 1.1rem; color: #4ade80; }
         .passo { display: flex; gap: 0.8rem; margin-bottom: 1rem; align-items: flex-start; }
         .passo:last-child { margin-bottom: 0; }
         .passo-num { flex-shrink: 0; width: 30px; height: 30px; background: linear-gradient(135deg, #1a8754, #22a866); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; }
         .passo strong { display: block; font-size: 0.9rem; margin-bottom: 0.15rem; }
-        .passo p { margin: 0; font-size: 0.8rem; color: rgba(255,255,255,0.65); line-height: 1.35; }
+        .passo p { margin: 0; font-size: 0.8rem; color: rgba(33,43,54,0.6); line-height: 1.35; }
 
         /* Botão grande, pulsando, no final */
         .cta-final { text-align: center; padding: 0 1rem 2.2rem; animation: entrar 0.6s ease both; animation-delay: 0.3s; }
@@ -58,13 +58,13 @@
         /* Overlay da pergunta (fundo transparente, escurecido, foto ainda visível) */
         #overlay-pergunta { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(1px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
         #overlay-pergunta.visivel { opacity: 1; pointer-events: auto; }
-        .card-pergunta { background: #262b38; border-radius: 18px; padding: 1.6rem 1.4rem; max-width: 340px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transform: translateY(12px); transition: transform .35s ease; }
+        .card-pergunta { background: #ffffff; border-radius: 18px; padding: 1.6rem 1.4rem; max-width: 340px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); transform: translateY(12px); transition: transform .35s ease; }
         #overlay-pergunta.visivel .card-pergunta { transform: translateY(0); }
-        .card-pergunta p { font-size: 1.05rem; font-weight: 700; margin: 0 0 1.1rem; }
+        .card-pergunta p { font-size: 1.05rem; font-weight: 700; margin: 0 0 1.1rem; color: #212b36; }
         .card-pergunta .opcoes { display: flex; gap: 0.7rem; }
         .card-pergunta button { flex: 1; padding: 0.7rem; border-radius: 10px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
         .btn-sim { background: #1a8754; color: #fff; }
-        .btn-nao { background: #3a4152; color: #fff; }
+        .btn-nao { background: #dfe3e8; color: #212b36; }
     </style>
 </head>
 <body>

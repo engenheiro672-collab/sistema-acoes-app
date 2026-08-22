@@ -832,7 +832,7 @@ async function getPrevendaPublicData(slug) {
   if (!prevenda) return null;
   const meta = await getPublicMeta();
   return {
-    prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade },
+    prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade, tema: prevenda.tema || 'escuro' },
     // ⚡ foto_url do sorteio já vem junto nessa mesma consulta (nenhuma consulta a mais) — a
     // prévenda usa ela como imagem garantida e instantânea, sem depender de nenhum arquivo em
     // pasta que possa estar faltando ou com extensão diferente.
@@ -846,7 +846,8 @@ app.get('/prevenda/:slug', async (req, res) => {
   try {
     const dados = await getPrevendaPublicData(req.params.slug);
     if (!dados) return res.status(404).send('Prévenda não encontrada');
-    const html = lerHtmlComCache('prevenda.html');
+    const arquivo = dados.prevenda.tema === 'claro' ? 'prevenda-clara.html' : 'prevenda.html';
+    const html = lerHtmlComCache(arquivo);
     const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
     const htmlFinal = html
       .replaceAll('__OG_TITLE__', escaparAtributoHtml(dados.sorteio.nome || 'Sorteio'))
@@ -898,6 +899,7 @@ app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) 
 
     const { data: inserted, error } = await supabase.from('prevendas').insert({
       sorteio_id, nome: body.nome, slug, cidade: body.cidade, canal: body.canal || 'facebook_ads',
+      tema: body.tema === 'claro' ? 'claro' : 'escuro',
       funil_id: funilCriado.id, ativo: true, created_at: new Date().toISOString()
     }).select().single();
     if (error) return fail(res, error.message);
