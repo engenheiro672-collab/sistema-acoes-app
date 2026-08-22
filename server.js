@@ -768,73 +768,17 @@ function gravarAtribuicaoDoFunil(req, res, next) {
 // funil) pro sorteio. Usada tanto na rota "pura" (/sorteio/:slug, quando tem atribuição gravada
 // apontando pra um funil) quanto na rota explícita de funil (/sorteio/:slug/:funilSlug) — assim
 // as duas nunca ficam com lógicas parecidas-mas-diferentes espalhadas pelo código.
-// ⚡ TELA DE ESPERA DO PRIMEIRO ACESSO — experimento, só no sorteio.html (layout padrão) por
-// enquanto. A ideia: em vez de fazer a pessoa esperar toda a busca no banco pra ver QUALQUER
-// coisa na tela, mandamos a página em duas partes:
-//   1) Escrita e enviada IMEDIATAMENTE, sem esperar nada do banco — só a tela de espera (a foto
-//      do anúncio, com uma animaçãozinha e um "carregando").
-//   2) Escrita só depois que os dados de verdade chegarem — o resto do site, mais um scriptzinho
-//      que esconde a tela de espera suavemente, revelando o site pronto por baixo.
-// Só acontece na PRIMEIRA visita da pessoa (marcado com um cookie) — da segunda em diante, vai
-// direto pro carregamento normal, que já é rápido.
-const TELA_ESPERA_HTML = `<div id="tela-espera-inicial" style="position:fixed;inset:0;z-index:99999;background:#20242e;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s ease;">
-  <img src="https://mundialrefrigeracao.online/moto..JPEG" alt="" style="width:220px;height:220px;object-fit:cover;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.5);animation:pulsarFotoEspera 1.6s ease-in-out infinite;">
-  <div style="width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#4ade80;border-radius:50%;margin-top:28px;animation:girarSpinnerEspera .8s linear infinite;"></div>
-</div>
-<style>
-  @keyframes pulsarFotoEspera { 0%,100% { transform:scale(1); } 50% { transform:scale(1.05); } }
-  @keyframes girarSpinnerEspera { to { transform:rotate(360deg); } }
-  #tela-espera-inicial.escondendo { opacity:0; pointer-events:none; }
-</style>`;
-
-async function enviarSorteioComTelaDeEspera(req, res, slug) {
-  const htmlBase = lerHtmlComCache('sorteio.html');
-  const marcador = '<body class="pb-8">';
-  const idx = htmlBase.indexOf(marcador);
-  if (idx === -1) {
-    // Segurança: se o arquivo mudou e o marcador não existe mais, cai pro caminho normal.
-    const dados = await getSorteioPublicData(slug, null);
-    if (!dados) return res.status(404).send('Sorteio não encontrado');
-    return enviarSorteioComOg(res, dados, req);
-  }
-
-  res.set('Content-Type', 'text/html; charset=utf-8');
-  res.set('Cache-Control', 'no-cache');
-
-  // ⚡ A parte 1 (cabeçalho + tela de espera) sai NA HORA, sem esperar nada — as tags de
-  // compartilhamento (OG) ficam com um texto genérico aqui, porque a essa altura ainda não
-  // sabemos os dados do sorteio (isso não afeta quem clica no link — só afetaria uma prévia
-  // nova do WhatsApp/Instagram sendo gerada nesse exato instante, o que é raríssimo pra uma
-  // campanha já ativa, já que a prévia é gerada uma vez só quando o link é criado).
-  const urlCompleta = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-  const parte1 = htmlBase.slice(0, idx + marcador.length)
-    .replaceAll('__OG_TITLE__', 'Sorteio')
-    .replaceAll('__OG_DESCRIPTION__', 'Participe e concorra a prêmios incríveis!')
-    .replaceAll('__OG_IMAGE__', '')
-    .replaceAll('__OG_URL__', escaparAtributoHtml(urlCompleta));
-  res.write(parte1 + TELA_ESPERA_HTML);
-
-  // ⚡ Só AGORA busca os dados de verdade — a pessoa já está vendo a tela de espera enquanto isso
-  // acontece por trás, em vez de olhar pra uma tela branca.
-  let dados;
-  try { dados = await getSorteioPublicData(slug, null); } catch (e) { console.error('Erro ao buscar dados (tela de espera)', e); }
-  if (!dados) {
-    res.end('<p style="color:#fff;text-align:center;padding:2rem;">Sorteio não encontrado.</p></body></html>');
-    return;
-  }
-
-  const resto = htmlBase.slice(idx + marcador.length);
-  const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
-  const scriptRevelar = `<script>(function(){var el=document.getElementById('tela-espera-inicial');if(el){el.classList.add('escondendo');setTimeout(function(){el.remove();},550);}})();</script>`;
-
-  res.write(`<script>window.__DADOS_INICIAIS__ = ${dadosSeguro};</script>` + resto + scriptRevelar);
-  res.end();
-}
-
 async function servirPaginaSorteio(req, res, slug, funilSlug) {
+  // ⚡ Avisa a página (sem precisar de mais nenhuma ida ao banco — é só um cálculo, não uma
+  // consulta) qual foi a origem que o SERVIDOR já usou pra contar esse acesso. Assim, se a pessoa
+  // comprar, a compra usa o MESMO código — nunca mais fica "clique contado aqui, compra atribuída
+  // ali", que era o motivo do link oficial aparecer com acesso mas sem nenhuma compra vinculada.
+  const codigoResolvido = req.query.lk || detectarOrigemAutomatica(req.query, req.headers.referer, funilSlug ? { slug: funilSlug, nome: funilSlug } : null).codigo;
+
   if (!funilSlug) {
     const dados = await getSorteioPublicData(slug, null);
     if (!dados) return res.status(404).send('Sorteio não encontrado');
+    dados.codigo_rastreamento_resolvido = codigoResolvido;
     return enviarSorteioComOg(res, dados, req);
   }
   const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', slug).maybeSingle();
@@ -847,37 +791,25 @@ async function servirPaginaSorteio(req, res, slug, funilSlug) {
     const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
     if (fs.existsSync(customPath)) {
       const dados = await getSorteioPublicData(slug, funilSlug);
+      dados.codigo_rastreamento_resolvido = codigoResolvido;
       return enviarSorteioComOg(res, dados, req, path.join('funis', arquivo));
     }
     console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
   }
   const dados = await getSorteioPublicData(slug, funilSlug);
+  dados.codigo_rastreamento_resolvido = codigoResolvido;
   return enviarSorteioComOg(res, dados, req);
 }
 
 app.get('/sorteio/:slug', resolverAtribuicaoLinkOficial, trackearAcesso, async (req, res) => {
   try {
-    const slug = req.params.slug;
-    const funilSlug = req.funilResolvidoPorAtribuicao || null;
-
-    // A tela de espera só faz sentido no layout padrão (sorteio.html) e só na PRIMEIRA visita —
-    // marcado com um cookie de 30 dias. Da segunda visita em diante, vai direto pro carregamento
-    // normal (que já é rápido), sem repetir a tela de espera à toa.
-    if (!funilSlug) {
-      const cookieVisita = `viu_espera_${slug}`;
-      const jaViu = !!(req.cookies && req.cookies[cookieVisita]);
-      if (!jaViu) {
-        try { res.cookie(cookieVisita, '1', { maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax' }); } catch (e) {}
-        return await enviarSorteioComTelaDeEspera(req, res, slug);
-      }
-    }
-
-    return await servirPaginaSorteio(req, res, slug, funilSlug);
+    return await servirPaginaSorteio(req, res, req.params.slug, req.funilResolvidoPorAtribuicao || null);
   } catch (err) {
     console.error('Erro ao montar preview do sorteio', err);
     return sendPage(res, 'sorteio.html');
   }
 });
+
 
 // Serve o HTML correto para o funil: cada funil pode apontar pra um arquivo diferente em public/funis/
 app.get('/sorteio/:slug/:funilSlug', gravarAtribuicaoDoFunil, trackearAcesso, async (req, res) => {
@@ -2015,7 +1947,7 @@ app.delete('/api/admin/funis/:id', ensureAdminAuth, async (req, res) => {
 app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
   try {
     const sorteio_id = req.params.id;
-    const { data: links } = await supabase.from('links_rastreamento').select('*, funis(nome, slug)').eq('sorteio_id', sorteio_id).order('cliques', { ascending: false });
+    const { data: links } = await supabase.from('links_rastreamento').select('*, funis(nome, slug)').eq('sorteio_id', sorteio_id).not('codigo', 'like', 'auto-%').order('cliques', { ascending: false });
     const { data: sorteio } = await supabase.from('sorteios').select('slug').eq('id', sorteio_id).maybeSingle();
 
     const resultados = [];
@@ -2073,7 +2005,7 @@ app.delete('/api/admin/links/:id', ensureAdminAuth, async (req, res) => {
 app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
   try {
     const { sorteio_id, start_date, end_date } = req.query;
-    let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug)');
+    let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug)').not('codigo', 'like', 'auto-%');
     if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
     const { data: links } = await q.order('cliques', { ascending: false });
 
