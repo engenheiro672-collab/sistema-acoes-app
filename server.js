@@ -175,25 +175,15 @@ async function safeUpdatePedidos(id, payload) {
 
 // Detecta automaticamente a origem do acesso (Google Ads, Facebook/Instagram Ads, WhatsApp, orgânico...)
 function detectarOrigemAutomatica(query, referer, funil) {
-  const q = query || {};
   const sufixo = funil ? `--${funil.slug}` : '';
   const nomeFunil = funil ? ` (funil: ${funil.nome})` : '';
-  if (q.gclid) return { codigo: `auto-google-ads${sufixo}`, nome: `Google Ads (automático)${nomeFunil}`, canal: 'google_ads' };
-  if (q.fbclid) return { codigo: `auto-facebook-ads${sufixo}`, nome: `Facebook/Instagram Ads (automático)${nomeFunil}`, canal: 'facebook_ads' };
-  if (q.ttclid) return { codigo: `auto-tiktok-ads${sufixo}`, nome: `TikTok Ads (automático)${nomeFunil}`, canal: 'tiktok_ads' };
-  const utmSource = (q.utm_source || '').toLowerCase();
-  if (utmSource.includes('whatsapp') || utmSource === 'wpp') return { codigo: `auto-whatsapp${sufixo}`, nome: `WhatsApp (automático)${nomeFunil}`, canal: 'whatsapp' };
-  if (utmSource.includes('instagram')) return { codigo: `auto-instagram-organico${sufixo}`, nome: `Instagram Orgânico (automático)${nomeFunil}`, canal: 'instagram_organico' };
-  if (utmSource.includes('facebook')) return { codigo: `auto-facebook-organico${sufixo}`, nome: `Facebook Orgânico (automático)${nomeFunil}`, canal: 'facebook_organico' };
-  if (utmSource) return { codigo: `auto-${utmSource}${sufixo}`, nome: `${utmSource} (automático)${nomeFunil}`, canal: 'outro' };
-  // Atenção: WhatsApp e Instagram costumam abrir links no navegador interno deles (in-app browser),
-  // que MUITAS VEZES não envia o cabeçalho "referer" por privacidade — nesse caso não tem como
-  // detectar automaticamente e o acesso cai em "direto/orgânico". Pra rastreio garantido desses
-  // canais, o ideal é sempre usar um link manual (aba Links) em vez de depender só da detecção automática.
-  if (referer && /whatsapp/i.test(referer)) return { codigo: `auto-whatsapp${sufixo}`, nome: `WhatsApp (automático)${nomeFunil}`, canal: 'whatsapp' };
-  if (referer && /instagram/i.test(referer)) return { codigo: `auto-instagram-organico${sufixo}`, nome: `Instagram Orgânico (automático)${nomeFunil}`, canal: 'instagram_organico' };
-  if (referer && /facebook/i.test(referer)) return { codigo: `auto-facebook-organico${sufixo}`, nome: `Facebook Orgânico (automático)${nomeFunil}`, canal: 'facebook_organico' };
-  return { codigo: `auto-direto${sufixo}`, nome: `Link Oficial do Sorteio${nomeFunil}`, canal: 'direto' };
+  // ⚡ Antes, isso fragmentava o tráfego sem link manual em várias categorias escondidas (Google
+  // Ads, Facebook Ads, TikTok Ads, WhatsApp orgânico, Instagram orgânico, etc.) — cada uma virando
+  // um link "automático" separado, que precisava ser filtrado do comparativo pra não sujar a lista,
+  // e o link oficial de verdade nunca aparecia sozinho. Agora, tudo que não vem de um link manual
+  // (?lk=) cai num único "Link Oficial do Sorteio" — sempre visível no comparativo, com os dados
+  // certos dele (acessos, pedidos, faturamento), sem fragmentar em categorias escondidas.
+  return { codigo: `oficial${sufixo}`, nome: `Link Oficial do Sorteio${nomeFunil}`, canal: 'direto' };
 }
 
 // Garante que um link de rastreamento existe (cria automaticamente se for detecção automática) e incrementa cliques
@@ -620,7 +610,17 @@ app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-pr
 // isso com um cookiezinho no navegador da pessoa, e enquanto ele existir, um F5 (ou reabrir a
 // mesma aba) não soma outro acesso. Depois de 6 horas (ou numa visita de outro dia), conta de
 // novo normalmente — continua sendo uma visita nova de verdade.
+// Robôs/rastreadores conhecidos (Meta, WhatsApp, buscadores, monitores) — eles visitam o link
+// periodicamente pra gerar prévia, revisar o anúncio, ou indexar, sem serem uma pessoa de verdade.
+// Como não guardam cookie entre visitas (cada uma "parece" a primeira vez), nunca são pegos pelo
+// selo de 6h — e por isso inflavam bastante a contagem de acessos, sem nenhuma pessoa real por trás.
+const ROBOS_CONHECIDOS = /facebookexternalhit|meta-externalagent|Facebot|WhatsApp|Twitterbot|Slackbot|TelegramBot|LinkedInBot|Googlebot|bingbot|AhrefsBot|SemrushBot|MJ12bot|DotBot|python-requests|node-fetch|axios\/|curl\/|wget\/|PostmanRuntime|Discordbot|Applebot|Pingdom|UptimeRobot|StatusCake|GTmetrix|HeadlessChrome/i;
+
 function trackearAcesso(req, res, next) {
+  // ⚡ Robô/rastreador conhecido — deixa a página carregar normal (eles precisam ver o conteúdo
+  // certo pra gerar prévia/revisão), mas NUNCA conta como acesso nem mexe em nenhum contador.
+  if (ROBOS_CONHECIDOS.test(req.headers['user-agent'] || '')) return next();
+
   const slugAtual = req.params.slug || 'geral';
   // ⚡ O selo de "já contei essa visita" precisa ser por ORIGEM, não só por sorteio — senão, quem
   // visita primeiro por um link rastreado (ex: Instagram) e depois testa o link oficial (sem
@@ -1963,9 +1963,12 @@ app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
       const ticket_medio = total_clientes > 0 ? faturamento / total_clientes : 0;
       const conversao = link.cliques > 0 ? (pagos.length / link.cliques) * 100 : 0;
       const caminho = link.funis?.slug ? `/sorteio/${sorteio?.slug || ''}/${link.funis.slug}` : `/sorteio/${sorteio?.slug || ''}`;
+      // ⚡ O "Link Oficial" é o link limpo de verdade (sem ?lk=) — é exatamente isso que a pessoa
+      // deve copiar e usar/divulgar. Qualquer outro código vira um link com ?lk= pra rastrear.
+      const ehLinkOficial = link.codigo === 'oficial' || link.codigo.startsWith('oficial--');
       resultados.push({
         ...link,
-        url: link.codigo.startsWith('auto-') ? null : `${DOMINIO_PUBLICO_SERVIDOR}${caminho}?lk=${link.codigo}`,
+        url: link.codigo.startsWith('auto-') ? null : (ehLinkOficial ? `${DOMINIO_PUBLICO_SERVIDOR}${caminho}` : `${DOMINIO_PUBLICO_SERVIDOR}${caminho}?lk=${link.codigo}`),
         cliques: link.cliques || 0,
         pedidos_pagos: pagos.length,
         total_pedidos,
@@ -2005,7 +2008,7 @@ app.delete('/api/admin/links/:id', ensureAdminAuth, async (req, res) => {
 app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
   try {
     const { sorteio_id, start_date, end_date } = req.query;
-    let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug)').not('codigo', 'like', 'auto-%');
+    let q = supabase.from('links_rastreamento').select('*, sorteios(nome, slug), funis(slug)').not('codigo', 'like', 'auto-%');
     if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
     const { data: links } = await q.order('cliques', { ascending: false });
 
@@ -2029,12 +2032,15 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
       const total_clientes = new Set(pagos.map(p => p.user_id).filter(Boolean)).size;
       const ticket_medio = total_clientes > 0 ? faturamento / total_clientes : 0;
       const conversao = cliques > 0 ? (pagos.length / cliques) * 100 : 0;
-      // Link oficial (auto-direto do sorteio, sem funil) tem URL limpa; links criados manualmente usam ?lk=
+      // ⚡ Precisa considerar se o link pertence a um FUNIL — senão a URL sempre apontava pro
+      // sorteio "padrão", mesmo quando o link era de um funil específico (ex: "Funil: white"),
+      // levando a pessoa pra página errada quando copiado aqui no comparativo geral.
       let url = null;
       const slug = link.sorteios?.slug;
       if (slug) {
-        if (link.codigo === 'auto-direto') url = `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${slug}`;
-        else if (!link.codigo.startsWith('auto-')) url = `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${slug}?lk=${link.codigo}`;
+        const caminho = link.funis?.slug ? `/sorteio/${slug}/${link.funis.slug}` : `/sorteio/${slug}`;
+        const ehLinkOficial = link.codigo === 'oficial' || link.codigo.startsWith('oficial--');
+        if (!link.codigo.startsWith('auto-')) url = ehLinkOficial ? `${DOMINIO_PUBLICO_SERVIDOR}${caminho}` : `${DOMINIO_PUBLICO_SERVIDOR}${caminho}?lk=${link.codigo}`;
       }
       resultados.push({ ...link, url, cliques, pedidos_pagos: pagos.length, total_clientes, expirados, faturamento, pendente, ticket_medio, conversao });
     }
