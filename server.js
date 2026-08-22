@@ -828,12 +828,15 @@ app.get('/sorteio/:slug/:funilSlug', gravarAtribuicaoDoFunil, trackearAcesso, as
 // sem afetar nada do tráfego real que já está rodando).
 // ============================================================================
 async function getPrevendaPublicData(slug) {
-  const { data: prevenda } = await supabase.from('prevendas').select('*, sorteios(slug, nome, pixel_fb_override), funis(slug)').eq('slug', slug).eq('ativo', true).maybeSingle();
+  const { data: prevenda } = await supabase.from('prevendas').select('*, sorteios(slug, nome, foto_url, pixel_fb_override), funis(slug)').eq('slug', slug).eq('ativo', true).maybeSingle();
   if (!prevenda) return null;
   const meta = await getPublicMeta();
   return {
     prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade },
-    sorteio: { slug: prevenda.sorteios?.slug || null, nome: prevenda.sorteios?.nome || '' },
+    // ⚡ foto_url do sorteio já vem junto nessa mesma consulta (nenhuma consulta a mais) — a
+    // prévenda usa ela como imagem garantida e instantânea, sem depender de nenhum arquivo em
+    // pasta que possa estar faltando ou com extensão diferente.
+    sorteio: { slug: prevenda.sorteios?.slug || null, nome: prevenda.sorteios?.nome || '', foto_url: prevenda.sorteios?.foto_url || '' },
     funilSlug: prevenda.funis?.slug || null,
     pixels: { facebook_pixel_id: prevenda.sorteios?.pixel_fb_override || meta.pixel_id || '', facebook_pixel_ids_extras: meta.pixel_ids_extras || [] }
   };
@@ -847,6 +850,7 @@ app.get('/prevenda/:slug', async (req, res) => {
     const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
     const htmlFinal = html
       .replaceAll('__OG_TITLE__', escaparAtributoHtml(dados.sorteio.nome || 'Sorteio'))
+      .replaceAll('__OG_IMAGE__', escaparAtributoHtml(dados.sorteio.foto_url || ''))
       .replace('</head>', `<script>window.__DADOS_INICIAIS__ = ${dadosSeguro};</script></head>`);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'no-cache');

@@ -6,6 +6,7 @@
     <title id="page-title">__OG_TITLE__</title>
     <meta property="og:type" content="website">
     <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:image" content="__OG_IMAGE__">
     <link rel="preconnect" href="/">
     <style>
         /* ⚡ De propósito: SEM Google Fonts, SEM jQuery, SEM biblioteca nenhuma — essa página
@@ -16,7 +17,7 @@
         .tela { position: relative; width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; }
 
         /* Caixa personalizada acima da foto: "Atenção, Cidade!" */
-        .caixa-cidade { padding: 1.1rem 1rem 0.9rem; text-align: center; }
+        .caixa-cidade { padding: 1.1rem 1rem 0.9rem; text-align: center; animation: entrar 0.5s ease both; }
         .caixa-cidade .atencao { display: inline-block; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.35rem; padding: 0.5rem 1.4rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(26,135,84,0.35); border: 2px solid rgba(255,255,255,0.15); }
         .caixa-cidade .mensagem { margin-top: 0.7rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0; line-height: 1.4; padding: 0 0.5rem; }
         .caixa-cidade .cta-clique { margin-top: 0.6rem; display: inline-block; font-size: 0.8rem; font-weight: 700; color: #4ade80; border: 1.5px dashed rgba(74,222,128,0.5); border-radius: 8px; padding: 0.3rem 0.8rem; }
@@ -33,9 +34,26 @@
         .btn-flutuante { position: absolute; bottom: 14px; right: 14px; z-index: 6; background: #1a8754; color: #fff; font-weight: 700; font-size: 0.85rem; padding: 0.65rem 1.1rem; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: none; display: flex; align-items: center; gap: 0.4rem; animation: pulsarBotao 1.4s ease-in-out infinite; cursor: pointer; }
         @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
-        .rodape-foto { padding: 0.9rem 1rem 1.4rem; text-align: center; }
+        .rodape-foto { padding: 1rem; text-align: center; animation: entrar 0.6s ease both; animation-delay: 0.1s; }
+        .rodape-foto .caixa-titulo { background: #12151d; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
-        .rodape-foto p { margin: 0.2rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.75); }
+        .rodape-foto p { margin: 0.25rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.75); }
+
+        @keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Tutorial / Como participar */
+        .tutorial-box { margin: 0.2rem 1rem 1.5rem; background: #262b38; border-radius: 16px; padding: 1.2rem 1.1rem; border: 1px solid rgba(255,255,255,0.06); animation: entrar 0.6s ease both; animation-delay: 0.2s; }
+        .tutorial-box h2 { font-size: 1rem; font-weight: 800; text-align: center; margin: 0 0 1.1rem; color: #4ade80; }
+        .passo { display: flex; gap: 0.8rem; margin-bottom: 1rem; align-items: flex-start; }
+        .passo:last-child { margin-bottom: 0; }
+        .passo-num { flex-shrink: 0; width: 30px; height: 30px; background: linear-gradient(135deg, #1a8754, #22a866); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; }
+        .passo strong { display: block; font-size: 0.9rem; margin-bottom: 0.15rem; }
+        .passo p { margin: 0; font-size: 0.8rem; color: rgba(255,255,255,0.65); line-height: 1.35; }
+
+        /* Botão grande, pulsando, no final */
+        .cta-final { text-align: center; padding: 0 1rem 2.2rem; animation: entrar 0.6s ease both; animation-delay: 0.3s; }
+        .btn-participar-grande { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.05rem; padding: 1rem 2rem; border-radius: 14px; border: none; box-shadow: 0 10px 30px rgba(26,135,84,0.4); animation: pulsarBotaoGrande 1.6s ease-in-out infinite; cursor: pointer; width: 100%; max-width: 320px; }
+        @keyframes pulsarBotaoGrande { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 
         /* Overlay da pergunta (fundo transparente, escurecido, foto ainda visível) */
         #overlay-pergunta { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(1px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
@@ -64,8 +82,34 @@
         </div>
 
         <div class="rodape-foto">
-            <h1 id="txt-nome-sorteio">Carregando...</h1>
-            <p>Participe e concorra!</p>
+            <div class="caixa-titulo">
+                <h1 id="txt-nome-sorteio">Carregando...</h1>
+                <p>Participe e concorra!</p>
+            </div>
+        </div>
+
+        <div class="tutorial-box">
+            <h2>📋 Como Participar</h2>
+            <div class="passo">
+                <span class="passo-num">1</span>
+                <div><strong>Clique em participar</strong><p>Você será levado direto pra página oficial do sorteio</p></div>
+            </div>
+            <div class="passo">
+                <span class="passo-num">2</span>
+                <div><strong>Escolha seus números</strong><p>Selecione quantos títulos quiser concorrer</p></div>
+            </div>
+            <div class="passo">
+                <span class="passo-num">3</span>
+                <div><strong>Pague com Pix</strong><p>Aprovação automática, na hora, sem burocracia</p></div>
+            </div>
+            <div class="passo">
+                <span class="passo-num">4</span>
+                <div><strong>Aguarde o sorteio</strong><p>Pronto! Agora é só torcer 🍀</p></div>
+            </div>
+        </div>
+
+        <div class="cta-final">
+            <button class="btn-participar-grande" id="btn-participar-2">👆 Quero Participar Agora</button>
         </div>
     </div>
 
@@ -108,41 +152,67 @@
             if (cidade) sessionStorage.setItem('cidade_prevenda', cidade);
         } catch (e) {}
 
-        // ── Carrossel: tenta 1.jpg, 2.jpg, 3.jpg... ──────────────────────────
-        // ⚡ Por padrão, usa a pasta COMPARTILHADA (public/imagens-prevenda/1.jpg, 2.jpg...) —
-        // a mesma foto serve pra todas as cidades, sem precisar duplicar nada. Se um dia você
-        // quiser uma cidade específica com foto diferente, é só criar uma pasta com o nome exato
-        // do slug dela (public/imagens-prevenda/<slug-da-prevenda>/1.jpg...) que o sistema passa
-        // a usar essa em vez da compartilhada, automaticamente.
-        var pastaFotosPropria = '/imagens-prevenda/' + slugPrevenda + '/';
-        var pastaFotosCompartilhada = '/imagens-prevenda/';
+        // ── Carrossel de fotos ───────────────────────────────────────────────
+        // ⚡ A foto do sorteio (já embutida nos dados, ZERO pedido extra à rede) sempre entra
+        // primeiro e na hora — garante que sempre tem uma imagem aparecendo instantaneamente,
+        // não importa se a pasta de imagens da prévenda existe, está incompleta ou com extensão
+        // diferente do esperado. As fotos da pasta entram como extras, buscadas em PARALELO (não
+        // uma esperando a outra falhar) — antes, cada número tentava as extensões uma de cada vez,
+        // em sequência; se a foto real fosse .png, por exemplo, isso desperdiçava várias buscas
+        // (.jpg, .JPG, .jpeg...) até acertar, e era exatamente isso que causava a demora.
         var fotos = [];
         var indiceAtual = 0;
-        // Testa várias extensões/variações de maiúscula-minúscula pra cada número — assim não
-        // importa se a foto foi salva como "1.jpg", "1.JPG", "1.jpeg" ou "1.png", sempre encontra.
-        var EXTENSOES_TENTATIVA = ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp'];
-        function tentarCarregarFoto(n, indiceExtensao, usarPastaPropria) {
-            indiceExtensao = indiceExtensao || 0;
-            if (usarPastaPropria === undefined) usarPastaPropria = true;
-            if (indiceExtensao >= EXTENSOES_TENTATIVA.length) {
-                if (usarPastaPropria) { tentarCarregarFoto(n, 0, false); return; } // acabou a pasta própria, tenta a compartilhada
-                return; // acabou também a compartilhada — essa foto não existe em lugar nenhum, para por aqui
-            }
-            var pasta = usarPastaPropria ? pastaFotosPropria : pastaFotosCompartilhada;
-            var caminho = pasta + n + '.' + EXTENSOES_TENTATIVA[indiceExtensao];
-            var img = new Image();
-            img.onload = function () {
-                fotos.push(caminho);
-                var elImg = document.createElement('img');
-                elImg.src = caminho;
-                if (fotos.length === 1) elImg.className = 'ativa';
-                document.getElementById('foto-box').appendChild(elImg);
-                if (n < 5) tentarCarregarFoto(n + 1, 0, usarPastaPropria);
-            };
-            img.onerror = function () { tentarCarregarFoto(n, indiceExtensao + 1, usarPastaPropria); };
-            img.src = caminho;
+        var fotoBox = document.getElementById('foto-box');
+
+        function adicionarFotoNoCarrossel(src) {
+            var elImg = document.createElement('img');
+            elImg.src = src;
+            if (fotos.length === 0) elImg.className = 'ativa';
+            fotoBox.appendChild(elImg);
+            fotos.push(src);
         }
-        tentarCarregarFoto(1, 0, true);
+        if (sorteio.foto_url) adicionarFotoNoCarrossel(sorteio.foto_url);
+
+        var pastaFotosPropria = '/imagens-prevenda/' + slugPrevenda + '/';
+        var pastaFotosCompartilhada = '/imagens-prevenda/';
+        var EXTENSOES_TENTATIVA = ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp'];
+
+        // Testa TODAS as extensões de uma vez (em paralelo) pra cada número — usa a primeira que
+        // responder, ignora o resto. Muito mais rápido que testar uma de cada vez.
+        function buscarFotoDaPasta(pasta, n) {
+            return new Promise(function (resolve) {
+                var restantes = EXTENSOES_TENTATIVA.length;
+                var encontrada = false;
+                EXTENSOES_TENTATIVA.forEach(function (ext) {
+                    var caminho = pasta + n + '.' + ext;
+                    var img = new Image();
+                    img.onload = function () { if (!encontrada) { encontrada = true; resolve(caminho); } };
+                    img.onerror = function () { restantes--; if (restantes === 0 && !encontrada) resolve(null); };
+                    img.src = caminho;
+                });
+            });
+        }
+        function carregarFotosExtrasDaPasta(n) {
+            if (n > 5) return;
+            buscarFotoDaPasta(pastaFotosPropria, n).then(function (caminhoProprio) {
+                if (caminhoProprio) {
+                    adicionarFotoNoCarrossel(caminhoProprio);
+                    carregarFotosExtrasDaPasta(n + 1);
+                    return;
+                }
+                // Não achou na pasta própria dessa prévenda — tenta a compartilhada (usada por
+                // todas as cidades) só na primeira foto; se ela também não existir, não insiste
+                // mais (assume que não há fotos de pasta configuradas).
+                buscarFotoDaPasta(pastaFotosCompartilhada, n).then(function (caminhoCompartilhado) {
+                    if (caminhoCompartilhado) {
+                        adicionarFotoNoCarrossel(caminhoCompartilhado);
+                        carregarFotosExtrasDaPasta(n + 1);
+                    }
+                });
+            });
+        }
+        carregarFotosExtrasDaPasta(1);
+
         setInterval(function () {
             if (fotos.length < 2) return;
             var imgs = document.querySelectorAll('.foto-box img');
@@ -208,6 +278,7 @@
         }
         document.getElementById('btn-participar').addEventListener('click', irParaDestino);
         document.getElementById('foto-box').addEventListener('click', irParaDestino);
+        document.getElementById('btn-participar-2').addEventListener('click', irParaDestino);
     })();
     </script>
 </body>
