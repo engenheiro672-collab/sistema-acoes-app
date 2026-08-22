@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">__OG_TITLE__</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="__OG_TITLE__">
+    <link rel="preconnect" href="/">
+    <style>
+        /* ⚡ De propósito: SEM Google Fonts, SEM jQuery, SEM biblioteca nenhuma — essa página
+           precisa abrir o mais rápido fisicamente possível. Fonte do sistema (já vem instalada
+           no aparelho da pessoa, zero espera de rede) e só JavaScript puro. */
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #20242e; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+        .tela { position: relative; width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+
+        /* Caixa personalizada acima da foto: "Atenção, Cidade!" */
+        .caixa-cidade { padding: 1.1rem 1rem 0.9rem; text-align: center; }
+        .caixa-cidade .atencao { display: inline-block; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.35rem; padding: 0.5rem 1.4rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(26,135,84,0.35); border: 2px solid rgba(255,255,255,0.15); }
+        .caixa-cidade .mensagem { margin-top: 0.7rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0; line-height: 1.4; padding: 0 0.5rem; }
+        .caixa-cidade .cta-clique { margin-top: 0.6rem; display: inline-block; font-size: 0.8rem; font-weight: 700; color: #4ade80; border: 1.5px dashed rgba(74,222,128,0.5); border-radius: 8px; padding: 0.3rem 0.8rem; }
+
+        /* Foto / carrossel */
+        .foto-box { position: relative; width: 100%; height: 360px; background: #111; overflow: hidden; }
+        .foto-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s ease; }
+        .foto-box img.ativa { opacity: 1; }
+
+        .tag-ending { position: absolute; top: 12px; left: 12px; background: #1a8754; color: #fff; font-size: 0.78rem; font-weight: 600; height: 26px; line-height: 26px; padding: 0 12px; border-radius: 8px; animation: piscar 2s infinite; z-index: 5; }
+        @keyframes piscar { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+        /* Botão pulsando em cima da foto */
+        .btn-flutuante { position: absolute; bottom: 14px; right: 14px; z-index: 6; background: #1a8754; color: #fff; font-weight: 700; font-size: 0.85rem; padding: 0.65rem 1.1rem; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: none; display: flex; align-items: center; gap: 0.4rem; animation: pulsarBotao 1.4s ease-in-out infinite; cursor: pointer; }
+        @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+        .rodape-foto { padding: 0.9rem 1rem 1.4rem; text-align: center; }
+        .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
+        .rodape-foto p { margin: 0.2rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.75); }
+
+        /* Overlay da pergunta (fundo transparente, escurecido, foto ainda visível) */
+        #overlay-pergunta { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(1px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
+        #overlay-pergunta.visivel { opacity: 1; pointer-events: auto; }
+        .card-pergunta { background: #262b38; border-radius: 18px; padding: 1.6rem 1.4rem; max-width: 340px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transform: translateY(12px); transition: transform .35s ease; }
+        #overlay-pergunta.visivel .card-pergunta { transform: translateY(0); }
+        .card-pergunta p { font-size: 1.05rem; font-weight: 700; margin: 0 0 1.1rem; }
+        .card-pergunta .opcoes { display: flex; gap: 0.7rem; }
+        .card-pergunta button { flex: 1; padding: 0.7rem; border-radius: 10px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
+        .btn-sim { background: #1a8754; color: #fff; }
+        .btn-nao { background: #3a4152; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="tela">
+        <div class="caixa-cidade">
+            <span class="atencao" id="txt-atencao">Atenção!</span>
+            <p class="mensagem" id="txt-mensagem">Transferência, documentação, emplacamento e entrega 100% grátis.</p>
+            <br>
+            <span class="cta-clique">👇 Clique abaixo para participar</span>
+        </div>
+
+        <div class="foto-box" id="foto-box">
+            <span class="tag-ending">Adquira Já</span>
+            <button class="btn-flutuante" id="btn-participar">👆 Clique para participar</button>
+        </div>
+
+        <div class="rodape-foto">
+            <h1 id="txt-nome-sorteio">Carregando...</h1>
+            <p>Participe e concorra!</p>
+        </div>
+    </div>
+
+    <div id="overlay-pergunta">
+        <div class="card-pergunta">
+            <p id="txt-pergunta-cidade">Você é dessa cidade?</p>
+            <div class="opcoes">
+                <button class="btn-sim" id="btn-resposta-sim">Sim</button>
+                <button class="btn-nao" id="btn-resposta-nao">Não</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var DADOS = window.__DADOS_INICIAIS__ || {};
+        var sorteio = DADOS.sorteio || {};
+        var prevenda = DADOS.prevenda || {};
+        var cidade = prevenda.cidade || '';
+        var funilSlug = DADOS.funilSlug || null;
+        // Slug da PRÓPRIA prévenda (segundo pedaço da URL: /prevenda/<slug>)
+        var slugPrevenda = location.pathname.split('/').filter(Boolean)[1] || '';
+
+        // ── Textos personalizados com a cidade ──────────────────────────────
+        if (cidade) {
+            document.getElementById('txt-atencao').textContent = 'Atenção, ' + cidade + '!';
+            document.getElementById('txt-mensagem').textContent = 'Transferência, documentação, emplacamento e entrega 100% grátis para ' + cidade + '.';
+            document.getElementById('txt-pergunta-cidade').textContent = 'Você é de ' + cidade + '?';
+        }
+        document.getElementById('txt-nome-sorteio').textContent = sorteio.nome || 'Sorteio';
+        document.title = sorteio.nome || 'Sorteio';
+
+        // ── Guarda o fbclid (e outros parâmetros de anúncio) pra levar adiante ──
+        try {
+            var params = new URLSearchParams(location.search);
+            ['fbclid', 'gclid', 'ttclid'].forEach(function (chave) {
+                var valor = params.get(chave);
+                if (valor) localStorage.setItem(chave + '_prevenda', valor);
+            });
+            if (cidade) sessionStorage.setItem('cidade_prevenda', cidade);
+        } catch (e) {}
+
+        // ── Carrossel: tenta 1.jpg, 2.jpg, 3.jpg... da pasta própria dessa prévenda ──
+        // (public/imagens-prevenda/<slug-da-prevenda>/1.jpg, 2.jpg...)
+        var pastaFotos = '/imagens-prevenda/' + slugPrevenda + '/';
+        var fotos = [];
+        var indiceAtual = 0;
+        function tentarCarregarFoto(n) {
+            var img = new Image();
+            img.onload = function () {
+                fotos.push(pastaFotos + n + '.jpg');
+                var elImg = document.createElement('img');
+                elImg.src = pastaFotos + n + '.jpg';
+                if (fotos.length === 1) elImg.className = 'ativa';
+                document.getElementById('foto-box').appendChild(elImg);
+                if (n < 5) tentarCarregarFoto(n + 1);
+            };
+            img.onerror = function () { /* acabaram as fotos dessa pasta, para por aqui */ };
+            img.src = pastaFotos + n + '.jpg';
+        }
+        tentarCarregarFoto(1);
+        setInterval(function () {
+            if (fotos.length < 2) return;
+            var imgs = document.querySelectorAll('.foto-box img');
+            imgs[indiceAtual].classList.remove('ativa');
+            indiceAtual = (indiceAtual + 1) % imgs.length;
+            imgs[indiceAtual].classList.add('ativa');
+        }, 3000);
+
+        // ── Pergunta automática da cidade, ~1s depois de abrir ──────────────
+        setTimeout(function () {
+            document.getElementById('overlay-pergunta').classList.add('visivel');
+        }, 1000);
+        function fecharPergunta(resposta) {
+            try { sessionStorage.setItem('respondeu_cidade_prevenda', resposta); } catch (e) {}
+            document.getElementById('overlay-pergunta').classList.remove('visivel');
+        }
+        document.getElementById('btn-resposta-sim').addEventListener('click', function () { fecharPergunta('sim'); });
+        document.getElementById('btn-resposta-nao').addEventListener('click', function () { fecharPergunta('nao'); });
+
+        // ── Pixel: PageView aqui, nunca de novo no site de destino (mesma trava
+        // de sessão que o resto do sistema já usa) ─────────────────────────
+        var pixels = DADOS.pixels || {};
+        if (pixels.facebook_pixel_id) {
+            !function (f, b, e, v, n, t, s) {
+                if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
+                if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
+                t = b.createElement(e); t.async = !0; t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+            }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', pixels.facebook_pixel_id);
+            (pixels.facebook_pixel_ids_extras || []).forEach(function (id) { if (id && id !== pixels.facebook_pixel_id) fbq('init', id); });
+            var jaDisparouPageView = false;
+            try { jaDisparouPageView = sessionStorage.getItem('pageview_disparado') === '1'; } catch (e) {}
+            if (!jaDisparouPageView) {
+                fbq('track', 'PageView');
+                try { sessionStorage.setItem('pageview_disparado', '1'); } catch (e) {}
+            }
+        }
+
+        // ── Pré-carregamento "robusto" do site de destino ───────────────────
+        // Busca a página de verdade (já pronta, com os dados dela embutidos) enquanto a pessoa
+        // ainda está aqui na prévenda. Quando ela clicar em participar, se já tiver terminado de
+        // carregar, troca a página INSTANTANEAMENTE (sem esperar o servidor de novo).
+        var urlDestino = funilSlug && sorteio.slug
+            ? '/sorteio/' + encodeURIComponent(sorteio.slug) + '/' + encodeURIComponent(funilSlug) + (cidade ? '?cidade=' + encodeURIComponent(cidade) : '')
+            : (sorteio.slug ? '/sorteio/' + encodeURIComponent(sorteio.slug) + (cidade ? '?cidade=' + encodeURIComponent(cidade) : '') : '/');
+        var htmlDestinoPronto = null;
+        fetch(urlDestino, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.text() : null; })
+            .then(function (html) { if (html) htmlDestinoPronto = html; })
+            .catch(function () {});
+
+        function irParaDestino() {
+            if (htmlDestinoPronto) {
+                try {
+                    history.pushState(null, '', urlDestino);
+                    document.open();
+                    document.write(htmlDestinoPronto);
+                    document.close();
+                    return;
+                } catch (e) { /* se algo der errado, cai pro caminho normal abaixo */ }
+            }
+            window.location.href = urlDestino;
+        }
+        document.getElementById('btn-participar').addEventListener('click', irParaDestino);
+        document.getElementById('foto-box').addEventListener('click', irParaDestino);
+    })();
+    </script>
+</body>
+</html>

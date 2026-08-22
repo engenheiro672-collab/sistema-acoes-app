@@ -102,6 +102,26 @@ create unique index if not exists idx_funis_sorteio_slug on funis(sorteio_id, sl
 create index if not exists idx_funis_grupo_teste on funis(sorteio_id, grupo_teste);
 
 -- ============================================================================
+-- PRÉVENDAS (presell por cidade) — sistema PRÓPRIO, separado dos funis.
+-- Cada prévenda é uma "porta de entrada" com foto + pergunta de cidade; depois de responder e
+-- clicar em participar, a pessoa é levada pro funil configurado (que é criado automaticamente
+-- nos bastidores, com o arquivo_html/checkout que você escolher na hora de criar a prévenda —
+-- exatamente como já funciona hoje ao criar um funil manualmente).
+-- ============================================================================
+create table if not exists prevendas (
+  id uuid primary key default gen_random_uuid(),
+  sorteio_id uuid references sorteios(id) on delete cascade,
+  nome text not null,                 -- nome da campanha = nome da cidade (uso interno/organizacional)
+  slug text not null,                 -- usado na URL da prévenda em si: /prevenda/<slug>
+  cidade text not null,               -- nome exibido nos textos ("Atenção, Varginha!", "Entrega grátis em Varginha")
+  canal text default 'facebook_ads',  -- Facebook Ads, WhatsApp, etc.
+  funil_id uuid references funis(id) on delete set null, -- funil de destino (criado automaticamente ao salvar)
+  ativo boolean default true,
+  created_at timestamptz default now()
+);
+create unique index if not exists idx_prevendas_sorteio_slug on prevendas(sorteio_id, slug);
+
+-- ============================================================================
 -- 5) LINKS DE RASTREAMENTO — manuais (WhatsApp, Ads...) e automáticos (UTM)
 -- ============================================================================
 create table if not exists links_rastreamento (

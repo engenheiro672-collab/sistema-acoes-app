@@ -1026,6 +1026,7 @@
                 <div class="tab-btn active" data-linktab="comparativo" onclick="mudarLinkTab('comparativo', this)">📊 Comparativo</div>
                 <div class="tab-btn" data-linktab="criar-link" onclick="mudarLinkTab('criar-link', this)">🔗 Criar Link</div>
                 <div class="tab-btn" data-linktab="criar-funil" onclick="mudarLinkTab('criar-funil', this)">🧩 Criar Funil</div>
+                <div class="tab-btn" data-linktab="cidades" onclick="mudarLinkTab('cidades', this)">🏙️ Cidades</div>
             </div>
 
             <div id="linktab-comparativo" class="linktab-content">
@@ -1140,8 +1141,55 @@
                         <button type="button" class="btn-primary" onclick="criarFunil()">Criar Funil</button>
                     </div>
 
+                    <div class="mt-4">
+                        <input id="busca-funil-cidade" class="input-dark max-w-sm" placeholder="🔎 Buscar por nome do funil..." oninput="renderListaFunis()">
+                    </div>
                     <div id="lista-funis" class="space-y-3 mt-4"></div>
                     <p class="text-xs text-gray-500 mt-2">💡 Pra testar A/B: crie 2 funis com o mesmo "Grupo de teste" e defina o % de tráfego de cada. Use o link <code class="text-purple-300">/sorteio/&lt;slug&gt;/teste/&lt;grupo&gt;</code> na sua campanha — o sistema distribui os visitantes automaticamente.</p>
+                </div>
+            </div>
+
+            <!-- ===================== CIDADES (PRÉVENDA) ===================== -->
+            <div id="linktab-cidades" class="linktab-content hidden">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">🏙️ Criar prévenda por cidade</h4>
+                    <p class="text-xs text-gray-500 mb-3">A pessoa cai numa página própria (foto + "Você é de [cidade]?") antes de ir pro funil escolhido abaixo.</p>
+                    <select id="cidade-sorteio-select" class="input-dark mb-3 max-w-md" onchange="onCidadeSorteioChange(this.value)"><option value="">Selecione o sorteio...</option></select>
+                    <div id="box-add-cidade" class="opacity-50 pointer-events-none">
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div><label class="text-xs text-gray-400">Nome da campanha</label><input id="cidade-nome" class="input-dark mt-1" placeholder="Ex: Varginha - Ads"></div>
+                            <div><label class="text-xs text-gray-400">Nome da cidade exibida</label><input id="cidade-nome-exibido" class="input-dark mt-1" placeholder="Ex: Varginha"></div>
+                            <div>
+                                <label class="text-xs text-gray-400">Canal</label>
+                                <select id="cidade-canal" class="input-dark mt-1">
+                                    <option value="facebook_ads">Facebook Ads</option>
+                                    <option value="whatsapp">WhatsApp</option>
+                                    <option value="instagram_organico">Instagram Orgânico</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                            </div>
+                            <div></div>
+                            <div>
+                                <label class="text-xs text-gray-400">Pra qual funil manda (página inicial)</label>
+                                <select id="cidade-arquivo-html" class="input-dark mt-1">
+                                    <option value="sorteio.html">sorteio.html (padrão)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Checkout desse funil</label>
+                                <select id="cidade-arquivo-checkout" class="input-dark mt-1">
+                                    <option value="checkout.html">checkout.html (padrão)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="criarPrevenda()">Criar Prévenda</button>
+                    </div>
+
+                    <div class="mt-4">
+                        <input id="busca-prevenda-cidade" class="input-dark max-w-sm" placeholder="🔎 Buscar por nome ou cidade..." oninput="renderListaPrevendas()">
+                    </div>
+                    <div id="lista-prevendas" class="space-y-3 mt-4"></div>
+                    <p class="text-xs text-gray-500 mt-2">💡 As fotos da prévenda ficam em <code class="text-purple-300">public/imagens-prevenda/&lt;slug-da-prevenda&gt;/1.jpg, 2.jpg...</code> — suba os arquivos manualmente com esses nomes. O slug aparece no próprio link copiado.</p>
                 </div>
             </div>
         </div>
@@ -2880,12 +2928,22 @@ function badgeOrigem(origem) {
     return `<span class="badge ${map[origem] || 'badge-outro'}">${origem || 'outro'}</span>`;
 }
 
+let FUNIS_CACHE_ATUAL = [];
 function carregarFunis(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/funis`).then(d => {
-        const funis = d.funis || [];
-        const sorteio = SORTEIOS_CACHE.find(s => s.id === sorteioId) || {};
+        FUNIS_CACHE_ATUAL = d.funis || [];
+        renderListaFunis();
+    });
+}
+function renderListaFunis() {
+    const busca = ($('#busca-funil-cidade').val() || '').toLowerCase().trim();
+    const funis = busca
+        ? FUNIS_CACHE_ATUAL.filter(f => (f.nome || '').toLowerCase().includes(busca))
+        : FUNIS_CACHE_ATUAL;
+    {
+        const sorteio = SORTEIOS_CACHE.find(s => s.id === SORTEIO_FUNIL_ID) || {};
         if (funis.length === 0) {
-            $('#lista-funis').html('<p class="text-gray-400 text-sm">Nenhum funil criado ainda. Use o formulário acima para criar o primeiro (ex: um para Ads, outro Orgânico).</p>');
+            $('#lista-funis').html(`<p class="text-gray-400 text-sm">${busca ? 'Nenhum funil encontrado com esse nome.' : 'Nenhum funil criado ainda. Use o formulário acima para criar o primeiro (ex: um para Ads, outro Orgânico).'}</p>`);
             return;
         }
         $('#lista-funis').html(funis.map(f => {
@@ -2914,7 +2972,7 @@ function carregarFunis(sorteioId) {
                 </div>
             `;
         }).join(''));
-    });
+    }
 }
 
 let SORTEIO_FUNIL_ID = null;
@@ -2932,8 +2990,8 @@ function carregarArquivosDeFunilDisponiveis() {
             .concat(arquivos.filter(a => a !== 'sorteio.html').map(a => `<option value="${a}">${a}</option>`));
         const optsCheckout = ['<option value="checkout.html">checkout.html (padrão)</option>']
             .concat(arquivos.filter(a => a !== 'checkout.html').map(a => `<option value="${a}">${a}</option>`));
-        $('#funil-arquivo-html').html(optsHtml.join(''));
-        $('#funil-arquivo-checkout').html(optsCheckout.join(''));
+        $('#funil-arquivo-html, #cidade-arquivo-html').html(optsHtml.join(''));
+        $('#funil-arquivo-checkout, #cidade-arquivo-checkout').html(optsCheckout.join(''));
     });
 }
 function criarFunil() {
@@ -2966,6 +3024,78 @@ function excluirFunil(id) {
 $(document).on('input', '#funil-grupo-teste', function() {
     $('#funil-peso-box').css('display', $(this).val().trim() ? 'block' : 'none');
 });
+
+// ---------------- CIDADES (PRÉVENDA) ----------------
+let SORTEIO_CIDADE_ID = null;
+let PREVENDAS_CACHE_ATUAL = [];
+function onCidadeSorteioChange(id) {
+    SORTEIO_CIDADE_ID = id || null;
+    $('#box-add-cidade').toggleClass('opacity-50 pointer-events-none', !id);
+    if (id) carregarPrevendas(id); else $('#lista-prevendas').empty();
+}
+function carregarPrevendas(sorteioId) {
+    api('GET', `/api/admin/sorteios/${sorteioId}/prevendas`).then(d => {
+        PREVENDAS_CACHE_ATUAL = d.prevendas || [];
+        renderListaPrevendas();
+    });
+}
+function renderListaPrevendas() {
+    const busca = ($('#busca-prevenda-cidade').val() || '').toLowerCase().trim();
+    const lista = busca
+        ? PREVENDAS_CACHE_ATUAL.filter(p => (p.nome || '').toLowerCase().includes(busca) || (p.cidade || '').toLowerCase().includes(busca))
+        : PREVENDAS_CACHE_ATUAL;
+    if (lista.length === 0) {
+        $('#lista-prevendas').html(`<p class="text-gray-400 text-sm">${busca ? 'Nenhuma prévenda encontrada com esse nome/cidade.' : 'Nenhuma prévenda criada ainda pra esse sorteio.'}</p>`);
+        return;
+    }
+    $('#lista-prevendas').html(lista.map(p => {
+        const link = `${DOMINIO_PUBLICO}/prevenda/${p.slug}`;
+        return `
+            <div class="funil-card">
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <h4 class="font-semibold text-white">${p.nome}</h4>
+                            <span class="badge badge-outro">📍 ${p.cidade}</span>
+                            <span class="badge badge-outro">${canalLabel(p.canal)}</span>
+                            ${p.ativo === false ? '<span class="badge badge-outro">Inativa</span>' : ''}
+                        </div>
+                        <p class="text-xs text-gray-500 break-all">Link da prévenda: ${link}</p>
+                        <p class="text-xs text-purple-300">Manda pra: ${p.funis?.arquivo_html || 'sorteio.html'} ${p.funis?.arquivo_checkout_html ? '(checkout: ' + p.funis.arquivo_checkout_html + ')' : ''}</p>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <button class="text-gray-300 hover:text-white text-sm" onclick="navigator.clipboard.writeText('${link}'); this.textContent='Copiado!'; setTimeout(()=>this.textContent='Copiar link',1500)">Copiar link</button>
+                        <button class="text-red-400 hover:text-red-300 text-sm" onclick="excluirPrevenda('${p.id}')"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join(''));
+}
+function criarPrevenda() {
+    if (!SORTEIO_CIDADE_ID) return notificar('Selecione o sorteio primeiro.', 'erro');
+    const nome = $('#cidade-nome').val();
+    const cidade = $('#cidade-nome-exibido').val();
+    if (!nome) return notificar('Dê um nome pra campanha.', 'erro');
+    if (!cidade) return notificar('Informe o nome da cidade a exibir.', 'erro');
+    const payload = {
+        nome, cidade,
+        canal: $('#cidade-canal').val(),
+        arquivo_html: $('#cidade-arquivo-html').val(),
+        arquivo_checkout_html: $('#cidade-arquivo-checkout').val()
+    };
+    api('POST', `/api/admin/sorteios/${SORTEIO_CIDADE_ID}/prevendas`, payload).then(() => {
+        $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
+        carregarPrevendas(SORTEIO_CIDADE_ID);
+        notificar('Prévenda criada!', 'sucesso');
+    }).catch(err => notificar('Erro ao criar prévenda: ' + (err.error || ''), 'erro'));
+}
+function excluirPrevenda(id) {
+    confirmar('Excluir prévenda', 'O link dessa cidade deixará de funcionar. Não pode ser desfeito.').then(yes => {
+        if (!yes) return;
+        api('DELETE', `/api/admin/prevendas/${id}`).then(() => carregarPrevendas(SORTEIO_CIDADE_ID));
+    });
+}
 
 // ---- LINKS DE RASTREAMENTO (página própria) ----
 function canalLabel(canal) {
@@ -3184,7 +3314,7 @@ $(document).on('click', '.sortable-th', function() {
 
 function popularFiltroLinksSorteio() {
     $('#filtro-links-sorteio').html('<option value="todos">Todos os sorteios</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
-    $('#link-sorteio-select, #funil-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
+    $('#link-sorteio-select, #funil-sorteio-select, #cidade-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
 }
 
 // ---------------- PEDIDOS ----------------

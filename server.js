@@ -821,6 +821,97 @@ app.get('/sorteio/:slug/:funilSlug', gravarAtribuicaoDoFunil, trackearAcesso, as
   }
 });
 
+// ============================================================================
+// PRÉVENDAS (presell por cidade) — sistema PRÓPRIO, separado dos funis. É como um segundo
+// "index" do sistema: uma pessoa cai aqui primeiro (foto + pergunta da cidade), e só DEPOIS de
+// clicar em participar é que ela é levada pro funil configurado (que pode ser um funil de teste,
+// sem afetar nada do tráfego real que já está rodando).
+// ============================================================================
+async function getPrevendaPublicData(slug) {
+  const { data: prevenda } = await supabase.from('prevendas').select('*, sorteios(slug, nome, pixel_fb_override), funis(slug)').eq('slug', slug).eq('ativo', true).maybeSingle();
+  if (!prevenda) return null;
+  const meta = await getPublicMeta();
+  return {
+    prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade },
+    sorteio: { slug: prevenda.sorteios?.slug || null, nome: prevenda.sorteios?.nome || '' },
+    funilSlug: prevenda.funis?.slug || null,
+    pixels: { facebook_pixel_id: prevenda.sorteios?.pixel_fb_override || meta.pixel_id || '', facebook_pixel_ids_extras: meta.pixel_ids_extras || [] }
+  };
+}
+
+app.get('/prevenda/:slug', async (req, res) => {
+  try {
+    const dados = await getPrevendaPublicData(req.params.slug);
+    if (!dados) return res.status(404).send('Prévenda não encontrada');
+    const html = lerHtmlComCache('prevenda.html');
+    const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
+    const htmlFinal = html
+      .replaceAll('__OG_TITLE__', escaparAtributoHtml(dados.sorteio.nome || 'Sorteio'))
+      .replace('</head>', `<script>window.__DADOS_INICIAIS__ = ${dadosSeguro};</script></head>`);
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'no-cache');
+    return res.send(htmlFinal);
+  } catch (err) {
+    console.error('Erro ao montar prévenda', err);
+    return res.status(500).send('Erro ao carregar prévenda');
+  }
+});
+
+app.get('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('prevendas').select('*, funis(slug, arquivo_html, arquivo_checkout_html)').eq('sorteio_id', req.params.id).order('created_at', { ascending: false });
+    if (error) return fail(res, error.message);
+    return ok(res, { prevendas: data || [] });
+  } catch (e) { return fail(res); }
+});
+
+app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) => {
+  try {
+    const sorteio_id = req.params.id;
+    const body = req.body || {};
+    if (!body.nome) return fail(res, 'Nome da campanha/cidade é obrigatório', 400);
+    if (!body.cidade) return fail(res, 'Nome da cidade a exibir é obrigatório', 400);
+
+    let slug = (body.slug || body.nome).toString().toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const { data: existe } = await supabase.from('prevendas').select('id').eq('sorteio_id', sorteio_id).eq('slug', slug).limit(1);
+    if (existe && existe.length > 0) slug = `${slug}-${Date.now()}`;
+
+    // ⚡ Cria o funil de destino automaticamente, por trás, com o arquivo_html/checkout que você
+    // escolheu aqui mesmo na criação da cidade — igual você já faz manualmente na aba Criar Funil,
+    // só que numa única etapa só.
+    let funilSlug = (body.slug || body.nome).toString().toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-') + '-prevenda';
+    const { data: funilExiste } = await supabase.from('funis').select('id').eq('sorteio_id', sorteio_id).eq('slug', funilSlug).limit(1);
+    if (funilExiste && funilExiste.length > 0) funilSlug = `${funilSlug}-${Date.now()}`;
+
+    const { data: funilCriado, error: erroFunil } = await supabase.from('funis').insert({
+      sorteio_id, nome: `[Prévenda] ${body.nome}`, slug: funilSlug,
+      origem: body.canal === 'facebook_ads' ? 'ads' : 'outro',
+      arquivo_html: body.arquivo_html || 'sorteio.html',
+      arquivo_checkout_html: body.arquivo_checkout_html || 'checkout.html',
+      ativo: true, created_at: new Date().toISOString()
+    }).select().single();
+    if (erroFunil) return fail(res, 'Erro ao criar funil de destino: ' + erroFunil.message);
+
+    const { data: inserted, error } = await supabase.from('prevendas').insert({
+      sorteio_id, nome: body.nome, slug, cidade: body.cidade, canal: body.canal || 'facebook_ads',
+      funil_id: funilCriado.id, ativo: true, created_at: new Date().toISOString()
+    }).select().single();
+    if (error) return fail(res, error.message);
+
+    return ok(res, { prevenda: inserted });
+  } catch (e) { console.error('POST prevendas', e); return fail(res); }
+});
+
+app.delete('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const { data: prevenda } = await supabase.from('prevendas').select('funil_id').eq('id', req.params.id).maybeSingle();
+    await supabase.from('prevendas').delete().eq('id', req.params.id);
+    // O funil criado automaticamente junto some com ela — não faz sentido sobrar sozinho.
+    if (prevenda?.funil_id) await supabase.from('funis').delete().eq('id', prevenda.funil_id);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+
 // Link de TESTE A/B: distribui o tráfego entre os funis de um "grupo_teste" conforme o peso configurado,
 // mantendo a mesma versão pro mesmo visitante via cookie.
 app.get('/sorteio/:slug/teste/:grupo', async (req, res) => {
