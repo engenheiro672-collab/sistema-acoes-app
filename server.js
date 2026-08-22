@@ -1952,7 +1952,7 @@ app.get('/api/admin/sorteios/:id/links', ensureAdminAuth, async (req, res) => {
 
     const resultados = [];
     for (const link of (links || [])) {
-      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status, expira_em, user_id').eq('link_id', link.id);
+      const { data: pedidos } = await supabase.from('pedidos').select('valor_total, status, expira_em, user_id').eq('link_id', link.id).limit(50000);
       const nowISOLink = new Date().toISOString();
       const pagos = (pedidos || []).filter(p => p.status === 'pago');
       const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISOLink));
@@ -2015,7 +2015,10 @@ app.get('/api/admin/links/comparativo', ensureAdminAuth, async (req, res) => {
     const resultados = [];
     for (const link of (links || [])) {
       let acessosQ = supabase.from('acessos_log').select('*', { head: true, count: 'exact' }).eq('link_id', link.id);
-      let pedidosQ = supabase.from('pedidos').select('valor_total, status, user_id').eq('link_id', link.id);
+      // ⚡ Sem avisar um limite, o Supabase corta em 1.000 linhas por padrão — pra um link com
+      // muitos pedidos "aguardando" acumulados, isso fazia sobrar da conta pedidos que já
+      // deveriam ter contado como expirados (ou o contrário), inflando o "Pendente" errado.
+      let pedidosQ = supabase.from('pedidos').select('valor_total, status, user_id').eq('link_id', link.id).limit(50000);
       if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
       if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
 
@@ -2055,11 +2058,18 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
     const { data: link } = await supabase.from('links_rastreamento').select('*, sorteios(nome, slug)').eq('id', req.params.id).maybeSingle();
     if (!link) return fail(res, 'Link não encontrado', 404);
 
-    let acessosQ = supabase.from('acessos_log').select('created_at').eq('link_id', link.id);
-    let pedidosQ = supabase.from('pedidos').select('valor_total, status, created_at, expira_em, user_id').eq('link_id', link.id);
-    if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
-    if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
+    // ⚡ O Supabase corta em 1.000 linhas por padrão quando não avisamos um limite — era exatamente
+    // isso que fazia o "Acessos" no detalhe do link travar sempre em 1000, mesmo tendo mais de
+    // verdade. A CONTAGEM exata agora vem de uma consulta separada (que nunca é cortada, porque
+    // só pede o total, não as linhas em si); as linhas de verdade (com limite bem alto) continuam
+    // sendo buscadas só pra desenhar o gráfico dia a dia.
+    let acessosQ = supabase.from('acessos_log').select('created_at').eq('link_id', link.id).limit(50000);
+    let acessosCountQ = supabase.from('acessos_log').select('*', { head: true, count: 'exact' }).eq('link_id', link.id);
+    let pedidosQ = supabase.from('pedidos').select('valor_total, status, created_at, expira_em, user_id').eq('link_id', link.id).limit(50000);
+    if (start_date) { acessosQ = acessosQ.gte('created_at', start_date); acessosCountQ = acessosCountQ.gte('created_at', start_date); pedidosQ = pedidosQ.gte('created_at', start_date); }
+    if (end_date) { acessosQ = acessosQ.lte('created_at', end_date); acessosCountQ = acessosCountQ.lte('created_at', end_date); pedidosQ = pedidosQ.lte('created_at', end_date); }
     const { data: acessos } = await acessosQ;
+    const { count: totalAcessosExato } = await acessosCountQ;
     const { data: pedidos } = await pedidosQ;
 
     const porDia = {};
@@ -2081,7 +2091,7 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
 
     const faturamento = pagos.reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const pendente = pendentes.reduce((s, p) => s + Number(p.valor_total || 0), 0);
-    const totalAcessos = (acessos || []).length || link.cliques || 0;
+    const totalAcessos = (totalAcessosExato ?? (acessos || []).length) || link.cliques || 0;
     const total_clientes = new Set(pagos.map(p => p.user_id).filter(Boolean)).size;
 
     return ok(res, {
