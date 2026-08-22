@@ -108,25 +108,41 @@
             if (cidade) sessionStorage.setItem('cidade_prevenda', cidade);
         } catch (e) {}
 
-        // ── Carrossel: tenta 1.jpg, 2.jpg, 3.jpg... da pasta própria dessa prévenda ──
-        // (public/imagens-prevenda/<slug-da-prevenda>/1.jpg, 2.jpg...)
-        var pastaFotos = '/imagens-prevenda/' + slugPrevenda + '/';
+        // ── Carrossel: tenta 1.jpg, 2.jpg, 3.jpg... ──────────────────────────
+        // ⚡ Por padrão, usa a pasta COMPARTILHADA (public/imagens-prevenda/1.jpg, 2.jpg...) —
+        // a mesma foto serve pra todas as cidades, sem precisar duplicar nada. Se um dia você
+        // quiser uma cidade específica com foto diferente, é só criar uma pasta com o nome exato
+        // do slug dela (public/imagens-prevenda/<slug-da-prevenda>/1.jpg...) que o sistema passa
+        // a usar essa em vez da compartilhada, automaticamente.
+        var pastaFotosPropria = '/imagens-prevenda/' + slugPrevenda + '/';
+        var pastaFotosCompartilhada = '/imagens-prevenda/';
         var fotos = [];
         var indiceAtual = 0;
-        function tentarCarregarFoto(n) {
+        // Testa várias extensões/variações de maiúscula-minúscula pra cada número — assim não
+        // importa se a foto foi salva como "1.jpg", "1.JPG", "1.jpeg" ou "1.png", sempre encontra.
+        var EXTENSOES_TENTATIVA = ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp'];
+        function tentarCarregarFoto(n, indiceExtensao, usarPastaPropria) {
+            indiceExtensao = indiceExtensao || 0;
+            if (usarPastaPropria === undefined) usarPastaPropria = true;
+            if (indiceExtensao >= EXTENSOES_TENTATIVA.length) {
+                if (usarPastaPropria) { tentarCarregarFoto(n, 0, false); return; } // acabou a pasta própria, tenta a compartilhada
+                return; // acabou também a compartilhada — essa foto não existe em lugar nenhum, para por aqui
+            }
+            var pasta = usarPastaPropria ? pastaFotosPropria : pastaFotosCompartilhada;
+            var caminho = pasta + n + '.' + EXTENSOES_TENTATIVA[indiceExtensao];
             var img = new Image();
             img.onload = function () {
-                fotos.push(pastaFotos + n + '.jpg');
+                fotos.push(caminho);
                 var elImg = document.createElement('img');
-                elImg.src = pastaFotos + n + '.jpg';
+                elImg.src = caminho;
                 if (fotos.length === 1) elImg.className = 'ativa';
                 document.getElementById('foto-box').appendChild(elImg);
-                if (n < 5) tentarCarregarFoto(n + 1);
+                if (n < 5) tentarCarregarFoto(n + 1, 0, usarPastaPropria);
             };
-            img.onerror = function () { /* acabaram as fotos dessa pasta, para por aqui */ };
-            img.src = pastaFotos + n + '.jpg';
+            img.onerror = function () { tentarCarregarFoto(n, indiceExtensao + 1, usarPastaPropria); };
+            img.src = caminho;
         }
-        tentarCarregarFoto(1);
+        tentarCarregarFoto(1, 0, true);
         setInterval(function () {
             if (fotos.length < 2) return;
             var imgs = document.querySelectorAll('.foto-box img');
