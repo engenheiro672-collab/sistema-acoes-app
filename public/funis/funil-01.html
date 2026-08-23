@@ -133,7 +133,7 @@
     <!-- ⚡ Banner "Entrega grátis em [cidade]" — só aparece quando a pessoa vem de uma prévenda de
          cidade (parâmetro ?cidade= na URL). Pra qualquer acesso normal (sem esse parâmetro), esse
          banner nunca é criado nem mostrado — 100% seguro pro tráfego que já está no ar. -->
-    <div id="banner-entrega-cidade" style="display:none; position:sticky; top:0; z-index:200; background:linear-gradient(90deg,#1a8754,#22a866); color:#fff; text-align:center; font-weight:700; font-size:0.85rem; padding:0.55rem 1rem;"></div>
+    <div id="banner-entrega-cidade" class="banner-push-pulse" style="display:none; position:sticky; top:0; z-index:200; background:linear-gradient(135deg,#0a3d26,#145c37,#1a8754); background-size:200% 200%; color:#fff; text-align:center; font-weight:700; font-size:0.85rem; padding:0.55rem 1rem;"></div>
 
     <header class="header-bar shadow-lg sticky top-0 z-50 relative hidden">
         <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
@@ -429,7 +429,7 @@
                     var divEscape = document.createElement('div');
                     divEscape.textContent = cidade;
                     var cidadeSegura = divEscape.innerHTML;
-                    el.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff6b6b; font-weight:800;">' + cidadeSegura + '</span>';
+                    el.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + cidadeSegura + '</span>';
                     el.style.display = 'block';
                 }
             }
