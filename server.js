@@ -837,15 +837,20 @@ async function getPrevendaPublicData(slug) {
   const emCache = _prevendaCache[slug];
   if (emCache && (Date.now() - emCache.em) < PREVENDA_CACHE_MS) return emCache.dados;
 
-  const { data: prevenda } = await supabase.from('prevendas').select('*, sorteios(slug, nome, foto_url, pixel_fb_override), funis(slug)').eq('slug', slug).eq('ativo', true).maybeSingle();
+  const { data: prevenda } = await supabase.from('prevendas').select('*, sorteios(slug, nome, foto_url, fotos_galeria, pixel_fb_override), funis(slug)').eq('slug', slug).eq('ativo', true).maybeSingle();
   if (!prevenda) return null;
   const meta = await getPublicMeta();
+  // ⚡ A prévenda usa a SEGUNDA foto do sorteio (a primeira da galeria) — geralmente é a foto "só
+  // do produto", sem gente/contexto, que costuma performar melhor num anúncio. Se não tiver
+  // galeria configurada, cai pra foto principal (nunca fica sem imagem nenhuma).
+  const galeria = prevenda.sorteios?.fotos_galeria || [];
+  const fotoEscolhida = galeria[0] || prevenda.sorteios?.foto_url || '';
   const dados = {
     prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade, tema: prevenda.tema || 'escuro' },
-    // ⚡ foto_url do sorteio já vem junto nessa mesma consulta (nenhuma consulta a mais) — a
-    // prévenda usa ela como imagem garantida e instantânea, sem depender de nenhum arquivo em
-    // pasta que possa estar faltando ou com extensão diferente.
-    sorteio: { slug: prevenda.sorteios?.slug || null, nome: prevenda.sorteios?.nome || '', foto_url: prevenda.sorteios?.foto_url || '' },
+    // ⚡ Essa foto já vem junto nessa mesma consulta (nenhuma consulta a mais) — a prévenda usa ela
+    // como imagem garantida e instantânea, sem depender de nenhum arquivo em pasta que possa
+    // estar faltando ou com extensão diferente.
+    sorteio: { slug: prevenda.sorteios?.slug || null, nome: prevenda.sorteios?.nome || '', foto_url: fotoEscolhida },
     funilSlug: prevenda.funis?.slug || null,
     pixels: { facebook_pixel_id: prevenda.sorteios?.pixel_fb_override || meta.pixel_id || '', facebook_pixel_ids_extras: meta.pixel_ids_extras || [] }
   };

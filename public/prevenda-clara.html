@@ -35,7 +35,7 @@
         @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
         .rodape-foto { padding: 1rem; text-align: center; animation: entrar 0.6s ease both; animation-delay: 0.1s; }
-        .rodape-foto .caixa-titulo { background: #ffffff; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .rodape-foto .caixa-titulo { background: linear-gradient(145deg, #ffffff, #f2f4f7); border: 1.5px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
         .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
         .rodape-foto p { margin: 0.25rem 0 0; font-size: 0.82rem; color: rgba(33,43,54,0.65); }
 
@@ -46,7 +46,7 @@
         .tutorial-box h2 { font-size: 1rem; font-weight: 800; text-align: center; margin: 0 0 1.1rem; color: #4ade80; }
         .passo { display: flex; gap: 0.8rem; margin-bottom: 1rem; align-items: flex-start; }
         .passo:last-child { margin-bottom: 0; }
-        .passo-num { flex-shrink: 0; width: 30px; height: 30px; background: linear-gradient(135deg, #1a8754, #22a866); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; }
+        .passo-num { flex-shrink: 0; width: 30px; height: 30px; background: linear-gradient(135deg, #1a8754, #22a866); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; color: #fff; }
         .passo strong { display: block; font-size: 0.9rem; margin-bottom: 0.15rem; }
         .passo p { margin: 0; font-size: 0.8rem; color: rgba(33,43,54,0.6); line-height: 1.35; }
 
@@ -73,12 +73,12 @@
             <span class="atencao" id="txt-atencao">Atenção!</span>
             <p class="mensagem" id="txt-mensagem">Transferência, documentação, emplacamento e entrega 100% grátis.</p>
             <br>
-            <span class="cta-clique">👇 Clique abaixo para participar</span>
+            <span class="cta-clique">Clique abaixo para participar</span>
         </div>
 
         <div class="foto-box" id="foto-box">
             <span class="tag-ending">Adquira Já</span>
-            <button class="btn-flutuante" id="btn-participar">👆 Clique para participar</button>
+            <button class="btn-flutuante" id="btn-participar">Clique para participar</button>
         </div>
 
         <div class="rodape-foto">
@@ -109,7 +109,7 @@
         </div>
 
         <div class="cta-final">
-            <button class="btn-participar-grande" id="btn-participar-2">👆 Quero Participar Agora</button>
+            <button class="btn-participar-grande" id="btn-participar-2">Quero Participar Agora</button>
         </div>
     </div>
 
@@ -266,13 +266,23 @@
         var urlDestino = funilSlug && sorteio.slug
             ? '/sorteio/' + encodeURIComponent(sorteio.slug) + '/' + encodeURIComponent(funilSlug) + (cidade ? '?cidade=' + encodeURIComponent(cidade) : '')
             : (sorteio.slug ? '/sorteio/' + encodeURIComponent(sorteio.slug) + (cidade ? '?cidade=' + encodeURIComponent(cidade) : '') : '/');
+        // ⚡ Só começa a buscar o site de destino depois que a JANELA JÁ TERMINOU DE CARREGAR
+        // de verdade (evento "load" do navegador — a prévenda inteira, com a foto e tudo, já está
+        // 100% visível e pronta) + uma folga extra. Antes, isso disparava com um tempo fixo
+        // "chutado" que podia começar cedo demais, competindo com a prévenda ainda aparecendo na
+        // tela — agora é garantido pelo próprio navegador que a prévenda está pronta primeiro.
         var htmlDestinoPronto = null;
-        setTimeout(function () {
+        function iniciarPreCarregamentoDestino() {
             fetch(urlDestino, { credentials: 'same-origin' })
                 .then(function (r) { return r.ok ? r.text() : null; })
                 .then(function (html) { if (html) htmlDestinoPronto = html; })
                 .catch(function () {});
-        }, 600);
+        }
+        if (document.readyState === 'complete') {
+            setTimeout(iniciarPreCarregamentoDestino, 500);
+        } else {
+            window.addEventListener('load', function () { setTimeout(iniciarPreCarregamentoDestino, 500); });
+        }
 
         function irParaDestino() {
             if (htmlDestinoPronto) {
