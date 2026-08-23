@@ -427,7 +427,10 @@
             if (cidade) {
                 var el = document.getElementById('banner-entrega-cidade');
                 if (el) {
-                    el.textContent = '🚚 Entrega grátis em ' + cidade;
+                    var divEscape = document.createElement('div');
+                    divEscape.textContent = cidade;
+                    var cidadeSegura = divEscape.innerHTML;
+                    el.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff6b6b; font-weight:800;">' + cidadeSegura + '</span>';
                     el.style.display = 'block';
                 }
             }

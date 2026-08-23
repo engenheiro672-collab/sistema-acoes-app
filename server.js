@@ -827,11 +827,20 @@ app.get('/sorteio/:slug/:funilSlug', gravarAtribuicaoDoFunil, trackearAcesso, as
 // clicar em participar é que ela é levada pro funil configurado (que pode ser um funil de teste,
 // sem afetar nada do tráfego real que já está rodando).
 // ============================================================================
+// ⚡ Cache em memória, igual já é feito com "configuracoes" e os pixels extras — evita bater no
+// banco a cada visita da prévenda. A partir da segunda visita (de QUALQUER pessoa) dentro da
+// janela de cache, o servidor nem chega a conversar com o Supabase — responde na hora.
+const PREVENDA_CACHE_MS = 5 * 60 * 1000;
+let _prevendaCache = {};
+function invalidarCachePrevendas() { _prevendaCache = {}; }
 async function getPrevendaPublicData(slug) {
+  const emCache = _prevendaCache[slug];
+  if (emCache && (Date.now() - emCache.em) < PREVENDA_CACHE_MS) return emCache.dados;
+
   const { data: prevenda } = await supabase.from('prevendas').select('*, sorteios(slug, nome, foto_url, pixel_fb_override), funis(slug)').eq('slug', slug).eq('ativo', true).maybeSingle();
   if (!prevenda) return null;
   const meta = await getPublicMeta();
-  return {
+  const dados = {
     prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade, tema: prevenda.tema || 'escuro' },
     // ⚡ foto_url do sorteio já vem junto nessa mesma consulta (nenhuma consulta a mais) — a
     // prévenda usa ela como imagem garantida e instantânea, sem depender de nenhum arquivo em
@@ -840,6 +849,8 @@ async function getPrevendaPublicData(slug) {
     funilSlug: prevenda.funis?.slug || null,
     pixels: { facebook_pixel_id: prevenda.sorteios?.pixel_fb_override || meta.pixel_id || '', facebook_pixel_ids_extras: meta.pixel_ids_extras || [] }
   };
+  _prevendaCache[slug] = { dados, em: Date.now() };
+  return dados;
 }
 
 app.get('/prevenda/:slug', async (req, res) => {
@@ -910,10 +921,11 @@ app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) 
 
 app.delete('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
   try {
-    const { data: prevenda } = await supabase.from('prevendas').select('funil_id').eq('id', req.params.id).maybeSingle();
+    const { data: prevenda } = await supabase.from('prevendas').select('funil_id, slug').eq('id', req.params.id).maybeSingle();
     await supabase.from('prevendas').delete().eq('id', req.params.id);
     // O funil criado automaticamente junto some com ela — não faz sentido sobrar sozinho.
     if (prevenda?.funil_id) await supabase.from('funis').delete().eq('id', prevenda.funil_id);
+    if (prevenda?.slug) delete _prevendaCache[prevenda.slug];
     return ok(res);
   } catch (e) { return fail(res); }
 });
