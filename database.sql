@@ -30,8 +30,18 @@ create table if not exists usuarios (
   email text,
   cpf text,
   endereco text,
+  -- ⚡ Cidade da prévenda que a trouxe (se veio de uma) — gravada PERMANENTEMENTE na primeira vez
+  -- que ela é reconhecida/comprou. Depois disso, mesmo comprando de novo sem passar pelo link de
+  -- cidade nenhum, ela continua sendo atribuída à mesma cidade e vendo a mensagem certa.
+  cidade text,
+  -- ⚡ fbclid do primeiro clique no anúncio (qualquer um, não só de prévenda) — guardado igual a
+  -- cidade, permanentemente. É o que permite mandar a compra pro Meta pela API de Conversões
+  -- "casada" com o clique original do anúncio, mesmo dias depois.
+  fbclid text,
   created_at timestamptz default now()
 );
+alter table usuarios add column if not exists cidade text;
+alter table usuarios add column if not exists fbclid text;
 
 -- ============================================================================
 -- 3) SORTEIOS
@@ -123,6 +133,11 @@ create table if not exists prevendas (
 create unique index if not exists idx_prevendas_sorteio_slug on prevendas(sorteio_id, slug);
 alter table prevendas add column if not exists tema text default 'escuro';
 
+-- ⚡ Só agora (depois que "prevendas" já existe) dá pra ligar "usuarios" a ela — a cidade PERMANENTE
+-- do comprador já existia, isso aqui adiciona qual prévenda ESPECÍFICA foi a primeira a trazê-lo
+-- (útil quando duas prévendas compartilham o mesmo nome de cidade).
+alter table usuarios add column if not exists prevenda_id uuid references prevendas(id) on delete set null;
+
 -- ============================================================================
 -- 5) LINKS DE RASTREAMENTO — manuais (WhatsApp, Ads...) e automáticos (UTM)
 -- ============================================================================
@@ -173,12 +188,48 @@ create table if not exists pedidos (
   pix_copia_cola text,
   pix_qr_code_base64 text,
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  updated_at timestamptz default now(),
+  -- ⚡ Cidade permanente do comprador (vem do cadastro dele) no momento da compra — guardada aqui
+  -- pra sempre poder filtrar/relatar vendas por cidade sem precisar recalcular depois.
+  cidade text,
+  prevenda_id uuid references prevendas(id) on delete set null, -- qual prévenda ESPECÍFICA trouxe esse comprador (não só a cidade)
+  fbclid text -- fbclid do comprador, pra mandar pra API de Conversões "casado" com o clique original
 );
 create index if not exists idx_pedidos_status on pedidos(status);
 create index if not exists idx_pedidos_sorteio on pedidos(sorteio_id);
 create index if not exists idx_pedidos_token on pedidos(token);
 create index if not exists idx_pedidos_gateway_payment_id on pedidos(gateway_payment_id);
+alter table pedidos add column if not exists fbclid text;
+alter table pedidos add column if not exists cidade text;
+alter table pedidos add column if not exists prevenda_id uuid references prevendas(id) on delete set null;
+
+-- ============================================================================
+-- LINHA DO TEMPO DO LEAD (base do CRM completo por cidade) — cada linha é um passo importante da
+-- jornada: visitou a prévenda, virou lead, iniciou um checkout (com valor), comprou de verdade
+-- (com valor), girou a roleta, etc. É daqui que a aba "Analisar" (por cidade) e o futuro envio de
+-- segurança pro Meta (API de Conversões) vão puxar os dados.
+-- ============================================================================
+create table if not exists eventos_lead (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid references usuarios(id) on delete set null,
+  telefone text,
+  sorteio_id uuid references sorteios(id) on delete cascade,
+  pedido_id uuid references pedidos(id) on delete set null,
+  tipo_evento text not null,  -- 'visita_prevenda' | 'resposta_cidade' | 'lead' | 'iniciar_checkout' | 'compra' | 'giro_roleta'
+  valor numeric(12,2),
+  cidade text,
+  -- ⚡ Além da cidade (texto), agora também guarda de qual PRÉVENDA ESPECÍFICA veio — assim dá
+  -- pra ver tanto tudo somado por cidade, quanto cada link/prévenda separado, mesmo que duas
+  -- prévendas compartilhem o mesmo nome de cidade.
+  prevenda_id uuid references prevendas(id) on delete set null,
+  metadata jsonb,
+  created_at timestamptz default now()
+);
+create index if not exists idx_eventos_lead_usuario on eventos_lead(usuario_id);
+create index if not exists idx_eventos_lead_sorteio_tipo on eventos_lead(sorteio_id, tipo_evento);
+create index if not exists idx_eventos_lead_cidade on eventos_lead(cidade);
+create index if not exists idx_eventos_lead_prevenda on eventos_lead(prevenda_id);
+alter table eventos_lead add column if not exists prevenda_id uuid references prevendas(id) on delete set null;
 
 -- ============================================================================
 -- 8) COTAS — os números gerados quando um pedido é aprovado
@@ -317,9 +368,13 @@ create table if not exists pixels_meta_extras (
   id uuid primary key default gen_random_uuid(),
   nome text,
   pixel_id text not null,
+  -- ⚡ Token da API de Conversões DESSE pixel específico — o Meta amarra o token a cada pixel, então
+  -- cada um aqui pode (e normalmente precisa) ter o seu próprio, diferente do token do pixel principal.
+  capi_token text,
   ativo boolean not null default true,
   created_at timestamptz default now()
 );
+alter table pixels_meta_extras add column if not exists capi_token text;
 
 -- ============================================================================
 -- 14e) NOTIFICAÇÕES PUSH — inscrições e disparos

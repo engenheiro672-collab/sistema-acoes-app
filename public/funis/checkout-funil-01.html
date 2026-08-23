@@ -96,6 +96,9 @@
     </style>
 </head>
 <body class="min-h-screen">
+    <!-- ⚡ Banner "Entrega grátis em [cidade]" — só aparece se o comprador tiver uma cidade salva
+         (veio de uma prévenda alguma vez, mesmo que não tenha sido nessa compra específica). -->
+    <div id="banner-entrega-cidade" style="display:none; position:sticky; top:0; z-index:200; background:linear-gradient(135deg,#0a3d26,#145c37,#1a8754); background-size:200% 200%; color:#fff; text-align:center; font-weight:700; font-size:0.85rem; padding:0.55rem 1rem;" class="banner-push-pulse"></div>
 
     <main id="checkout-container" class="container mx-auto max-w-2xl p-4">
         <div style="height:0.5rem;"></div>
@@ -587,7 +590,7 @@
                     num_items: data.pixel_data.num_items,
                     content_name: data.pixel_data.sorteio_nome,
                     content_category: 'Raffle'
-                });
+                }, data.pixel_data.event_id ? { eventID: data.pixel_data.event_id } : undefined);
                 try { if (TOKEN) localStorage.setItem('purchase_disparado_' + TOKEN, '1'); } catch (e) {}
             }
 
@@ -1069,6 +1072,18 @@
             PEDIDO_TELEFONE = pedido.usuarios?.telefone || null;
             PEDIDO_SORTEIO_ID = pedido.sorteio_id || null;
 
+            // ⚡ Banner "Entrega grátis em [cidade]" — usa a cidade salva permanentemente no
+            // cadastro do comprador (não depende de vir de uma prévenda nessa compra específica).
+            if (pedido.usuarios?.cidade) {
+                var elBanner = document.getElementById('banner-entrega-cidade');
+                if (elBanner) {
+                    var divEscape = document.createElement('div');
+                    divEscape.textContent = pedido.usuarios.cidade;
+                    elBanner.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + divEscape.innerHTML + '</span>';
+                    elBanner.style.display = 'block';
+                }
+            }
+
             if (modo_teste_pagamento && !pagoInicial) $('#card-modo-teste').removeClass('hidden');
 
             injetarPixels(pixels);
@@ -1115,7 +1130,7 @@
                 aprovarPagamentoFront({
                     cotas: COTAS_GERADAS_INICIAIS,
                     link_grupo_vip: pedido.sorteios?.link_grupo_vip || null,
-                    pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome || '' },
+                    pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome || '', event_id: `purchase_${pedido.id}` },
                     funil: FUNIL_DATA
                 });
             } else {

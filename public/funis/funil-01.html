@@ -439,6 +439,13 @@
         if (LK_DA_URL) {
             try { localStorage.setItem('lk_cravado', JSON.stringify({ codigo: LK_DA_URL, expira: Date.now() + 7 * 24 * 60 * 60 * 1000 })); } catch (e) {}
         }
+        // ⚡ Guarda o fbclid (vem de qualquer anúncio, não só de prévenda) permanentemente — é o
+        // que permite mandar a compra pra API de Conversões "casada" com o clique original, mesmo
+        // que a pessoa volte pra comprar dias depois.
+        try {
+            var fbclidDaUrl = URL_PARAMS.get('fbclid');
+            if (fbclidDaUrl) localStorage.setItem('fbclid_salvo', fbclidDaUrl);
+        } catch (e) {}
         const LINK_CODIGO = LK_DA_URL || (function() {
             try {
                 const salvo = JSON.parse(localStorage.getItem('lk_cravado') || 'null');
@@ -1263,10 +1270,24 @@
                 $('#btn-continuar-telefone').prop('disabled', true).text('Localizando comprador no sistema...');
                 $.ajax({
                     url: '/api/public/usuarios/verificar', type: 'POST', contentType: 'application/json',
-                    data: JSON.stringify({ telefone: telLimpo })
+                    data: JSON.stringify({ telefone: telLimpo, sorteio_id: SORTEIO_DATA.id, cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(), prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(), fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })() })
                 }).done(function(resp) {
                     $('#btn-continuar-telefone').prop('disabled', false).text('Continuar');
                     COMPRADOR_CONHECIDO = resp.existe ? resp : null;
+
+                    // ⚡ Se o sistema já reconheceu (ou acabou de gravar) uma cidade pra essa pessoa,
+                    // mostra/atualiza o banner "Entrega grátis em X" mesmo que ela não tenha vindo
+                    // agora mesmo por um link de cidade — ela continua reconhecida pra sempre.
+                    if (resp.cidade) {
+                        try { sessionStorage.setItem('cidade_prevenda', resp.cidade); } catch (e) {}
+                        var elBanner = document.getElementById('banner-entrega-cidade');
+                        if (elBanner && elBanner.style.display === 'none') {
+                            var divEscape = document.createElement('div');
+                            divEscape.textContent = resp.cidade;
+                            elBanner.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + divEscape.innerHTML + '</span>';
+                            elBanner.style.display = 'block';
+                        }
+                    }
 
                     // Mostra só os campos que realmente faltam (nome só se for comprador novo)
                     const precisaNome = !COMPRADOR_CONHECIDO;
@@ -1373,7 +1394,10 @@
                         endereco: endereco || null,
                         funil_id: FUNIL_DATA ? FUNIL_DATA.id : null,
                         link_codigo: LINK_CODIGO,
-                        veio_de_combo_roleta: VEIO_DE_COMBO_ROLETA
+                        veio_de_combo_roleta: VEIO_DE_COMBO_ROLETA,
+                        cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(),
+                        prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(),
+                        fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })()
                     }),
                     beforeSend: function() {
                         $('#btn-participar').prop('disabled', true); $('#btn-participar-label').text('Processando...');
@@ -1392,7 +1416,7 @@
                                 num_items: response.pixel_data.num_items,
                                 content_name: SORTEIO_DATA.nome,
                                 content_category: 'Raffle'
-                            });
+                            }, response.pixel_data.event_id ? { eventID: response.pixel_data.event_id } : undefined);
                         }
                         if (response.payment) {
                             try {

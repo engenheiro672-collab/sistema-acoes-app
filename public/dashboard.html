@@ -1027,6 +1027,7 @@
                 <div class="tab-btn" data-linktab="criar-link" onclick="mudarLinkTab('criar-link', this)">🔗 Criar Link</div>
                 <div class="tab-btn" data-linktab="criar-funil" onclick="mudarLinkTab('criar-funil', this)">🧩 Criar Funil</div>
                 <div class="tab-btn" data-linktab="cidades" onclick="mudarLinkTab('cidades', this)">🏙️ Cidades</div>
+                <div class="tab-btn" data-linktab="analisar-cidades" onclick="mudarLinkTab('analisar-cidades', this)">📊 Analisar Cidades</div>
             </div>
 
             <div id="linktab-comparativo" class="linktab-content">
@@ -1188,7 +1189,8 @@
                                 </select>
                             </div>
                         </div>
-                        <button type="button" class="btn-primary" onclick="criarPrevenda()">Criar Prévenda</button>
+                        <button type="button" id="btn-salvar-cidade" class="btn-primary" onclick="criarPrevenda()">Criar Prévenda</button>
+                        <button type="button" id="btn-cancelar-edicao-cidade" class="hidden text-gray-400 hover:text-white text-sm ml-3" onclick="cancelarEdicaoPrevenda()">Cancelar edição</button>
                     </div>
 
                     <div class="mt-4">
@@ -1197,6 +1199,52 @@
                     <div id="lista-prevendas" class="space-y-3 mt-4"></div>
                     <p class="text-xs text-gray-500 mt-2">💡 As fotos da prévenda ficam em <code class="text-purple-300">public/imagens-prevenda/&lt;slug-da-prevenda&gt;/1.jpg, 2.jpg...</code> — suba os arquivos manualmente com esses nomes. O slug aparece no próprio link copiado.</p>
                 </div>
+            </div>
+
+            <!-- ===================== ANALISAR CIDADES ===================== -->
+            <div id="linktab-analisar-cidades" class="linktab-content hidden">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">📊 Desempenho por cidade</h4>
+                    <p class="text-xs text-gray-500 mb-3">Jornada completa do seu próprio sistema — visitas na prévenda, quantos confirmaram "sim"/"não" na pergunta da cidade, leads, checkouts iniciados e compras de verdade, com valor.</p>
+                    <select id="analise-cidade-sorteio-select" class="input-dark mb-3 max-w-md" onchange="onAnaliseSorteioChange(this.value)"><option value="">Selecione o sorteio...</option></select>
+
+                    <div class="flex gap-1 mb-3">
+                        <button type="button" id="btn-modo-cidade" class="tab-btn active" onclick="mudarModoAnalise('cidade')">Agrupado por cidade</button>
+                        <button type="button" id="btn-modo-prevenda" class="tab-btn" onclick="mudarModoAnalise('prevenda')">Cada prévenda separada</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3" id="aviso-modo-cidade">💡 Se duas prévendas tiverem o mesmo nome de cidade, os números delas aparecem somados aqui. Clique numa linha pra ver o gráfico dia a dia.</p>
+                    <p class="text-xs text-gray-500 mb-3 hidden" id="aviso-modo-prevenda">💡 Cada linha é um link/prévenda específico, mesmo que compartilhem o nome da cidade com outra.</p>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead><tr class="text-left text-gray-400 border-b border-gray-800" id="cabecalho-analise-cidades">
+                                <th class="p-2">Cidade</th>
+                                <th class="p-2">Visitas</th>
+                                <th class="p-2">Sim</th>
+                                <th class="p-2">Não</th>
+                                <th class="p-2">Leads</th>
+                                <th class="p-2">Checkouts</th>
+                                <th class="p-2">Valor Checkout</th>
+                                <th class="p-2">Compras</th>
+                                <th class="p-2">Faturamento</th>
+                                <th class="p-2">Giros Roleta</th>
+                                <th class="p-2">Conversão</th>
+                            </tr></thead>
+                            <tbody id="tabela-analise-cidades"><tr><td colspan="11" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de detalhe de uma cidade (gráfico dia a dia) -->
+        <div id="modal-detalhe-cidade" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 p-4">
+            <div class="bg-darkCard border border-gray-800 rounded-xl p-5 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white" id="detalhe-cidade-titulo">Cidade</h3>
+                    <button onclick="$('#modal-detalhe-cidade').addClass('hidden')" class="text-gray-400 hover:text-white text-xl">&times;</button>
+                </div>
+                <div id="detalhe-cidade-corpo"></div>
             </div>
         </div>
 
@@ -1268,9 +1316,12 @@
             <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-2xl mt-6">
                 <h3 class="font-semibold text-white mb-1">🔁 Pixels adicionais do Meta</h3>
                 <p class="text-gray-500 text-xs mb-4">Adicione quantos pixels extras quiser (testar contas diferentes, por exemplo). Todos recebem exatamente os mesmos eventos e valores que o pixel principal — em todas as páginas, automaticamente.</p>
-                <div class="flex gap-2 mb-4">
+                <div class="flex gap-2 mb-2">
                     <input id="novo-pixel-nome" placeholder="Nome (opcional, só pra você identificar)" class="input-dark" style="flex:1;">
                     <input id="novo-pixel-id" placeholder="ID do pixel (só números)" class="input-dark" style="max-width:220px;">
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <input id="novo-pixel-capi-token" placeholder="Token da API de Conversões desse pixel (opcional por enquanto)" class="input-dark" style="flex:1;">
                     <button type="button" class="btn-primary" onclick="adicionarPixelExtra()">Adicionar</button>
                 </div>
                 <div id="lista-pixels-extras" class="space-y-2"></div>
@@ -3071,6 +3122,7 @@ function renderListaPrevendas() {
                         <p class="text-xs text-purple-300">Manda pra: ${p.funis?.arquivo_html || 'sorteio.html'} ${p.funis?.arquivo_checkout_html ? '(checkout: ' + p.funis.arquivo_checkout_html + ')' : ''}</p>
                     </div>
                     <div class="flex gap-2 flex-shrink-0">
+                        <button class="text-blue-300 hover:text-blue-200 text-sm" onclick="abrirEdicaoPrevenda('${p.id}')"><i class="bi bi-pencil"></i> Editar</button>
                         <button class="text-gray-300 hover:text-white text-sm" onclick="navigator.clipboard.writeText('${link}'); this.textContent='Copiado!'; setTimeout(()=>this.textContent='Copiar link',1500)">Copiar link</button>
                         <button class="text-red-400 hover:text-red-300 text-sm" onclick="excluirPrevenda('${p.id}')"><i class="bi bi-trash"></i></button>
                     </div>
@@ -3078,6 +3130,27 @@ function renderListaPrevendas() {
             </div>
         `;
     }).join(''));
+}
+let PREVENDA_EDITANDO_ID = null;
+function abrirEdicaoPrevenda(id) {
+    const p = PREVENDAS_CACHE_ATUAL.find(x => x.id === id);
+    if (!p) return;
+    PREVENDA_EDITANDO_ID = id;
+    $('#cidade-nome').val(p.nome);
+    $('#cidade-nome-exibido').val(p.cidade);
+    $('#cidade-canal').val(p.canal || 'facebook_ads');
+    $('#cidade-tema').val(p.tema || 'escuro');
+    $('#cidade-arquivo-html').val(p.funis?.arquivo_html || 'sorteio.html');
+    $('#cidade-arquivo-checkout').val(p.funis?.arquivo_checkout_html || 'checkout.html');
+    $('#btn-salvar-cidade').text('Salvar alterações').addClass('bg-blue-600').removeClass('btn-primary');
+    $('#btn-cancelar-edicao-cidade').removeClass('hidden');
+    $('html, body').animate ? null : window.scrollTo(0, document.getElementById('box-add-cidade').offsetTop - 80);
+}
+function cancelarEdicaoPrevenda() {
+    PREVENDA_EDITANDO_ID = null;
+    $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
+    $('#btn-salvar-cidade').text('Criar Prévenda').removeClass('bg-blue-600').addClass('btn-primary');
+    $('#btn-cancelar-edicao-cidade').addClass('hidden');
 }
 function criarPrevenda() {
     if (!SORTEIO_CIDADE_ID) return notificar('Selecione o sorteio primeiro.', 'erro');
@@ -3092,6 +3165,14 @@ function criarPrevenda() {
         arquivo_html: $('#cidade-arquivo-html').val(),
         arquivo_checkout_html: $('#cidade-arquivo-checkout').val()
     };
+    if (PREVENDA_EDITANDO_ID) {
+        api('PUT', `/api/admin/prevendas/${PREVENDA_EDITANDO_ID}`, payload).then(() => {
+            cancelarEdicaoPrevenda();
+            carregarPrevendas(SORTEIO_CIDADE_ID);
+            notificar('Prévenda atualizada!', 'sucesso');
+        }).catch(err => notificar('Erro ao salvar: ' + (err.error || ''), 'erro'));
+        return;
+    }
     api('POST', `/api/admin/sorteios/${SORTEIO_CIDADE_ID}/prevendas`, payload).then(() => {
         $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
         carregarPrevendas(SORTEIO_CIDADE_ID);
@@ -3102,6 +3183,117 @@ function excluirPrevenda(id) {
     confirmar('Excluir prévenda', 'O link dessa cidade deixará de funcionar. Não pode ser desfeito.').then(yes => {
         if (!yes) return;
         api('DELETE', `/api/admin/prevendas/${id}`).then(() => carregarPrevendas(SORTEIO_CIDADE_ID));
+    });
+}
+
+// ---------------- ANALISAR CIDADES ----------------
+let SORTEIO_ANALISE_ID = null;
+let MODO_ANALISE_ATUAL = 'cidade';
+function onAnaliseSorteioChange(sorteioId) {
+    SORTEIO_ANALISE_ID = sorteioId || null;
+    carregarAnaliseCidades();
+}
+function mudarModoAnalise(modo) {
+    MODO_ANALISE_ATUAL = modo;
+    $('#btn-modo-cidade, #btn-modo-prevenda').removeClass('active');
+    $('#btn-modo-' + modo).addClass('active');
+    $('#aviso-modo-cidade').toggleClass('hidden', modo !== 'cidade');
+    $('#aviso-modo-prevenda').toggleClass('hidden', modo !== 'prevenda');
+    carregarAnaliseCidades();
+}
+function carregarAnaliseCidades() {
+    if (!SORTEIO_ANALISE_ID) { $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr>'); return; }
+    $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Carregando...</td></tr>');
+    if (MODO_ANALISE_ATUAL === 'cidade') {
+        api('GET', `/api/admin/sorteios/${SORTEIO_ANALISE_ID}/analise-cidades`).then(d => {
+            const cidades = d.cidades || [];
+            if (cidades.length === 0) {
+                $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Nenhuma cidade com dados ainda pra esse sorteio.</td></tr>');
+                return;
+            }
+            $('#tabela-analise-cidades').html(cidades.map(c => `
+                <tr class="border-b border-gray-800/60 cursor-pointer hover:bg-gray-800/40" onclick="abrirDetalheCidade('${c.cidade.replace(/'/g, "\\'")}')">
+                    <td class="p-2 font-semibold text-white">📍 ${c.cidade}</td>
+                    <td class="p-2 text-pink-400">${c.visitas}</td>
+                    <td class="p-2 text-green-400">${c.sim || 0}</td>
+                    <td class="p-2 text-red-400">${c.nao || 0}</td>
+                    <td class="p-2 text-blue-400">${c.leads}</td>
+                    <td class="p-2">${c.checkouts}</td>
+                    <td class="p-2 text-yellow-400">${formatBR(c.valor_checkout)}</td>
+                    <td class="p-2 text-blue-300">${c.compras}</td>
+                    <td class="p-2 text-green-400 font-semibold">${formatBR(c.valor_compra)}</td>
+                    <td class="p-2">${c.giros_roleta}</td>
+                    <td class="p-2 text-purple-400">${(c.conversao || 0).toFixed(1)}%</td>
+                </tr>
+            `).join(''));
+        });
+    } else {
+        api('GET', `/api/admin/sorteios/${SORTEIO_ANALISE_ID}/analise-prevendas`).then(d => {
+            const prevendas = d.prevendas || [];
+            if (prevendas.length === 0) {
+                $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Nenhuma prévenda com dados ainda pra esse sorteio.</td></tr>');
+                return;
+            }
+            $('#tabela-analise-cidades').html(prevendas.map(p => `
+                <tr class="border-b border-gray-800/60">
+                    <td class="p-2 font-semibold text-white">📍 ${p.cidade} <span class="text-gray-500 text-xs">(${p.nome})</span> ${p.ativo === false ? '<span class="badge badge-outro">Inativa</span>' : ''}</td>
+                    <td class="p-2 text-pink-400">${p.visitas}</td>
+                    <td class="p-2 text-green-400">${p.sim || 0}</td>
+                    <td class="p-2 text-red-400">${p.nao || 0}</td>
+                    <td class="p-2 text-blue-400">${p.leads}</td>
+                    <td class="p-2">${p.checkouts}</td>
+                    <td class="p-2 text-yellow-400">${formatBR(p.valor_checkout)}</td>
+                    <td class="p-2 text-blue-300">${p.compras}</td>
+                    <td class="p-2 text-green-400 font-semibold">${formatBR(p.valor_compra)}</td>
+                    <td class="p-2">${p.giros_roleta}</td>
+                    <td class="p-2 text-purple-400">${(p.conversao || 0).toFixed(1)}%</td>
+                </tr>
+            `).join(''));
+        });
+    }
+}
+function abrirDetalheCidade(cidade) {
+    if (!SORTEIO_ANALISE_ID) return;
+    fetch(`/api/admin/analise-cidade-detalhe?sorteio_id=${SORTEIO_ANALISE_ID}&cidade=${encodeURIComponent(cidade)}`, { credentials: 'include' }).then(r => r.json()).then(d => {
+        $('#detalhe-cidade-titulo').text('📍 ' + cidade);
+        $('#detalhe-cidade-corpo').html(`
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                <div class="metric-card"><p class="text-xs opacity-60">Visitas na prévenda</p><p class="text-xl font-bold text-pink-400">${d.totais.visitas}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Confirmaram "Sim"</p><p class="text-xl font-bold text-green-400">${d.totais.sim || 0}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Confirmaram "Não"</p><p class="text-xl font-bold text-red-400">${d.totais.nao || 0}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Leads</p><p class="text-xl font-bold text-blue-400">${d.totais.leads}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Checkouts iniciados</p><p class="text-xl font-bold text-white">${d.totais.checkouts}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Valor em checkout</p><p class="text-xl font-bold text-yellow-400">${formatBR(d.totais.valor_checkout)}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Compras</p><p class="text-xl font-bold text-blue-300">${d.totais.compras}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Faturamento</p><p class="text-xl font-bold text-green-400">${formatBR(d.totais.valor_compra)}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Giros de roleta</p><p class="text-xl font-bold text-white">${d.totais.giros_roleta}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Conversão (visita → compra)</p><p class="text-xl font-bold text-purple-400">${(d.conversao || 0).toFixed(1)}%</p></div>
+            </div>
+            <canvas id="grafico-detalhe-cidade" height="120"></canvas>
+        `);
+        $('#modal-detalhe-cidade').removeClass('hidden').css('display', 'flex');
+        const ctx = document.getElementById('grafico-detalhe-cidade');
+        if (window.CHART_DETALHE_CIDADE) window.CHART_DETALHE_CIDADE.destroy();
+        window.CHART_DETALHE_CIDADE = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: (d.serie || []).map(s => new Date(s.dia + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
+                datasets: [
+                    { label: 'Visitas', data: (d.serie || []).map(s => s.visitas), borderColor: '#ec4899', tension: 0.4, yAxisID: 'y' },
+                    { label: 'Leads', data: (d.serie || []).map(s => s.leads), borderColor: '#60a5fa', tension: 0.4, yAxisID: 'y' },
+                    { label: 'Compras', data: (d.serie || []).map(s => s.compras), borderColor: '#93c5fd', tension: 0.4, yAxisID: 'y' },
+                    { label: 'Faturamento', data: (d.serie || []).map(s => s.valor_compra), borderColor: '#22c55e', tension: 0.4, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                plugins: { legend: { labels: { color: '#e6edf3' } } },
+                scales: {
+                    x: { ticks: { color: '#9ca3af' } },
+                    y: { position: 'left', ticks: { color: '#9ca3af' } },
+                    y1: { position: 'right', ticks: { color: '#9ca3af' }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
     });
 }
 
@@ -3322,7 +3514,7 @@ $(document).on('click', '.sortable-th', function() {
 
 function popularFiltroLinksSorteio() {
     $('#filtro-links-sorteio').html('<option value="todos">Todos os sorteios</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
-    $('#link-sorteio-select, #funil-sorteio-select, #cidade-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
+    $('#link-sorteio-select, #funil-sorteio-select, #cidade-sorteio-select, #analise-cidade-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
 }
 
 // ---------------- PEDIDOS ----------------
@@ -3795,16 +3987,22 @@ function carregarPixelsExtras() {
             return;
         }
         $('#lista-pixels-extras').html(lista.map(p => `
-            <div class="flex items-center justify-between bg-gray-900 rounded-lg px-4 py-2">
-                <div>
-                    <span class="text-white font-semibold">${p.nome || 'Sem nome'}</span>
-                    <span class="text-gray-500 text-sm ml-2">${p.pixel_id}</span>
+            <div class="bg-gray-900 rounded-lg px-4 py-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-white font-semibold">${p.nome || 'Sem nome'}</span>
+                        <span class="text-gray-500 text-sm ml-2">${p.pixel_id}</span>
+                        ${p.capi_token ? '<span class="text-green-400 text-xs ml-2">✓ API de Conversões configurada</span>' : '<span class="text-yellow-500 text-xs ml-2">Sem token de conversão ainda</span>'}
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer">
+                            <input type="checkbox" ${p.ativo ? 'checked' : ''} onchange="alternarPixelExtra('${p.id}', this.checked)"> Ativo
+                        </label>
+                        <button type="button" class="text-red-400 hover:text-red-300" onclick="removerPixelExtra('${p.id}')" title="Remover"><i class="bi bi-trash"></i></button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-3">
-                    <label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer">
-                        <input type="checkbox" ${p.ativo ? 'checked' : ''} onchange="alternarPixelExtra('${p.id}', this.checked)"> Ativo
-                    </label>
-                    <button type="button" class="text-red-400 hover:text-red-300" onclick="removerPixelExtra('${p.id}')" title="Remover"><i class="bi bi-trash"></i></button>
+                <div class="flex gap-2 mt-2">
+                    <input class="input-dark text-xs" style="flex:1;" placeholder="Token da API de Conversões desse pixel" value="${p.capi_token || ''}" onchange="salvarCapiTokenPixelExtra('${p.id}', this.value)">
                 </div>
             </div>
         `).join(''));
@@ -3813,12 +4011,16 @@ function carregarPixelsExtras() {
 function adicionarPixelExtra() {
     const nome = $('#novo-pixel-nome').val().trim();
     const pixel_id = $('#novo-pixel-id').val().trim();
+    const capi_token = $('#novo-pixel-capi-token').val().trim();
     if (!pixel_id) return notificar('Informe o ID do pixel.', 'erro');
-    api('POST', '/api/admin/pixels-meta-extras', { nome, pixel_id }).then(() => {
-        $('#novo-pixel-nome, #novo-pixel-id').val('');
+    api('POST', '/api/admin/pixels-meta-extras', { nome, pixel_id, capi_token: capi_token || null }).then(() => {
+        $('#novo-pixel-nome, #novo-pixel-id, #novo-pixel-capi-token').val('');
         carregarPixelsExtras();
         notificar('Pixel adicionado!', 'sucesso');
     }).catch(err => notificar(err.error || 'Erro ao adicionar pixel.', 'erro'));
+}
+function salvarCapiTokenPixelExtra(id, token) {
+    api('PATCH', `/api/admin/pixels-meta-extras/${id}`, { capi_token: token || null }).then(() => notificar('Token salvo!', 'sucesso'));
 }
 function alternarPixelExtra(id, ativo) {
     api('PATCH', `/api/admin/pixels-meta-extras/${id}`, { ativo }).then(() => notificar(ativo ? 'Pixel ativado!' : 'Pixel desativado!', 'sucesso'));

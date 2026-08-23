@@ -416,7 +416,7 @@ await loadConfigToEnv();
 // então guardar por 60s evita bater no banco em toda visita de todo mundo.
 let _pixelsExtrasCache = null;
 let _pixelsExtrasCacheEm = 0;
-function invalidarCachePixelsExtras() { _pixelsExtrasCache = null; }
+function invalidarCachePixelsExtras() { _pixelsExtrasCache = null; _pixelsExtrasCompletosCache = null; }
 async function fetchPixelsExtrasDoBanco() {
   if (_pixelsExtrasCache && (Date.now() - _pixelsExtrasCacheEm) < CONFIG_CACHE_MS) return _pixelsExtrasCache;
   try {
@@ -426,6 +426,100 @@ async function fetchPixelsExtrasDoBanco() {
     _pixelsExtrasCacheEm = Date.now();
     return ids;
   } catch { return _pixelsExtrasCache || []; }
+}
+
+// ⚡ Versão "completa" — usada pelo futuro sistema de envio servidor→Meta (API de Conversões).
+// Diferente da de cima (que só devolve os IDs, pro navegador inicializar os pixels), essa traz
+// também o token de conversão de CADA pixel extra, já que o Meta amarra o token a um pixel
+// específico — cada um pode (e normalmente precisa) ter o seu próprio.
+let _pixelsExtrasCompletosCache = null;
+let _pixelsExtrasCompletosCacheEm = 0;
+async function fetchPixelsExtrasCompletos() {
+  if (_pixelsExtrasCompletosCache && (Date.now() - _pixelsExtrasCompletosCacheEm) < CONFIG_CACHE_MS) return _pixelsExtrasCompletosCache;
+  try {
+    const { data } = await supabase.from('pixels_meta_extras').select('pixel_id, capi_token').eq('ativo', true);
+    const lista = (data || []).filter(r => r.pixel_id);
+    _pixelsExtrasCompletosCache = lista;
+    _pixelsExtrasCompletosCacheEm = Date.now();
+    return lista;
+  } catch { return _pixelsExtrasCompletosCache || []; }
+}
+
+// ⚡ LINHA DO TEMPO DO LEAD (base do CRM completo) — registra cada passo importante da jornada:
+// visitou a prévenda, virou lead, iniciou um checkout (com valor), comprou de verdade (com valor),
+// girou a roleta, etc. É daqui que a futura aba "Analisar" (por cidade) e o envio de segurança
+// pro Meta (API de Conversões) vão puxar os dados. Roda em segundo plano (nunca atrasa nem quebra
+// a ação principal do usuário, mesmo se der erro).
+function registrarEventoLead({ usuario_id = null, telefone = null, sorteio_id = null, pedido_id = null, tipo_evento, valor = null, cidade = null, prevenda_id = null, metadata = null }) {
+  if (!tipo_evento) return;
+  supabase.from('eventos_lead').insert({
+    usuario_id, telefone: telefone || null, sorteio_id, pedido_id, tipo_evento, valor, cidade, prevenda_id, metadata, created_at: new Date().toISOString()
+  }).then(({ error }) => { if (error) console.error(`[eventos_lead] erro ao registrar "${tipo_evento}":`, error.message); });
+}
+
+// ⚡⚡ API DE CONVERSÕES DO META — a "rede de segurança" server→Meta. Sempre que um evento também
+// disparar pelo Pixel do navegador, os dois usam o MESMO event_id — o Meta reconhece que é a
+// mesma coisa e não conta em dobro. Roda em segundo plano, nunca atrasa nem quebra a compra da
+// pessoa, mesmo se o Meta estiver fora do ar ou o token estiver errado.
+function sha256(valor) {
+  return crypto.createHash('sha256').update(String(valor).trim().toLowerCase()).digest('hex');
+}
+function gerarFbc(fbclid) {
+  // Formato oficial exigido pelo Meta pro parâmetro "fbc": fb.<subdomain_index>.<criação>.<fbclid>
+  if (!fbclid) return null;
+  return `fb.1.${Date.now()}.${fbclid}`;
+}
+
+/**
+ * Manda um evento pra TODOS os pixels que tiverem token de API de Conversões configurado (o
+ * principal + os extras) — cada um usando o SEU PRÓPRIO token, já que o Meta amarra o token a um
+ * pixel específico. Sem token nenhum configurado em lugar nenhum, simplesmente não manda nada
+ * (comportamento continua exatamente igual ao de hoje, só o Pixel do navegador).
+ */
+async function enviarEventoParaMeta({ eventName, eventId, eventTime, valor, telefone, fbclid, urlPagina, ip, userAgent }) {
+  try {
+    const cfg = await fetchConfigFromDB();
+    const pixelPrincipal = cfg.FACEBOOK_PIXEL_ID || process.env.FACEBOOK_PIXEL_ID || '';
+    const tokenPrincipal = cfg.FACEBOOK_CONVERSION_API_TOKEN || process.env.FACEBOOK_CONVERSION_API_TOKEN || '';
+    const extras = await fetchPixelsExtrasCompletos();
+
+    const destinos = [];
+    if (pixelPrincipal && tokenPrincipal) destinos.push({ pixel_id: pixelPrincipal, capi_token: tokenPrincipal });
+    extras.forEach(p => { if (p.pixel_id && p.capi_token) destinos.push({ pixel_id: p.pixel_id, capi_token: p.capi_token }); });
+
+    if (destinos.length === 0) return; // ninguém configurou token nenhum — não faz nada, silenciosamente
+
+    const userData = {};
+    if (telefone) userData.ph = [sha256(String(telefone).replace(/\D/g, ''))];
+    const fbc = gerarFbc(fbclid);
+    if (fbc) userData.fbc = fbc;
+    if (ip) userData.client_ip_address = ip;
+    if (userAgent) userData.client_user_agent = userAgent;
+
+    const corpo = {
+      data: [{
+        event_name: eventName,
+        event_time: eventTime || Math.floor(Date.now() / 1000),
+        event_id: eventId, // ⚡ o mesmo ID usado no fbq(...) do navegador — é isso que evita a duplicação
+        action_source: 'website',
+        event_source_url: urlPagina || undefined,
+        user_data: userData,
+        custom_data: { value: valor != null ? Number(valor) : undefined, currency: 'BRL' }
+      }]
+    };
+
+    await Promise.all(destinos.map(async (d) => {
+      try {
+        const resp = await fetch(`https://graph.facebook.com/v19.0/${d.pixel_id}/events?access_token=${encodeURIComponent(d.capi_token)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo)
+        });
+        if (!resp.ok) {
+          const erro = await resp.text().catch(() => '');
+          console.error(`[Meta CAPI] Pixel ${d.pixel_id} recusou o evento "${eventName}" (HTTP ${resp.status}):`, erro);
+        }
+      } catch (err) { console.error(`[Meta CAPI] Erro de conexão mandando "${eventName}" pro pixel ${d.pixel_id}:`, err.message); }
+    }));
+  } catch (err) { console.error('[Meta CAPI] Erro geral', err.message); }
 }
 
 async function getPublicMeta() {
@@ -846,7 +940,7 @@ async function getPrevendaPublicData(slug) {
   const galeria = prevenda.sorteios?.fotos_galeria || [];
   const fotoEscolhida = galeria[0] || prevenda.sorteios?.foto_url || '';
   const dados = {
-    prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade, tema: prevenda.tema || 'escuro' },
+    prevenda: { id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade, tema: prevenda.tema || 'escuro', sorteio_id: prevenda.sorteio_id },
     // ⚡ Essa foto já vem junto nessa mesma consulta (nenhuma consulta a mais) — a prévenda usa ela
     // como imagem garantida e instantânea, sem depender de nenhum arquivo em pasta que possa
     // estar faltando ou com extensão diferente.
@@ -862,6 +956,13 @@ app.get('/prevenda/:slug', async (req, res) => {
   try {
     const dados = await getPrevendaPublicData(req.params.slug);
     if (!dados) return res.status(404).send('Prévenda não encontrada');
+
+    // ⚡ Registra a visita na linha do tempo — mesmo filtro de robôs/crawlers já usado no resto do
+    // sistema, pra não sujar as métricas com visitas que não são de pessoas de verdade.
+    if (!ROBOS_CONHECIDOS.test(req.headers['user-agent'] || '')) {
+      registrarEventoLead({ sorteio_id: dados.prevenda.sorteio_id, tipo_evento: 'visita_prevenda', cidade: dados.prevenda.cidade || null, prevenda_id: dados.prevenda.id });
+    }
+
     const arquivo = dados.prevenda.tema === 'claro' ? 'prevenda-clara.html' : 'prevenda.html';
     const html = lerHtmlComCache(arquivo);
     const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
@@ -876,6 +977,18 @@ app.get('/prevenda/:slug', async (req, res) => {
     console.error('Erro ao montar prévenda', err);
     return res.status(500).send('Erro ao carregar prévenda');
   }
+});
+
+// Registra se a pessoa confirmou "sim" ou "não" na pergunta automática da cidade.
+app.post('/api/public/prevenda/resposta-cidade', async (req, res) => {
+  try {
+    const { prevenda_id, resposta } = req.body || {};
+    if (!prevenda_id || (resposta !== 'sim' && resposta !== 'nao')) return res.status(400).json({ error: 'Dados inválidos' });
+    const { data: prevenda } = await supabase.from('prevendas').select('sorteio_id, cidade').eq('id', prevenda_id).maybeSingle();
+    if (!prevenda) return res.status(404).json({ error: 'Prévenda não encontrada' });
+    registrarEventoLead({ sorteio_id: prevenda.sorteio_id, tipo_evento: 'resposta_cidade', cidade: prevenda.cidade, prevenda_id, metadata: { resposta } });
+    return res.json({ ok: true });
+  } catch (err) { console.error('POST resposta-cidade', err); return res.status(500).json({ error: 'erro' }); }
 });
 
 app.get('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) => {
@@ -933,6 +1046,135 @@ app.delete('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
     if (prevenda?.slug) delete _prevendaCache[prevenda.slug];
     return ok(res);
   } catch (e) { return fail(res); }
+});
+
+// ============================================================================
+// ANALISAR CIDADES — estilo "gerenciador de anúncios", mas com os dados da SUA jornada completa
+// (não do Meta). Uma linha por cidade, somando tudo que a tabela eventos_lead já capturou.
+// ⚠️ Agrupa por NOME da cidade, não por prévenda específica — se você criar duas prévendas com o
+// mesmo nome de cidade (ex: uma pro Facebook, outra pro WhatsApp), os números das duas se somam
+// aqui, já que hoje o sistema rastreia "de qual cidade" e não "de qual prévenda exata" a partir
+// da etapa de lead em diante.
+// ============================================================================
+app.get('/api/admin/sorteios/:id/analise-cidades', ensureAdminAuth, async (req, res) => {
+  try {
+    const sorteio_id = req.params.id;
+    const { data: eventos } = await supabase.from('eventos_lead').select('tipo_evento, valor, cidade, metadata').eq('sorteio_id', sorteio_id).not('cidade', 'is', null).limit(50000);
+    const { data: prevendas } = await supabase.from('prevendas').select('cidade, ativo').eq('sorteio_id', sorteio_id);
+
+    const porCidade = {};
+    function pegar(nome) {
+      if (!porCidade[nome]) porCidade[nome] = { cidade: nome, visitas: 0, sim: 0, nao: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+      return porCidade[nome];
+    }
+    // Garante que toda cidade cadastrada apareça na lista, mesmo com zero eventos ainda.
+    (prevendas || []).forEach(p => { if (p.cidade) pegar(p.cidade); });
+    (eventos || []).forEach(e => {
+      if (!e.cidade) return;
+      const c = pegar(e.cidade);
+      if (e.tipo_evento === 'visita_prevenda') c.visitas++;
+      else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') c.sim++; else if (e.metadata?.resposta === 'nao') c.nao++; }
+      else if (e.tipo_evento === 'lead') c.leads++;
+      else if (e.tipo_evento === 'iniciar_checkout') { c.checkouts++; c.valor_checkout += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'compra') { c.compras++; c.valor_compra += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'giro_roleta') c.giros_roleta++;
+    });
+    const resultado = Object.values(porCidade).map(c => ({ ...c, conversao: c.visitas > 0 ? (c.compras / c.visitas) * 100 : 0 }));
+    resultado.sort((a, b) => b.valor_compra - a.valor_compra);
+    return ok(res, { cidades: resultado });
+  } catch (e) { console.error('GET analise-cidades', e); return fail(res); }
+});
+
+app.get('/api/admin/analise-cidade-detalhe', ensureAdminAuth, async (req, res) => {
+  try {
+    const { sorteio_id, cidade } = req.query;
+    if (!sorteio_id || !cidade) return fail(res, 'sorteio_id e cidade são obrigatórios', 400);
+    const { data: eventos } = await supabase.from('eventos_lead').select('tipo_evento, valor, created_at, metadata').eq('sorteio_id', sorteio_id).eq('cidade', cidade).order('created_at', { ascending: true }).limit(50000);
+
+    const porDia = {};
+    const totais = { visitas: 0, sim: 0, nao: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+    (eventos || []).forEach(e => {
+      const dia = (e.created_at || '').slice(0, 10);
+      if (!porDia[dia]) porDia[dia] = { dia, visitas: 0, leads: 0, checkouts: 0, compras: 0, valor_compra: 0 };
+      if (e.tipo_evento === 'visita_prevenda') { porDia[dia].visitas++; totais.visitas++; }
+      else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') totais.sim++; else if (e.metadata?.resposta === 'nao') totais.nao++; }
+      else if (e.tipo_evento === 'lead') { porDia[dia].leads++; totais.leads++; }
+      else if (e.tipo_evento === 'iniciar_checkout') { porDia[dia].checkouts++; totais.checkouts++; totais.valor_checkout += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'compra') { porDia[dia].compras++; totais.compras++; porDia[dia].valor_compra += Number(e.valor || 0); totais.valor_compra += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'giro_roleta') totais.giros_roleta++;
+    });
+    const serie = Object.values(porDia).sort((a, b) => a.dia.localeCompare(b.dia));
+    return ok(res, { serie, totais, conversao: totais.visitas > 0 ? (totais.compras / totais.visitas) * 100 : 0 });
+  } catch (e) { console.error('GET analise-cidade-detalhe', e); return fail(res); }
+});
+
+// ============================================================================
+// ANALISAR POR PRÉVENDA (link específico) — mesma ideia da análise por cidade, só que uma linha
+// por PRÉVENDA/LINK exato, mesmo que duas compartilhem o nome da cidade. Inclui quantas pessoas
+// responderam "sim" e "não" na pergunta automática.
+// ============================================================================
+app.get('/api/admin/sorteios/:id/analise-prevendas', ensureAdminAuth, async (req, res) => {
+  try {
+    const sorteio_id = req.params.id;
+    const { data: prevendas } = await supabase.from('prevendas').select('id, nome, cidade, canal, ativo').eq('sorteio_id', sorteio_id);
+    const { data: eventos } = await supabase.from('eventos_lead').select('tipo_evento, valor, prevenda_id, metadata').eq('sorteio_id', sorteio_id).not('prevenda_id', 'is', null).limit(50000);
+
+    const porPrevenda = {};
+    (prevendas || []).forEach(p => {
+      porPrevenda[p.id] = { prevenda_id: p.id, nome: p.nome, cidade: p.cidade, canal: p.canal, ativo: p.ativo, visitas: 0, sim: 0, nao: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+    });
+    (eventos || []).forEach(e => {
+      const p = porPrevenda[e.prevenda_id];
+      if (!p) return; // evento de uma prévenda já excluída
+      if (e.tipo_evento === 'visita_prevenda') p.visitas++;
+      else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') p.sim++; else if (e.metadata?.resposta === 'nao') p.nao++; }
+      else if (e.tipo_evento === 'lead') p.leads++;
+      else if (e.tipo_evento === 'iniciar_checkout') { p.checkouts++; p.valor_checkout += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'compra') { p.compras++; p.valor_compra += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'giro_roleta') p.giros_roleta++;
+    });
+    const resultado = Object.values(porPrevenda).map(p => ({ ...p, conversao: p.visitas > 0 ? (p.compras / p.visitas) * 100 : 0 }));
+    resultado.sort((a, b) => b.valor_compra - a.valor_compra);
+    return ok(res, { prevendas: resultado });
+  } catch (e) { console.error('GET analise-prevendas', e); return fail(res); }
+});
+
+
+app.put('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const { data: prevendaAtual } = await supabase.from('prevendas').select('*').eq('id', req.params.id).maybeSingle();
+    if (!prevendaAtual) return fail(res, 'Prévenda não encontrada', 404);
+
+    const payloadPrevenda = {};
+    if (body.nome !== undefined) payloadPrevenda.nome = body.nome;
+    if (body.cidade !== undefined) payloadPrevenda.cidade = body.cidade;
+    if (body.canal !== undefined) payloadPrevenda.canal = body.canal;
+    if (body.tema !== undefined) payloadPrevenda.tema = body.tema === 'claro' ? 'claro' : 'escuro';
+    if (body.ativo !== undefined) payloadPrevenda.ativo = !!body.ativo;
+
+    if (Object.keys(payloadPrevenda).length > 0) {
+      const { error } = await supabase.from('prevendas').update(payloadPrevenda).eq('id', req.params.id);
+      if (error) return fail(res, error.message);
+    }
+
+    // ⚡ Trocar o funil/checkout de destino é só atualizar o funil já vinculado por trás — não
+    // precisa mexer no link da prévenda em si (continua o mesmo, ninguém que já recebeu o link
+    // precisa de um novo).
+    if (prevendaAtual.funil_id && (body.arquivo_html !== undefined || body.arquivo_checkout_html !== undefined)) {
+      const payloadFunil = {};
+      if (body.arquivo_html !== undefined) payloadFunil.arquivo_html = body.arquivo_html;
+      if (body.arquivo_checkout_html !== undefined) payloadFunil.arquivo_checkout_html = body.arquivo_checkout_html;
+      const { error: erroFunil } = await supabase.from('funis').update(payloadFunil).eq('id', prevendaAtual.funil_id);
+      if (erroFunil) return fail(res, 'Erro ao atualizar funil de destino: ' + erroFunil.message);
+    }
+
+    // A prévenda em si mudou (tema, cidade, etc.) — o cache guardado precisa ser descartado, senão
+    // continuaria servindo a versão antiga por até 5 minutos.
+    delete _prevendaCache[prevendaAtual.slug];
+
+    return ok(res);
+  } catch (e) { console.error('PUT prevendas', e); return fail(res); }
 });
 
 // Link de TESTE A/B: distribui o tráfego entre os funis de um "grupo_teste" conforme o peso configurado,
@@ -1128,7 +1370,7 @@ app.get('/api/public/sorteio/:slug/funil/:funilSlug', async (req, res) => {
 });
 
 async function getCheckoutPublicData(token) {
-  const { data: pedido } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(nome_completo, telefone, cpf)').eq('token', token).maybeSingle();
+  const { data: pedido } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(nome_completo, telefone, cpf, cidade)').eq('token', token).maybeSingle();
   if (!pedido) return null;
   const minutos_restantes = pedido.expira_em ? Math.max(0, (new Date(pedido.expira_em).getTime() - Date.now()) / 60000) : 0;
   let cotas_geradas = [];
@@ -1309,9 +1551,29 @@ app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, re
   try {
     const telefone = String(req.body?.telefone || '').replace(/\D/g, '');
     const sorteio_id = req.body?.sorteio_id || null;
+    const cidadeDaSessao = req.body?.cidade || null;
+    const prevendaIdDaSessao = req.body?.prevenda_id || null;
+    const fbclidDaSessao = req.body?.fbclid || null;
     if (!telefone) return fail(res, 'Telefone é obrigatório', 400);
-    const { data: usuario } = await supabase.from('usuarios').select('id, nome_completo, email, cpf, endereco').eq('telefone', telefone).maybeSingle();
-    if (!usuario) return ok(res, { existe: false, ja_comprou_este_sorteio: false });
+    const { data: usuario } = await supabase.from('usuarios').select('id, nome_completo, email, cpf, endereco, cidade, prevenda_id, fbclid').eq('telefone', telefone).maybeSingle();
+    if (!usuario) {
+      // ⚡ Telefone nunca visto antes = lead genuinamente novo (não confundir com "usuário
+      // recorrente conferindo o telefone de novo", que não é um lead novo).
+      registrarEventoLead({ telefone, sorteio_id, tipo_evento: 'lead', cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao, metadata: fbclidDaSessao ? { fbclid: fbclidDaSessao } : null });
+      return ok(res, { existe: false, ja_comprou_este_sorteio: false, cidade: cidadeDaSessao || null });
+    }
+
+    // ⚡ Se ela ainda não tinha cidade/prévenda/fbclid salvos e chegou agora vindo de um anúncio, já
+    // grava aqui mesmo — não precisa nem esperar a compra pra "grudar" nela.
+    let cidadeFinal = usuario.cidade || null;
+    const atualizacaoCidade = {};
+    if (cidadeDaSessao && !usuario.cidade) atualizacaoCidade.cidade = cidadeDaSessao;
+    if (prevendaIdDaSessao && !usuario.prevenda_id) atualizacaoCidade.prevenda_id = prevendaIdDaSessao;
+    if (fbclidDaSessao && !usuario.fbclid) atualizacaoCidade.fbclid = fbclidDaSessao;
+    if (Object.keys(atualizacaoCidade).length > 0) {
+      await supabase.from('usuarios').update(atualizacaoCidade).eq('id', usuario.id);
+      if (atualizacaoCidade.cidade) cidadeFinal = atualizacaoCidade.cidade;
+    }
 
     let ja_comprou_este_sorteio = false;
     if (sorteio_id) {
@@ -1322,7 +1584,10 @@ app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, re
     return ok(res, {
       existe: true, nome_completo: usuario.nome_completo,
       tem_email: !!usuario.email, tem_cpf: !!usuario.cpf, tem_endereco: !!usuario.endereco,
-      ja_comprou_este_sorteio
+      ja_comprou_este_sorteio,
+      // ⚡ A cidade PERMANENTE dela (se já tinha) sempre tem prioridade sobre a da sessão atual —
+      // assim, mesmo comprando de novo sem vir por nenhum link de cidade, ela continua reconhecida.
+      cidade: cidadeFinal || cidadeDaSessao || null
     });
   } catch (err) { console.error('POST usuarios/verificar', err); return fail(res); }
 });
@@ -1695,6 +1960,20 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 
     await safeUpdatePedidos(pedido.id, { cotas_geradas: 1, cotas_array: inserted.map(r => r.numero_cota), status: 'pago', updated_at: new Date().toISOString() });
 
+    // ⚡ Registra a "compra" de verdade na linha do tempo do lead — com o telefone dela pra
+    // conseguir enxergar tudo isso na aba "Analisar" por cidade, mesmo sem ela ter passado pela
+    // prévenda nessa compra específica (usa a cidade que já estava salva no pedido).
+    registrarEventoLead({ usuario_id: user_id, sorteio_id, pedido_id: pedido.id, tipo_evento: 'compra', valor: pedido.valor_total, cidade: pedido.cidade || null, prevenda_id: pedido.prevenda_id || null, metadata: { quantidade_cotas: inserted.length } });
+
+    // ⚡ Manda também pra API de Conversões — mesmo event_id que o Pixel do navegador usa (veja o
+    // checkout.html), pra nunca duplicar a compra no Meta.
+    const { data: usuarioDaCompra } = await supabase.from('usuarios').select('telefone').eq('id', user_id).maybeSingle();
+    enviarEventoParaMeta({
+      eventName: 'Purchase', eventId: `purchase_${pedido.id}`, valor: pedido.valor_total,
+      telefone: usuarioDaCompra?.telefone || null, fbclid: pedido.fbclid || null,
+      urlPagina: `${DOMINIO_PUBLICO_SERVIDOR}/checkout/${pedido.token}`
+    });
+
     // Verifica se alguma das cotas geradas bate com um BILHETE premiado ainda disponível
     // (a roleta usa números de cota reais também, mas é tratada à parte — veja atribuirGirosRoleta).
     //
@@ -1820,12 +2099,13 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
     if (error) console.error(`[roleta] Pedido ${pedido?.id} — ERRO ao inserir giros:`, error.message);
     else console.log(`[roleta] Pedido ${pedido?.id} — ${novasLinhas.length} giro(s) inserido(s) com sucesso.`);
   });
+  registrarEventoLead({ usuario_id: user_id, sorteio_id, pedido_id: pedido?.id, tipo_evento: 'giro_roleta', cidade: pedido?.cidade || null, prevenda_id: pedido?.prevenda_id || null, metadata: { quantidade_giros: novasLinhas.length } });
 }
 
 // --- API PEDIDOS PUBLIC (com suporte a funil_id) ---
 app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) => {
   try {
-    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta } = req.body || {};
+    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
@@ -1834,15 +2114,23 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     let usuario = usuarioExistente;
     if (!usuario) {
       if (!nome_completo) return res.status(400).json({ error: 'Nome é obrigatório para novos compradores' });
-      const { data: novo, error: nErr } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo, email, cpf: cpfLimpo, endereco }).select().single();
+      // ⚡ Se ela chegou através de uma prévenda de cidade (ou de qualquer anúncio com fbclid), tudo
+      // isso já fica gravado PERMANENTEMENTE no cadastro dela, desde a primeira compra — nunca mais
+      // depende de vir pelo link de novo.
+      const { data: novo, error: nErr } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo, email, cpf: cpfLimpo, endereco, cidade: cidade || null, prevenda_id: prevenda_id || null, fbclid: fbclid || null }).select().single();
       if (nErr) return fail(res, 'Erro ao criar usuário');
       usuario = novo;
     } else {
-      // Atualiza dados novos (ex: CPF/email/endereço) se o comprador já existia mas não tinha isso salvo ainda
+      // Atualiza dados novos (ex: CPF/email/endereço/cidade) se o comprador já existia mas não tinha isso salvo ainda
       const atualizacao = {};
       if (email && !usuario.email) atualizacao.email = email;
       if (cpfLimpo && !usuario.cpf) atualizacao.cpf = cpfLimpo;
       if (endereco && !usuario.endereco) atualizacao.endereco = endereco;
+      // ⚡ Nunca sobrescreve uma cidade/prévenda/fbclid que ela já tinha (a primeira vez que
+      // soubemos quem ela é sempre vale) — só preenche se ainda estiver vazio.
+      if (cidade && !usuario.cidade) atualizacao.cidade = cidade;
+      if (prevenda_id && !usuario.prevenda_id) atualizacao.prevenda_id = prevenda_id;
+      if (fbclid && !usuario.fbclid) atualizacao.fbclid = fbclid;
       if (Object.keys(atualizacao).length > 0) {
         const { data: atualizado } = await supabase.from('usuarios').update(atualizacao).eq('id', usuario.id).select().single();
         if (atualizado) usuario = atualizado;
@@ -1892,9 +2180,30 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       link_id = link?.id || null;
     }
 
+    const cidadeFinalPedido = usuario.cidade || cidade || null;
+    const prevendaIdFinalPedido = usuario.prevenda_id || prevenda_id || null;
     const { data: pedido } = await supabase.from('pedidos').insert({
-      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, veio_de_combo_roleta: !!veio_de_combo_roleta || giros_bonus_upsell > 0, giros_bonus_upsell, created_at: new Date().toISOString()
+      token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, veio_de_combo_roleta: !!veio_de_combo_roleta || giros_bonus_upsell > 0, giros_bonus_upsell,
+      cidade: cidadeFinalPedido, // ⚡ mesma cidade permanente do comprador (ou a da sessão, se ele ainda não tinha) — guardada aqui pra sempre poder filtrar/relatar vendas por cidade, sem precisar recalcular depois
+      prevenda_id: prevendaIdFinalPedido, // ⚡ qual prévenda ESPECÍFICA (não só a cidade) trouxe esse comprador
+      fbclid: usuario.fbclid || fbclid || null,
+      created_at: new Date().toISOString()
     }).select().single();
+
+    // ⚡ Registra o passo "iniciou o checkout" na linha do tempo do lead — base do CRM completo
+    // por cidade (métricas de conversão real, sem depender de nada do Meta).
+    const fbclidFinalPedido = usuario.fbclid || fbclid || null;
+    registrarEventoLead({ usuario_id: usuario.id, telefone: telefoneLimpo, sorteio_id, pedido_id: pedido?.id, tipo_evento: 'iniciar_checkout', valor: valor_total, cidade: cidadeFinalPedido, prevenda_id: prevendaIdFinalPedido, metadata: { quantidade_cotas: quantidade, promocao: promocao_aplicada || null, fbclid: fbclidFinalPedido } });
+
+    // ⚡ Manda também pra API de Conversões (só chega ao Meta de verdade se algum pixel tiver token
+    // configurado — senão isso não faz nada, silenciosamente). Usa o MESMO event_id que o Pixel do
+    // navegador vai usar daqui a pouco, pra nunca duplicar.
+    const eventIdInitiateCheckout = `checkout_${pedido.id}`;
+    enviarEventoParaMeta({
+      eventName: 'InitiateCheckout', eventId: eventIdInitiateCheckout, valor: valor_total,
+      telefone: telefoneLimpo, fbclid: fbclidFinalPedido,
+      urlPagina: `${req.protocol}://${req.get('host')}/sorteio`, ip: req.ip, userAgent: req.headers['user-agent']
+    });
 
     const pagamento = await criarPagamentoGateway(pedido, usuario);
     // ⚡ Corrige de uma vez por todas, pra QUALQUER gateway (Mercado Pago, Pay2m, Paggue, etc.):
@@ -1917,7 +2226,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       token,
       redirect: `/checkout/${token}`,
       payment: pagamento,
-      pixel_data: { value: valor_total, currency: 'BRL', num_items: quantidade },
+      pixel_data: { value: valor_total, currency: 'BRL', num_items: quantidade, event_id: eventIdInitiateCheckout },
       pedido: {
         ...pedido,
         pix_copia_cola: pagamento.pix_copia_cola || null,
@@ -1968,7 +2277,7 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
       status: statusCode, derived_status, cotas: pedido.cotas_array || [],
       link_grupo_vip: pedido.sorteios?.link_grupo_vip,
       payment: { gateway_payment_id: pedido.gateway_payment_id, pix_copia_cola: pedido.pix_copia_cola, pix_qr_code_base64: pedido.pix_qr_code_base64, provider: pedido.payment_provider },
-      pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome },
+      pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome, event_id: `purchase_${pedido.id}` },
       funil
     });
   } catch (err) { console.error(err); return fail(res); }
@@ -2741,7 +3050,7 @@ app.get('/api/admin/pixels-meta-extras', ensureAdminAuth, async (_req, res) => {
 
 app.post('/api/admin/pixels-meta-extras', ensureAdminAuth, async (req, res) => {
   try {
-    const { nome, pixel_id } = req.body || {};
+    const { nome, pixel_id, capi_token } = req.body || {};
     const pixelLimpo = String(pixel_id || '').trim();
     if (!pixelLimpo) return res.status(400).json({ error: 'Informe o ID do pixel.' });
     if (!/^\d+$/.test(pixelLimpo)) return res.status(400).json({ error: 'O ID do pixel do Meta só tem números (confere se não colou nada a mais).' });
@@ -2755,7 +3064,7 @@ app.post('/api/admin/pixels-meta-extras', ensureAdminAuth, async (req, res) => {
     }
     const { data: jaExiste } = await supabase.from('pixels_meta_extras').select('id').eq('pixel_id', pixelLimpo).maybeSingle();
     if (jaExiste) return res.status(400).json({ error: 'Esse pixel já está cadastrado na lista.' });
-    const { error } = await supabase.from('pixels_meta_extras').insert({ nome: nome || null, pixel_id: pixelLimpo, ativo: true });
+    const { error } = await supabase.from('pixels_meta_extras').insert({ nome: nome || null, pixel_id: pixelLimpo, capi_token: capi_token || null, ativo: true });
     if (error) return fail(res, error.message);
     invalidarCachePixelsExtras();
     return ok(res, { msg: 'Pixel adicionado!' });
@@ -2764,8 +3073,12 @@ app.post('/api/admin/pixels-meta-extras', ensureAdminAuth, async (req, res) => {
 
 app.patch('/api/admin/pixels-meta-extras/:id', ensureAdminAuth, async (req, res) => {
   try {
-    const { ativo } = req.body || {};
-    const { error } = await supabase.from('pixels_meta_extras').update({ ativo: !!ativo }).eq('id', req.params.id);
+    const { ativo, nome, capi_token } = req.body || {};
+    const payload = {};
+    if (ativo !== undefined) payload.ativo = !!ativo;
+    if (nome !== undefined) payload.nome = nome;
+    if (capi_token !== undefined) payload.capi_token = capi_token || null;
+    const { error } = await supabase.from('pixels_meta_extras').update(payload).eq('id', req.params.id);
     if (error) return fail(res, error.message);
     invalidarCachePixelsExtras();
     return ok(res);

@@ -145,11 +145,14 @@
         // ── Guarda o fbclid (e outros parâmetros de anúncio) pra levar adiante ──
         try {
             var params = new URLSearchParams(location.search);
-            ['fbclid', 'gclid', 'ttclid'].forEach(function (chave) {
+            var fbclidUrl = params.get('fbclid');
+            if (fbclidUrl) localStorage.setItem('fbclid_salvo', fbclidUrl); // mesma chave usada em todas as páginas do sistema
+            ['gclid', 'ttclid'].forEach(function (chave) {
                 var valor = params.get(chave);
                 if (valor) localStorage.setItem(chave + '_prevenda', valor);
             });
             if (cidade) sessionStorage.setItem('cidade_prevenda', cidade);
+            if (prevenda.id) sessionStorage.setItem('prevenda_id_atual', prevenda.id);
         } catch (e) {}
 
         // ── Carrossel de fotos ───────────────────────────────────────────────
@@ -234,6 +237,14 @@
         function fecharPergunta(resposta) {
             try { sessionStorage.setItem('respondeu_cidade_prevenda', resposta); } catch (e) {}
             document.getElementById('overlay-pergunta').classList.remove('visivel');
+            // ⚡ Avisa o servidor (em segundo plano, sem esperar resposta) — é assim que o painel
+            // sabe quantas pessoas confirmaram "sim" ou "não" pra cada prévenda.
+            if (prevenda.id) {
+                fetch('/api/public/prevenda/resposta-cidade', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prevenda_id: prevenda.id, resposta: resposta })
+                }).catch(function () {});
+            }
         }
         document.getElementById('btn-resposta-sim').addEventListener('click', function () { fecharPergunta('sim'); });
         document.getElementById('btn-resposta-nao').addEventListener('click', function () { fecharPergunta('nao'); });
