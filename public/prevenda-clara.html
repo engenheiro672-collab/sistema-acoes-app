@@ -42,9 +42,7 @@
         @keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Botão grande, pulsando, no final */
-        .cta-final { text-align: center; padding: 0 1rem 2.2rem; animation: entrar 0.6s ease both; animation-delay: 0.3s; }
-        .btn-participar-grande { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.05rem; padding: 1rem 2rem; border-radius: 14px; border: none; box-shadow: 0 10px 30px rgba(26,135,84,0.4); animation: pulsarBotaoGrande 1.6s ease-in-out infinite; cursor: pointer; width: 100%; max-width: 320px; }
-        @keyframes pulsarBotaoGrande { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+
 
         /* Overlay da pergunta — menos arredondado, fundo com desfoque mais leve (menos "embaçado"
            que antes) */
@@ -66,10 +64,6 @@
         .foto-box.modo-video { height: auto; min-height: 200px; display: flex; align-items: center; justify-content: center; background: #000; padding: 0; }
         .video-wrap { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
         .video-wrap video { display: block; max-width: 100%; width: auto; height: auto; max-height: 80vh; margin: 0 auto; }
-        .overlay-topo-video { position: absolute; top: 60px; left: 0; right: 0; text-align: center; z-index: 4; }
-        /* "Autorizado, Cidade" dentro do vídeo — fundo preto (não mais verde), menos arredondado,
-           mais alto (mais respiro em volta da letra) */
-        .overlay-topo-video .atencao { background: rgba(0,0,0,0.62); border: 1.5px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.85rem 1.6rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
         .overlay-baixo-video { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; z-index: 4; padding: 0 0.6rem; }
         .overlay-baixo-video #btn-participar { position: static !important; margin-top: 0.5rem; display: inline-flex; }
 
@@ -104,10 +98,6 @@
                 <h1 id="txt-nome-sorteio">Carregando...</h1>
                 <p>Participe e concorra!</p>
             </div>
-        </div>
-
-        <div class="cta-final">
-            <button class="btn-participar-grande" id="btn-participar-2">Quero Participar Agora</button>
         </div>
     </div>
 
@@ -412,15 +402,10 @@
             fotoBox.appendChild(videoWrap);
             videoWrap.appendChild(elVideo);
 
-            // "Autorizado, Cidade" em cima do vídeo, no topo (some a descrição de baixo dela)
-            var elAtencao = document.getElementById('txt-atencao');
+            // Some a descrição (a "Atenção, Cidade" continua no lugar de sempre, acima — não é
+            // mais movida pra dentro do vídeo).
             var elMensagem = document.getElementById('txt-mensagem');
             if (elMensagem) elMensagem.style.display = 'none';
-            if (elAtencao) elAtencao.textContent = cidade ? ('Autorizado, ' + cidade) : 'Autorizado!';
-            var wrapperTopo = document.createElement('div');
-            wrapperTopo.className = 'overlay-topo-video';
-            wrapperTopo.appendChild(elAtencao);
-            videoWrap.appendChild(wrapperTopo);
 
             // Balão (nome do sorteio + "Participe e concorra") em cima do vídeo, embaixo —
             // e o botão de participar (antes flutuando no canto) some daqui e vai logo abaixo dele.
@@ -521,7 +506,6 @@
         }
         document.getElementById('btn-participar').addEventListener('click', irParaDestino);
         document.getElementById('foto-box').addEventListener('click', irParaDestino);
-        document.getElementById('btn-participar-2').addEventListener('click', irParaDestino);
     })();
     </script>
 </body>
