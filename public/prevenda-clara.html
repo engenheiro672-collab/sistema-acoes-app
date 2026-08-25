@@ -117,8 +117,8 @@
         <div class="card-pergunta">
             <p id="txt-pergunta-cidade">Você é dessa cidade?</p>
             <div class="opcoes">
-                <button class="btn-sim" id="btn-resposta-sim">Sim</button>
                 <button class="btn-nao" id="btn-resposta-nao">Não</button>
+                <button class="btn-sim" id="btn-resposta-sim">Sim</button>
             </div>
         </div>
     </div>
@@ -243,23 +243,27 @@
         elVideo.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s ease;z-index:2;';
         fotoBox.appendChild(elVideo);
 
+        // ⚡ Pasta certa dos vídeos (antes estava, por engano, apontando pra pasta das FOTOS —
+        // por isso o vídeo nunca era encontrado, mesmo estando lá certinho).
+        var pastaVideosPropria = '/videos-prevenda/' + slugPrevenda + '/';
+        var pastaVideosCompartilhada = '/videos-prevenda/';
+
+        // ⚡ Verificação mais confiável: só confere se o ARQUIVO EXISTE (uma pergunta rápida ao
+        // servidor, sem baixar o vídeo inteiro) — em vez de esperar o navegador considerar o
+        // vídeo "pronto pra tocar sem travar" (canplaythrough), que em muitos celulares (principal-
+        // mente iPhone) nunca acontece de verdade, porque o navegador evita pré-carregar vídeo
+        // pra economizar dados — mesmo com o vídeo existindo e funcionando normalmente.
         function testarVideo(pasta) {
-            return new Promise(function (resolve) {
-                var teste = document.createElement('video');
-                teste.preload = 'auto';
-                teste.oncanplaythrough = function () { resolve(pasta + 'video.mp4'); };
-                teste.onerror = function () { resolve(null); };
-                teste.src = pasta + 'video.mp4';
-                teste.load();
-            });
+            var url = pasta + 'video.mp4';
+            return fetch(url, { method: 'HEAD' }).then(function (r) { return r.ok ? url : null; }).catch(function () { return null; });
         }
         setTimeout(function () {
-            testarVideo(pastaFotosPropria).then(function (caminhoProprio) {
-                return caminhoProprio || testarVideo(pastaFotosCompartilhada);
+            testarVideo(pastaVideosPropria).then(function (caminhoProprio) {
+                return caminhoProprio || testarVideo(pastaVideosCompartilhada);
             }).then(function (caminhoFinal) {
                 if (caminhoFinal) {
                     elVideo.src = caminhoFinal;
-                    elVideo.load();
+                    elVideo.load(); // tenta pré-carregar o quanto der — se o celular não deixar, o play() de qualquer forma funciona, só começa a "bufferizar" na hora
                     videoDisponivel = true;
                 }
             });
