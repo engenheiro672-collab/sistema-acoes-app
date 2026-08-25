@@ -35,31 +35,22 @@
         @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
         .rodape-foto { padding: 1rem; text-align: center; animation: entrar 0.6s ease both; animation-delay: 0.1s; }
-        .rodape-foto .caixa-titulo { background: linear-gradient(145deg, #0d1015, #1a1f2b); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .rodape-foto .caixa-titulo { background: rgba(10,13,18,0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 0.7rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
-        .rodape-foto p { margin: 0.25rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.75); }
+        .rodape-foto p { margin: 0.1rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.8); }
 
         @keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Tutorial / Como participar */
-        .tutorial-box { margin: 0.2rem 1rem 1.5rem; background: #262b38; border-radius: 16px; padding: 1.2rem 1.1rem; border: 1px solid rgba(255,255,255,0.06); animation: entrar 0.6s ease both; animation-delay: 0.2s; }
-        .tutorial-box h2 { font-size: 1rem; font-weight: 800; text-align: center; margin: 0 0 1.1rem; color: #4ade80; }
-        .passo { display: flex; gap: 0.8rem; margin-bottom: 1rem; align-items: flex-start; }
-        .passo:last-child { margin-bottom: 0; }
-        .passo-num { flex-shrink: 0; width: 30px; height: 30px; background: linear-gradient(135deg, #1a8754, #22a866); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; color: #fff; }
-        .passo strong { display: block; font-size: 0.9rem; margin-bottom: 0.15rem; }
-        .passo p { margin: 0; font-size: 0.8rem; color: rgba(255,255,255,0.65); line-height: 1.35; }
 
         /* Botão grande, pulsando, no final */
         .cta-final { text-align: center; padding: 0 1rem 2.2rem; animation: entrar 0.6s ease both; animation-delay: 0.3s; }
         .btn-participar-grande { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.05rem; padding: 1rem 2rem; border-radius: 14px; border: none; box-shadow: 0 10px 30px rgba(26,135,84,0.4); animation: pulsarBotaoGrande 1.6s ease-in-out infinite; cursor: pointer; width: 100%; max-width: 320px; }
         @keyframes pulsarBotaoGrande { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 
-        /* Overlay da pergunta — redesenhado: menos arredondado, fundo semi-transparente com
-           desfoque (efeito "vidro fosco"), mais personalizado que um card sólido comum */
-        #overlay-pergunta { position: fixed; inset: 0; background: rgba(10,14,20,0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
+        /* Overlay da pergunta — menos arredondado, fundo com desfoque mais leve (menos "embaçado"
+           que antes) */
+        #overlay-pergunta { position: fixed; inset: 0; background: rgba(10,14,20,0.45); backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
         #overlay-pergunta.visivel { opacity: 1; pointer-events: auto; }
-        .card-pergunta { background: linear-gradient(160deg, rgba(42,48,62,0.55), rgba(18,22,30,0.8)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 10px; padding: 1.8rem 1.6rem; max-width: 320px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); transform: translateY(12px) scale(0.97); transition: transform .35s ease; }
+        .card-pergunta { background: linear-gradient(160deg, rgba(42,48,62,0.65), rgba(18,22,30,0.85)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 10px; padding: 1.8rem 1.6rem; max-width: 320px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); transform: translateY(12px) scale(0.97); transition: transform .35s ease; }
         #overlay-pergunta.visivel .card-pergunta { transform: translateY(0) scale(1); }
         .card-pergunta p { font-size: 1.1rem; font-weight: 800; margin: 0 0 1.3rem; }
         .card-pergunta .opcoes { display: flex; gap: 0.7rem; }
@@ -68,12 +59,16 @@
         .btn-sim { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; box-shadow: 0 4px 14px rgba(26,135,84,0.4); }
         .btn-nao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15) !important; }
 
-        /* Modo vídeo: o texto/balão/botão passam a viver DENTRO da moldura do vídeo */
-        .foto-box.modo-video { height: auto; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; padding: 0.7rem 0.5rem; }
-        .foto-box.modo-video video { width: 100%; max-height: 65vh; object-fit: contain; }
-        .overlay-topo-video { position: relative; width: 100%; text-align: center; margin-bottom: 0.6rem; z-index: 4; animation: entrar 0.4s ease both; }
-        .overlay-baixo-video { position: relative; width: 100%; text-align: center; margin-top: 0.6rem; z-index: 4; animation: entrar 0.4s ease both; }
-        .overlay-baixo-video #btn-participar { position: static !important; margin-top: 0.6rem; display: inline-flex; }
+        /* ⚡ Modo vídeo: o vídeo aparece no TAMANHO REAL dele (nunca esticado maior que o
+           original), centralizado. O "video-wrap" abraça exatamente o tamanho renderizado do
+           vídeo — é por isso que os textos/balão/botão, posicionados dentro dele, ficam
+           literalmente EM CIMA do vídeo, e não numa borda preta ao redor. */
+        .foto-box.modo-video { height: auto; min-height: 200px; display: flex; align-items: center; justify-content: center; background: #000; padding: 0.6rem 0; }
+        .video-wrap { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+        .video-wrap video { display: block; max-width: 100%; width: auto; height: auto; max-height: 80vh; margin: 0 auto; }
+        .overlay-topo-video { position: absolute; top: 10px; left: 0; right: 0; text-align: center; z-index: 4; }
+        .overlay-baixo-video { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; z-index: 4; padding: 0 0.6rem; }
+        .overlay-baixo-video #btn-participar { position: static !important; margin-top: 0.5rem; display: inline-flex; }
 
         /* Confete — pedacinhos coloridos caindo, some sozinho depois de alguns segundos */
         .confete-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; }
@@ -98,26 +93,6 @@
             <div class="caixa-titulo">
                 <h1 id="txt-nome-sorteio">Carregando...</h1>
                 <p>Participe e concorra!</p>
-            </div>
-        </div>
-
-        <div class="tutorial-box">
-            <h2>📋 Como Participar</h2>
-            <div class="passo">
-                <span class="passo-num">1</span>
-                <div><strong>Clique em participar</strong><p>Você será levado direto pra página oficial do sorteio</p></div>
-            </div>
-            <div class="passo">
-                <span class="passo-num">2</span>
-                <div><strong>Escolha seus números</strong><p>Selecione quantos títulos quiser concorrer</p></div>
-            </div>
-            <div class="passo">
-                <span class="passo-num">3</span>
-                <div><strong>Pague com Pix</strong><p>Aprovação automática, na hora, sem burocracia</p></div>
-            </div>
-            <div class="passo">
-                <span class="passo-num">4</span>
-                <div><strong>Aguarde o sorteio</strong><p>Pronto! Agora é só torcer 🍀</p></div>
             </div>
         </div>
 
@@ -285,14 +260,14 @@
         // 🎉 Confete — pedacinhos coloridos caindo, leve, sem nenhuma biblioteca externa (só CSS).
         function dispararConfete(container) {
             var cores = ['#ff6b6b', '#4ade80', '#facc15', '#60a5fa', '#c084fc', '#fb923c'];
-            for (var i = 0; i < 55; i++) {
+            for (var i = 0; i < 90; i++) {
                 (function () {
                     var conf = document.createElement('div');
                     var cor = cores[Math.floor(Math.random() * cores.length)];
                     var esquerda = Math.random() * 100;
                     var atraso = Math.random() * 0.4;
                     var duracao = 1.6 + Math.random() * 1.2;
-                    var tamanho = 6 + Math.random() * 6;
+                    var tamanho = 6 + Math.random() * 7;
                     var rotFinal = Math.random() * 720 - 360;
                     conf.style.cssText = 'position:absolute; top:-10px; left:' + esquerda + '%; width:' + tamanho + 'px; height:' + (tamanho * 0.4) + 'px; background:' + cor + '; opacity:0.95; border-radius:1px; animation: cair-confete ' + duracao + 's ease-in ' + atraso + 's forwards;';
                     conf.style.setProperty('--rot-final', rotFinal + 'deg');
@@ -307,8 +282,22 @@
             try {
                 var AudioCtx = window.AudioContext || window.webkitAudioContext;
                 var ctx = new AudioCtx();
-                function estalo(tempoInicio) {
-                    var duracao = 0.15;
+                // "Estouro" grave, rápido — o "POP" principal do confete
+                function estouro(tempoInicio) {
+                    var osc = ctx.createOscillator();
+                    var ganho = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(180, tempoInicio);
+                    osc.frequency.exponentialRampToValueAtTime(45, tempoInicio + 0.09);
+                    ganho.gain.setValueAtTime(0.6, tempoInicio);
+                    ganho.gain.exponentialRampToValueAtTime(0.001, tempoInicio + 0.13);
+                    osc.connect(ganho).connect(ctx.destination);
+                    osc.start(tempoInicio);
+                    osc.stop(tempoInicio + 0.15);
+                }
+                // Estalos agudos, simulando o confete se espalhando logo depois do estouro
+                function estalo(tempoInicio, volume) {
+                    var duracao = 0.12;
                     var buffer = ctx.createBuffer(1, ctx.sampleRate * duracao, ctx.sampleRate);
                     var dados = buffer.getChannelData(0);
                     for (var i = 0; i < dados.length; i++) dados[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / dados.length, 2);
@@ -316,15 +305,17 @@
                     fonte.buffer = buffer;
                     var filtro = ctx.createBiquadFilter();
                     filtro.type = 'highpass';
-                    filtro.frequency.value = 1200;
+                    filtro.frequency.value = 1800;
                     var ganho = ctx.createGain();
-                    ganho.gain.value = 0.5;
+                    ganho.gain.value = volume;
                     fonte.connect(filtro).connect(ganho).connect(ctx.destination);
                     fonte.start(tempoInicio);
                 }
-                estalo(ctx.currentTime);
-                estalo(ctx.currentTime + 0.08);
-                estalo(ctx.currentTime + 0.15);
+                estouro(ctx.currentTime);
+                estalo(ctx.currentTime, 0.55);
+                estalo(ctx.currentTime + 0.1, 0.35);
+                estalo(ctx.currentTime + 0.22, 0.22);
+                estalo(ctx.currentTime + 0.36, 0.14);
             } catch (e) {}
         }
 
@@ -357,16 +348,25 @@
 
                 fotoBox.classList.add('modo-video');
 
-                // "Atenção, Cidade!" pra dentro do vídeo, no topo (some a descrição de baixo dela)
+                // ⚡ Cria um "envoltório" que abraça o vídeo EXATAMENTE do tamanho renderizado
+                // dele (por isso o CSS usa display:inline-block) — é dentro desse envoltório que
+                // os textos/balão/botão ficam posicionados (position:absolute), garantindo que
+                // fiquem literalmente EM CIMA do vídeo, não numa faixa preta ao redor dele.
+                var videoWrap = document.createElement('div');
+                videoWrap.className = 'video-wrap';
+                fotoBox.appendChild(videoWrap);
+                videoWrap.appendChild(elVideo);
+
+                // "Atenção, Cidade!" em cima do vídeo, no topo (some a descrição de baixo dela)
                 var elAtencao = document.getElementById('txt-atencao');
                 var elMensagem = document.getElementById('txt-mensagem');
                 if (elMensagem) elMensagem.style.display = 'none';
                 var wrapperTopo = document.createElement('div');
                 wrapperTopo.className = 'overlay-topo-video';
                 wrapperTopo.appendChild(elAtencao);
-                fotoBox.insertBefore(wrapperTopo, elVideo);
+                videoWrap.appendChild(wrapperTopo);
 
-                // Balão (nome do sorteio + "Participe e concorra") pra dentro do vídeo, embaixo —
+                // Balão (nome do sorteio + "Participe e concorra") em cima do vídeo, embaixo —
                 // e o botão de participar (antes flutuando no canto) some daqui e vai logo abaixo dele.
                 var elCaixaTitulo = document.querySelector('.rodape-foto .caixa-titulo');
                 var elBtnParticipar = document.getElementById('btn-participar');
@@ -374,17 +374,13 @@
                 wrapperBaixo.className = 'overlay-baixo-video';
                 if (elCaixaTitulo) wrapperBaixo.appendChild(elCaixaTitulo);
                 wrapperBaixo.appendChild(elBtnParticipar);
-                fotoBox.appendChild(wrapperBaixo);
+                videoWrap.appendChild(wrapperBaixo);
 
-                // Esconde o tutorial "Como Participar" — fica só o botão grande abaixo do vídeo.
-                var elTutorial = document.querySelector('.tutorial-box');
-                if (elTutorial) elTutorial.style.display = 'none';
-
-                // Vídeo em si, sem cortar nada (mostra ele inteiro, do tamanho real dele)
+                // Vídeo no tamanho REAL dele (nunca esticado maior que o original), centralizado.
                 elVideo.style.position = 'relative';
-                elVideo.style.width = '100%';
+                elVideo.style.width = 'auto';
                 elVideo.style.height = 'auto';
-                elVideo.style.objectFit = 'contain';
+                elVideo.style.objectFit = 'unset';
                 elVideo.style.display = 'block';
                 elVideo.style.opacity = '1';
                 elVideo.muted = false;
