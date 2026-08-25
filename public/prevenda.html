@@ -55,16 +55,29 @@
         .btn-participar-grande { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.05rem; padding: 1rem 2rem; border-radius: 14px; border: none; box-shadow: 0 10px 30px rgba(26,135,84,0.4); animation: pulsarBotaoGrande 1.6s ease-in-out infinite; cursor: pointer; width: 100%; max-width: 320px; }
         @keyframes pulsarBotaoGrande { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 
-        /* Overlay da pergunta (fundo transparente, escurecido, foto ainda visível) */
-        #overlay-pergunta { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(1px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
+        /* Overlay da pergunta — redesenhado: menos arredondado, fundo semi-transparente com
+           desfoque (efeito "vidro fosco"), mais personalizado que um card sólido comum */
+        #overlay-pergunta { position: fixed; inset: 0; background: rgba(10,14,20,0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
         #overlay-pergunta.visivel { opacity: 1; pointer-events: auto; }
-        .card-pergunta { background: #262b38; border-radius: 18px; padding: 1.6rem 1.4rem; max-width: 340px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transform: translateY(12px); transition: transform .35s ease; }
-        #overlay-pergunta.visivel .card-pergunta { transform: translateY(0); }
-        .card-pergunta p { font-size: 1.05rem; font-weight: 700; margin: 0 0 1.1rem; }
+        .card-pergunta { background: linear-gradient(160deg, rgba(42,48,62,0.55), rgba(18,22,30,0.8)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 10px; padding: 1.8rem 1.6rem; max-width: 320px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); transform: translateY(12px) scale(0.97); transition: transform .35s ease; }
+        #overlay-pergunta.visivel .card-pergunta { transform: translateY(0) scale(1); }
+        .card-pergunta p { font-size: 1.1rem; font-weight: 800; margin: 0 0 1.3rem; }
         .card-pergunta .opcoes { display: flex; gap: 0.7rem; }
-        .card-pergunta button { flex: 1; padding: 0.7rem; border-radius: 10px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
-        .btn-sim { background: #1a8754; color: #fff; }
-        .btn-nao { background: #3a4152; color: #fff; }
+        .card-pergunta button { flex: 1; padding: 0.75rem; border-radius: 8px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: transform .15s ease; }
+        .card-pergunta button:active { transform: scale(0.96); }
+        .btn-sim { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; box-shadow: 0 4px 14px rgba(26,135,84,0.4); }
+        .btn-nao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15) !important; }
+
+        /* Modo vídeo: o texto/balão/botão passam a viver DENTRO da moldura do vídeo */
+        .foto-box.modo-video { height: auto; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; padding: 0.7rem 0.5rem; }
+        .foto-box.modo-video video { width: 100%; max-height: 65vh; object-fit: contain; }
+        .overlay-topo-video { position: relative; width: 100%; text-align: center; margin-bottom: 0.6rem; z-index: 4; animation: entrar 0.4s ease both; }
+        .overlay-baixo-video { position: relative; width: 100%; text-align: center; margin-top: 0.6rem; z-index: 4; animation: entrar 0.4s ease both; }
+        .overlay-baixo-video #btn-participar { position: static !important; margin-top: 0.6rem; display: inline-flex; }
+
+        /* Confete — pedacinhos coloridos caindo, some sozinho depois de alguns segundos */
+        .confete-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; }
+        @keyframes cair-confete { 0% { transform: translateY(-10px) rotate(0deg); opacity: 1; } 100% { transform: translateY(420px) rotate(var(--rot-final, 360deg)); opacity: 0; } }
     </style>
 </head>
 <body>
@@ -269,6 +282,52 @@
             });
         }, 400);
 
+        // 🎉 Confete — pedacinhos coloridos caindo, leve, sem nenhuma biblioteca externa (só CSS).
+        function dispararConfete(container) {
+            var cores = ['#ff6b6b', '#4ade80', '#facc15', '#60a5fa', '#c084fc', '#fb923c'];
+            for (var i = 0; i < 55; i++) {
+                (function () {
+                    var conf = document.createElement('div');
+                    var cor = cores[Math.floor(Math.random() * cores.length)];
+                    var esquerda = Math.random() * 100;
+                    var atraso = Math.random() * 0.4;
+                    var duracao = 1.6 + Math.random() * 1.2;
+                    var tamanho = 6 + Math.random() * 6;
+                    var rotFinal = Math.random() * 720 - 360;
+                    conf.style.cssText = 'position:absolute; top:-10px; left:' + esquerda + '%; width:' + tamanho + 'px; height:' + (tamanho * 0.4) + 'px; background:' + cor + '; opacity:0.95; border-radius:1px; animation: cair-confete ' + duracao + 's ease-in ' + atraso + 's forwards;';
+                    conf.style.setProperty('--rot-final', rotFinal + 'deg');
+                    container.appendChild(conf);
+                    setTimeout(function () { conf.remove(); }, (duracao + atraso) * 1000 + 200);
+                })();
+            }
+        }
+        // 🔊 Som de confete estourando — sintetizado na hora (sem precisar hospedar arquivo de
+        // áudio nenhum, mantendo a agilidade da prévenda).
+        function tocarSomConfete() {
+            try {
+                var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                var ctx = new AudioCtx();
+                function estalo(tempoInicio) {
+                    var duracao = 0.15;
+                    var buffer = ctx.createBuffer(1, ctx.sampleRate * duracao, ctx.sampleRate);
+                    var dados = buffer.getChannelData(0);
+                    for (var i = 0; i < dados.length; i++) dados[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / dados.length, 2);
+                    var fonte = ctx.createBufferSource();
+                    fonte.buffer = buffer;
+                    var filtro = ctx.createBiquadFilter();
+                    filtro.type = 'highpass';
+                    filtro.frequency.value = 1200;
+                    var ganho = ctx.createGain();
+                    ganho.gain.value = 0.5;
+                    fonte.connect(filtro).connect(ganho).connect(ctx.destination);
+                    fonte.start(tempoInicio);
+                }
+                estalo(ctx.currentTime);
+                estalo(ctx.currentTime + 0.08);
+                estalo(ctx.currentTime + 0.15);
+            } catch (e) {}
+        }
+
         // ── Pergunta automática da cidade, ~1s depois de abrir ──────────────
         setTimeout(function () {
             document.getElementById('overlay-pergunta').classList.add('visivel');
@@ -285,19 +344,43 @@
                 }).catch(function () {});
             }
 
-            // ⚡ Só quando confirma "Sim": a foto vira vídeo instantaneamente (ele já estava
-            // carregando desde o início, por trás) — igual um "presente revelado". Como é um
-            // clique de verdade da pessoa, o navegador permite tocar COM SOM (diferente de vídeo
-            // automático assim que a página abre, que é sempre obrigado a ficar mudo).
-            // ⚡ Agora ativa pra QUALQUER resposta (sim ou não) — antes só ativava no "sim".
+            // ⚡ Reorganização completa quando o vídeo é revelado (em qualquer resposta, sim ou
+            // não): o "Atenção Cidade" vai pra dentro do vídeo, no topo; o balão do nome do sorteio
+            // + "Participe e concorra" vai pra dentro, embaixo; o botão de participar some da borda
+            // flutuante e fica logo abaixo desse balão; a descrição e o tutorial somem. Tudo isso
+            // MOVE os elementos de verdade (não duplica nada), então continuam sendo os mesmos
+            // que o resto do código já controla.
             if (videoDisponivel) {
                 clearInterval(intervaloCarrossel);
                 var imgsAtuais = fotoBox.querySelectorAll('img');
                 imgsAtuais.forEach(function (img) { img.classList.remove('ativa'); });
-                // ⚡ Tamanho real do vídeo: solta a moldura fixa de 360px da foto (que existia só
-                // pra caber uma foto cortada) e deixa o vídeo aparecer no tamanho/proporção dele de
-                // verdade, largura cheia com altura se ajustando sozinha.
-                fotoBox.style.height = 'auto';
+
+                fotoBox.classList.add('modo-video');
+
+                // "Atenção, Cidade!" pra dentro do vídeo, no topo (some a descrição de baixo dela)
+                var elAtencao = document.getElementById('txt-atencao');
+                var elMensagem = document.getElementById('txt-mensagem');
+                if (elMensagem) elMensagem.style.display = 'none';
+                var wrapperTopo = document.createElement('div');
+                wrapperTopo.className = 'overlay-topo-video';
+                wrapperTopo.appendChild(elAtencao);
+                fotoBox.insertBefore(wrapperTopo, elVideo);
+
+                // Balão (nome do sorteio + "Participe e concorra") pra dentro do vídeo, embaixo —
+                // e o botão de participar (antes flutuando no canto) some daqui e vai logo abaixo dele.
+                var elCaixaTitulo = document.querySelector('.rodape-foto .caixa-titulo');
+                var elBtnParticipar = document.getElementById('btn-participar');
+                var wrapperBaixo = document.createElement('div');
+                wrapperBaixo.className = 'overlay-baixo-video';
+                if (elCaixaTitulo) wrapperBaixo.appendChild(elCaixaTitulo);
+                wrapperBaixo.appendChild(elBtnParticipar);
+                fotoBox.appendChild(wrapperBaixo);
+
+                // Esconde o tutorial "Como Participar" — fica só o botão grande abaixo do vídeo.
+                var elTutorial = document.querySelector('.tutorial-box');
+                if (elTutorial) elTutorial.style.display = 'none';
+
+                // Vídeo em si, sem cortar nada (mostra ele inteiro, do tamanho real dele)
                 elVideo.style.position = 'relative';
                 elVideo.style.width = '100%';
                 elVideo.style.height = 'auto';
@@ -314,6 +397,14 @@
                         elVideo.play().catch(function () {});
                     });
                 }
+
+                // 🎉 Confete + som, só nesse momento da revelação
+                var confeteBox = document.createElement('div');
+                confeteBox.className = 'confete-container';
+                fotoBox.appendChild(confeteBox);
+                dispararConfete(confeteBox);
+                tocarSomConfete();
+                setTimeout(function () { confeteBox.remove(); }, 3000);
             }
         }
         document.getElementById('btn-resposta-sim').addEventListener('click', function () { fecharPergunta('sim'); });
