@@ -289,10 +289,20 @@
             // carregando desde o início, por trás) — igual um "presente revelado". Como é um
             // clique de verdade da pessoa, o navegador permite tocar COM SOM (diferente de vídeo
             // automático assim que a página abre, que é sempre obrigado a ficar mudo).
-            if (resposta === 'sim' && videoDisponivel) {
+            // ⚡ Agora ativa pra QUALQUER resposta (sim ou não) — antes só ativava no "sim".
+            if (videoDisponivel) {
                 clearInterval(intervaloCarrossel);
                 var imgsAtuais = fotoBox.querySelectorAll('img');
                 imgsAtuais.forEach(function (img) { img.classList.remove('ativa'); });
+                // ⚡ Tamanho real do vídeo: solta a moldura fixa de 360px da foto (que existia só
+                // pra caber uma foto cortada) e deixa o vídeo aparecer no tamanho/proporção dele de
+                // verdade, largura cheia com altura se ajustando sozinha.
+                fotoBox.style.height = 'auto';
+                elVideo.style.position = 'relative';
+                elVideo.style.width = '100%';
+                elVideo.style.height = 'auto';
+                elVideo.style.objectFit = 'contain';
+                elVideo.style.display = 'block';
                 elVideo.style.opacity = '1';
                 elVideo.muted = false;
                 elVideo.currentTime = 0;
