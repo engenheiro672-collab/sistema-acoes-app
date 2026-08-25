@@ -35,7 +35,7 @@
         @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
         .rodape-foto { padding: 1rem; text-align: center; animation: entrar 0.6s ease both; animation-delay: 0.1s; }
-        .rodape-foto .caixa-titulo { background: linear-gradient(145deg, rgba(13,16,21,0.65), rgba(26,31,43,0.65)); border: 1.5px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 0.7rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .caixa-titulo { background: linear-gradient(145deg, rgba(13,16,21,0.65), rgba(26,31,43,0.65)); border: 1.5px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 0.7rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
         .rodape-foto p { margin: 0.1rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.8); }
 
@@ -66,9 +66,19 @@
         .foto-box.modo-video { height: auto; min-height: 200px; display: flex; align-items: center; justify-content: center; background: #000; padding: 0; }
         .video-wrap { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
         .video-wrap video { display: block; max-width: 100%; width: auto; height: auto; max-height: 80vh; margin: 0 auto; }
-        .overlay-topo-video { position: absolute; top: 34px; left: 0; right: 0; text-align: center; z-index: 4; }
+        .overlay-topo-video { position: absolute; top: 60px; left: 0; right: 0; text-align: center; z-index: 4; }
+        /* "Autorizado, Cidade" dentro do vídeo — fundo preto (não mais verde), menos arredondado,
+           mais alto (mais respiro em volta da letra) */
+        .overlay-topo-video .atencao { background: rgba(0,0,0,0.62); border: 1.5px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.85rem 1.6rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
         .overlay-baixo-video { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; z-index: 4; padding: 0 0.6rem; }
         .overlay-baixo-video #btn-participar { position: static !important; margin-top: 0.5rem; display: inline-flex; }
+
+        /* Tela de "verificando cidade" — aparece enquanto o vídeo termina de carregar por
+           completo, evitando qualquer travadinha quando ele aparecer */
+        #overlay-carregando-video { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; z-index: 10; color: #fff; gap: 0.9rem; }
+        .spinner-carregando { width: 38px; height: 38px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #4ade80; border-radius: 50%; animation: girar-spinner 0.8s linear infinite; }
+        @keyframes girar-spinner { to { transform: rotate(360deg); } }
+        #overlay-carregando-video p { margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.85); }
 
         /* Confete — pedacinhos coloridos caindo, some sozinho depois de alguns segundos */
         .confete-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; }
@@ -350,73 +360,103 @@
                 }).catch(function () {});
             }
 
-            // ⚡ Reorganização completa quando o vídeo é revelado (em qualquer resposta, sim ou
-            // não): o "Atenção Cidade" vai pra dentro do vídeo, no topo; o balão do nome do sorteio
-            // + "Participe e concorra" vai pra dentro, embaixo; o botão de participar some da borda
-            // flutuante e fica logo abaixo desse balão; a descrição e o tutorial somem. Tudo isso
-            // MOVE os elementos de verdade (não duplica nada), então continuam sendo os mesmos
-            // que o resto do código já controla.
-            if (videoDisponivel) {
-                clearInterval(intervaloCarrossel);
-                var imgsAtuais = fotoBox.querySelectorAll('img');
-                imgsAtuais.forEach(function (img) { img.classList.remove('ativa'); });
+            if (videoDisponivel) mostrarCarregandoEDepoisRevelarVideo();
+        }
 
-                fotoBox.classList.add('modo-video');
+        // ⚡ Em vez de abrir o vídeo na hora (o que podia dar uma travadinha se ele ainda não
+        // tivesse terminado de carregar), mostra uma tela de "Verificando cidade..." primeiro, e
+        // só revela o vídeo quando ele estiver 100% pronto pra tocar sem travar nenhuma vez.
+        function mostrarCarregandoEDepoisRevelarVideo() {
+            clearInterval(intervaloCarrossel);
+            var imgsAtuais = fotoBox.querySelectorAll('img');
+            imgsAtuais.forEach(function (img) { img.classList.remove('ativa'); });
 
-                // ⚡ Cria um "envoltório" que abraça o vídeo EXATAMENTE do tamanho renderizado
-                // dele (por isso o CSS usa display:inline-block) — é dentro desse envoltório que
-                // os textos/balão/botão ficam posicionados (position:absolute), garantindo que
-                // fiquem literalmente EM CIMA do vídeo, não numa faixa preta ao redor dele.
-                var videoWrap = document.createElement('div');
-                videoWrap.className = 'video-wrap';
-                fotoBox.appendChild(videoWrap);
-                videoWrap.appendChild(elVideo);
+            var overlayCarregando = document.createElement('div');
+            overlayCarregando.id = 'overlay-carregando-video';
+            overlayCarregando.innerHTML = '<div class="spinner-carregando"></div><p>Verificando cidade...</p>';
+            fotoBox.appendChild(overlayCarregando);
 
-                // "Atenção, Cidade!" em cima do vídeo, no topo (some a descrição de baixo dela)
-                var elAtencao = document.getElementById('txt-atencao');
-                var elMensagem = document.getElementById('txt-mensagem');
-                if (elMensagem) elMensagem.style.display = 'none';
-                var wrapperTopo = document.createElement('div');
-                wrapperTopo.className = 'overlay-topo-video';
-                wrapperTopo.appendChild(elAtencao);
-                videoWrap.appendChild(wrapperTopo);
-
-                // Balão (nome do sorteio + "Participe e concorra") em cima do vídeo, embaixo —
-                // e o botão de participar (antes flutuando no canto) some daqui e vai logo abaixo dele.
-                var elCaixaTitulo = document.querySelector('.rodape-foto .caixa-titulo');
-                var elBtnParticipar = document.getElementById('btn-participar');
-                var wrapperBaixo = document.createElement('div');
-                wrapperBaixo.className = 'overlay-baixo-video';
-                if (elCaixaTitulo) wrapperBaixo.appendChild(elCaixaTitulo);
-                wrapperBaixo.appendChild(elBtnParticipar);
-                videoWrap.appendChild(wrapperBaixo);
-
-                // Vídeo no tamanho REAL dele (nunca esticado maior que o original), centralizado.
-                elVideo.style.position = 'relative';
-                elVideo.style.width = 'auto';
-                elVideo.style.height = 'auto';
-                elVideo.style.objectFit = 'unset';
-                elVideo.style.display = 'block';
-                elVideo.style.opacity = '1';
-                elVideo.muted = false;
-                elVideo.currentTime = 0;
-                var promessaPlay = elVideo.play();
-                if (promessaPlay && promessaPlay.catch) {
-                    promessaPlay.catch(function () {
-                        // Em algum navegador mais restritivo, cai pra mudo em vez de não tocar nada.
-                        elVideo.muted = true;
-                        elVideo.play().catch(function () {});
-                    });
-                }
-
-                // 🎉 Confete + som, só nesse momento da revelação
-                var confeteBox = document.createElement('div');
-                confeteBox.className = 'confete-container';
-                fotoBox.appendChild(confeteBox);
-                dispararConfete(confeteBox);
-                tocarSomConfete();
-                setTimeout(function () { confeteBox.remove(); }, 3000);
+            var jaRevelou = false;
+            function revelarAgora() {
+                if (jaRevelou) return;
+                jaRevelou = true;
+                overlayCarregando.remove();
+                revelarVideoDeVerdade();
             }
+
+            // readyState 4 (HAVE_ENOUGH_DATA) = já pode tocar sem travar. Se ainda não tiver
+            // chegado nesse ponto, espera o evento avisar — mas nunca mais que 4s, pra não travar
+            // a pessoa esperando pra sempre se algo inesperado acontecer com o vídeo.
+            if (elVideo.readyState >= 4) revelarAgora();
+            else {
+                elVideo.addEventListener('canplaythrough', revelarAgora, { once: true });
+                setTimeout(revelarAgora, 4000);
+            }
+        }
+
+        // ⚡ Reorganização completa quando o vídeo é revelado (em qualquer resposta, sim ou
+        // não): o "Autorizado, Cidade" vai pra dentro do vídeo, no topo; o balão do nome do
+        // sorteio + "Participe e concorra" vai pra dentro, embaixo; o botão de participar some da
+        // borda flutuante e fica logo abaixo desse balão; a descrição e o tutorial somem. Tudo isso
+        // MOVE os elementos de verdade (não duplica nada), então continuam sendo os mesmos que o
+        // resto do código já controla.
+        function revelarVideoDeVerdade() {
+            fotoBox.classList.add('modo-video');
+
+            // ⚡ Cria um "envoltório" que abraça o vídeo EXATAMENTE do tamanho renderizado
+            // dele (por isso o CSS usa display:inline-block) — é dentro desse envoltório que
+            // os textos/balão/botão ficam posicionados (position:absolute), garantindo que
+            // fiquem literalmente EM CIMA do vídeo, não numa faixa preta ao redor dele.
+            var videoWrap = document.createElement('div');
+            videoWrap.className = 'video-wrap';
+            fotoBox.appendChild(videoWrap);
+            videoWrap.appendChild(elVideo);
+
+            // "Autorizado, Cidade" em cima do vídeo, no topo (some a descrição de baixo dela)
+            var elAtencao = document.getElementById('txt-atencao');
+            var elMensagem = document.getElementById('txt-mensagem');
+            if (elMensagem) elMensagem.style.display = 'none';
+            if (elAtencao) elAtencao.textContent = cidade ? ('Autorizado, ' + cidade) : 'Autorizado!';
+            var wrapperTopo = document.createElement('div');
+            wrapperTopo.className = 'overlay-topo-video';
+            wrapperTopo.appendChild(elAtencao);
+            videoWrap.appendChild(wrapperTopo);
+
+            // Balão (nome do sorteio + "Participe e concorra") em cima do vídeo, embaixo —
+            // e o botão de participar (antes flutuando no canto) some daqui e vai logo abaixo dele.
+            var elCaixaTitulo = document.querySelector('.rodape-foto .caixa-titulo');
+            var elBtnParticipar = document.getElementById('btn-participar');
+            var wrapperBaixo = document.createElement('div');
+            wrapperBaixo.className = 'overlay-baixo-video';
+            if (elCaixaTitulo) wrapperBaixo.appendChild(elCaixaTitulo);
+            wrapperBaixo.appendChild(elBtnParticipar);
+            videoWrap.appendChild(wrapperBaixo);
+
+            // Vídeo no tamanho REAL dele (nunca esticado maior que o original), centralizado.
+            elVideo.style.position = 'relative';
+            elVideo.style.width = 'auto';
+            elVideo.style.height = 'auto';
+            elVideo.style.objectFit = 'unset';
+            elVideo.style.display = 'block';
+            elVideo.style.opacity = '1';
+            elVideo.muted = false;
+            elVideo.currentTime = 0;
+            var promessaPlay = elVideo.play();
+            if (promessaPlay && promessaPlay.catch) {
+                promessaPlay.catch(function () {
+                    // Em algum navegador mais restritivo, cai pra mudo em vez de não tocar nada.
+                    elVideo.muted = true;
+                    elVideo.play().catch(function () {});
+                });
+            }
+
+            // 🎉 Confete + som, só nesse momento da revelação
+            var confeteBox = document.createElement('div');
+            confeteBox.className = 'confete-container';
+            fotoBox.appendChild(confeteBox);
+            dispararConfete(confeteBox);
+            tocarSomConfete();
+            setTimeout(function () { confeteBox.remove(); }, 3000);
         }
         document.getElementById('btn-resposta-sim').addEventListener('click', function () { fecharPergunta('sim'); });
         document.getElementById('btn-resposta-nao').addEventListener('click', function () { fecharPergunta('nao'); });
