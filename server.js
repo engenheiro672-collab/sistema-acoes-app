@@ -450,6 +450,18 @@ async function fetchPixelsExtrasCompletos() {
 // girou a roleta, etc. É daqui que a futura aba "Analisar" (por cidade) e o envio de segurança
 // pro Meta (API de Conversões) vão puxar os dados. Roda em segundo plano (nunca atrasa nem quebra
 // a ação principal do usuário, mesmo se der erro).
+// ⚡ O banco guarda tudo em UTC (timestamptz) — sem converter pro fuso do Brasil antes de pegar
+// só a "data" de um timestamp, tudo que acontece depois das 21h (Brasil) já vira o dia seguinte
+// em UTC, e os gráficos "por dia" mostravam a venda no dia errado. O Brasil é UTC-3 o ano
+// inteiro (não tem mais horário de verão desde 2019), então um deslocamento fixo já resolve.
+function dataBrasil(isoOuData) {
+  if (!isoOuData) return '';
+  const d = new Date(isoOuData);
+  if (isNaN(d.getTime())) return '';
+  const comFusoBrasil = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+  return comFusoBrasil.toISOString().slice(0, 10);
+}
+
 function registrarEventoLead({ usuario_id = null, telefone = null, sorteio_id = null, pedido_id = null, tipo_evento, valor = null, cidade = null, prevenda_id = null, metadata = null }) {
   if (!tipo_evento) return;
   supabase.from('eventos_lead').insert({
@@ -710,6 +722,11 @@ app.get('/politica-de-privacidade', (_req, res) => sendPage(res, 'politica-de-pr
 // selo de 6h — e por isso inflavam bastante a contagem de acessos, sem nenhuma pessoa real por trás.
 const ROBOS_CONHECIDOS = /facebookexternalhit|meta-externalagent|Facebot|WhatsApp|Twitterbot|Slackbot|TelegramBot|LinkedInBot|Googlebot|bingbot|AhrefsBot|SemrushBot|MJ12bot|DotBot|python-requests|node-fetch|axios\/|curl\/|wget\/|PostmanRuntime|Discordbot|Applebot|Pingdom|UptimeRobot|StatusCake|GTmetrix|HeadlessChrome/i;
 
+// ⚡ Trava rápida em memória — cobre o intervalo de tempo entre "a pessoa clicou 2x sem querer,
+// bem rápido" e "o cookie da primeira visita ainda não voltou pro navegador". Sem isso, dois
+// pedidos chegando quase juntos (antes do cookie ter efeito) contavam os dois como acesso novo.
+const _acessosEmProcessamento = new Set();
+
 function trackearAcesso(req, res, next) {
   // ⚡ Robô/rastreador conhecido — deixa a página carregar normal (eles precisam ver o conteúdo
   // certo pra gerar prévia/revisão), mas NUNCA conta como acesso nem mexe em nenhum contador.
@@ -723,9 +740,12 @@ function trackearAcesso(req, res, next) {
   // (ou usar o oficial depois de outro) sempre conta certinho na primeira vez.
   const origemChave = req.query.lk ? String(req.query.lk) : 'oficial';
   const cookieKey = `acesso_${slugAtual}_${origemChave}`;
-  const jaContabilizado = !!(req.cookies && req.cookies[cookieKey]);
+  const chaveMemoria = `${cookieKey}_${req.ip || ''}`;
+  const jaContabilizado = !!(req.cookies && req.cookies[cookieKey]) || _acessosEmProcessamento.has(chaveMemoria);
   if (!jaContabilizado) {
     try { res.cookie(cookieKey, '1', { maxAge: 6 * 60 * 60 * 1000, httpOnly: false, sameSite: 'lax' }); } catch (e) {}
+    _acessosEmProcessamento.add(chaveMemoria);
+    setTimeout(() => _acessosEmProcessamento.delete(chaveMemoria), 8000); // 8s é de sobra pra cobrir qualquer clique duplo
   }
   next();
   if (jaContabilizado) return;
@@ -991,6 +1011,18 @@ app.post('/api/public/prevenda/resposta-cidade', async (req, res) => {
   } catch (err) { console.error('POST resposta-cidade', err); return res.status(500).json({ error: 'erro' }); }
 });
 
+// Registra quando a pessoa clica em "participar" na prévenda e avança pro site do sorteio.
+app.post('/api/public/prevenda/avancou-site', async (req, res) => {
+  try {
+    const { prevenda_id } = req.body || {};
+    if (!prevenda_id) return res.status(400).json({ error: 'Dados inválidos' });
+    const { data: prevenda } = await supabase.from('prevendas').select('sorteio_id, cidade').eq('id', prevenda_id).maybeSingle();
+    if (!prevenda) return res.status(404).json({ error: 'Prévenda não encontrada' });
+    registrarEventoLead({ sorteio_id: prevenda.sorteio_id, tipo_evento: 'avancou_site', cidade: prevenda.cidade, prevenda_id });
+    return res.json({ ok: true });
+  } catch (err) { console.error('POST avancou-site', err); return res.status(500).json({ error: 'erro' }); }
+});
+
 app.get('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) => {
   try {
     const { data, error } = await supabase.from('prevendas').select('*, funis(slug, arquivo_html, arquivo_checkout_html)').eq('sorteio_id', req.params.id).order('created_at', { ascending: false });
@@ -1064,7 +1096,7 @@ app.get('/api/admin/sorteios/:id/analise-cidades', ensureAdminAuth, async (req, 
 
     const porCidade = {};
     function pegar(nome) {
-      if (!porCidade[nome]) porCidade[nome] = { cidade: nome, visitas: 0, sim: 0, nao: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+      if (!porCidade[nome]) porCidade[nome] = { cidade: nome, visitas: 0, sim: 0, nao: 0, avancou_site: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
       return porCidade[nome];
     }
     // Garante que toda cidade cadastrada apareça na lista, mesmo com zero eventos ainda.
@@ -1074,6 +1106,7 @@ app.get('/api/admin/sorteios/:id/analise-cidades', ensureAdminAuth, async (req, 
       const c = pegar(e.cidade);
       if (e.tipo_evento === 'visita_prevenda') c.visitas++;
       else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') c.sim++; else if (e.metadata?.resposta === 'nao') c.nao++; }
+      else if (e.tipo_evento === 'avancou_site') c.avancou_site++;
       else if (e.tipo_evento === 'lead') c.leads++;
       else if (e.tipo_evento === 'iniciar_checkout') { c.checkouts++; c.valor_checkout += Number(e.valor || 0); }
       else if (e.tipo_evento === 'compra') { c.compras++; c.valor_compra += Number(e.valor || 0); }
@@ -1092,12 +1125,13 @@ app.get('/api/admin/analise-cidade-detalhe', ensureAdminAuth, async (req, res) =
     const { data: eventos } = await supabase.from('eventos_lead').select('tipo_evento, valor, created_at, metadata').eq('sorteio_id', sorteio_id).eq('cidade', cidade).order('created_at', { ascending: true }).limit(50000);
 
     const porDia = {};
-    const totais = { visitas: 0, sim: 0, nao: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+    const totais = { visitas: 0, sim: 0, nao: 0, avancou_site: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
     (eventos || []).forEach(e => {
-      const dia = (e.created_at || '').slice(0, 10);
+      const dia = dataBrasil(e.created_at);
       if (!porDia[dia]) porDia[dia] = { dia, visitas: 0, leads: 0, checkouts: 0, compras: 0, valor_compra: 0 };
       if (e.tipo_evento === 'visita_prevenda') { porDia[dia].visitas++; totais.visitas++; }
       else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') totais.sim++; else if (e.metadata?.resposta === 'nao') totais.nao++; }
+      else if (e.tipo_evento === 'avancou_site') totais.avancou_site++;
       else if (e.tipo_evento === 'lead') { porDia[dia].leads++; totais.leads++; }
       else if (e.tipo_evento === 'iniciar_checkout') { porDia[dia].checkouts++; totais.checkouts++; totais.valor_checkout += Number(e.valor || 0); }
       else if (e.tipo_evento === 'compra') { porDia[dia].compras++; totais.compras++; porDia[dia].valor_compra += Number(e.valor || 0); totais.valor_compra += Number(e.valor || 0); }
@@ -1121,13 +1155,14 @@ app.get('/api/admin/sorteios/:id/analise-prevendas', ensureAdminAuth, async (req
 
     const porPrevenda = {};
     (prevendas || []).forEach(p => {
-      porPrevenda[p.id] = { prevenda_id: p.id, nome: p.nome, cidade: p.cidade, canal: p.canal, ativo: p.ativo, visitas: 0, sim: 0, nao: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+      porPrevenda[p.id] = { prevenda_id: p.id, nome: p.nome, cidade: p.cidade, canal: p.canal, ativo: p.ativo, visitas: 0, sim: 0, nao: 0, avancou_site: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
     });
     (eventos || []).forEach(e => {
       const p = porPrevenda[e.prevenda_id];
       if (!p) return; // evento de uma prévenda já excluída
       if (e.tipo_evento === 'visita_prevenda') p.visitas++;
       else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') p.sim++; else if (e.metadata?.resposta === 'nao') p.nao++; }
+      else if (e.tipo_evento === 'avancou_site') p.avancou_site++;
       else if (e.tipo_evento === 'lead') p.leads++;
       else if (e.tipo_evento === 'iniciar_checkout') { p.checkouts++; p.valor_checkout += Number(e.valor || 0); }
       else if (e.tipo_evento === 'compra') { p.compras++; p.valor_compra += Number(e.valor || 0); }
@@ -1879,7 +1914,10 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
       }
     }
 
-    if (rows.length === 0) return [];
+    if (rows.length === 0) {
+      console.error(`🚨 [gerarCotasUnicas] Pedido ${pedido.id}: NENHUMA cota disponível pra gerar (sorteio pode estar esgotado, ou todos os números elegíveis já estavam ocupados). O pagamento foi confirmado, mas a compra não foi registrada — inclusive pro Meta. Precisa de atenção manual.`);
+      return [];
+    }
 
     // Insere em lote. Compras grandes (milhares de cotas) vão em pedaços menores, em paralelo — mais
     // rápido e evita esbarrar num limite de tamanho de requisição de uma inserção gigante só.
@@ -1939,7 +1977,10 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
         }
       }
     }
-    if (inserted.length === 0) return [];
+    if (inserted.length === 0) {
+      console.error(`🚨 [gerarCotasUnicas] Pedido ${pedido.id}: a inserção das cotas no banco falhou por completo (0 linhas inseridas), mesmo tendo números pra tentar. O pagamento foi confirmado, mas a compra não foi registrada — inclusive pro Meta. Precisa de atenção manual.`);
+      return [];
+    }
 
     // ⚡ Soma no contador pronto de cotas vendidas — é essa soma que deixa a leitura da página do
     // sorteio instantânea (lê um número já pronto, em vez de contar tudo de novo a cada visita).
@@ -2497,7 +2538,7 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
 
     const porDia = {};
     (acessos || []).forEach(a => {
-      const k = (a.created_at || '').slice(0, 10);
+      const k = dataBrasil(a.created_at);
       if (!porDia[k]) porDia[k] = { dia: k, acessos: 0, faturamento: 0 };
       porDia[k].acessos++;
     });
@@ -2506,7 +2547,7 @@ app.get('/api/admin/links/:id/detalhe', ensureAdminAuth, async (req, res) => {
     const pendentes = (pedidos || []).filter(p => p.status === 'aguardando' && (!p.expira_em || p.expira_em >= nowISO));
     const expirados = (pedidos || []).filter(p => p.status === 'aguardando' && p.expira_em && p.expira_em < nowISO);
     pagos.forEach(p => {
-      const k = (p.created_at || '').slice(0, 10);
+      const k = dataBrasil(p.created_at);
       if (!porDia[k]) porDia[k] = { dia: k, acessos: 0, faturamento: 0 };
       porDia[k].faturamento += Number(p.valor_total || 0);
     });
@@ -2992,7 +3033,7 @@ app.get('/api/admin/dashboard/vendas-diarias', ensureAdminAuth, async (req, res)
     const { data: paid } = await q;
     const map = {};
     (paid || []).forEach(p => {
-      const k = (p.updated_at || '').slice(0, 10);
+      const k = dataBrasil(p.updated_at);
       if (!map[k]) map[k] = 0;
       map[k] += Number(p.valor_total || 0);
     });
@@ -3427,7 +3468,7 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
     const { data: paid } = await supabase.from('pedidos').select('updated_at, valor_total, user_id').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString());
     const map = {};
     (paid || []).forEach(p => {
-      const k = (p.updated_at || '').slice(0, 10);
+      const k = dataBrasil(p.updated_at);
       if (!map[k]) map[k] = { dia: k, pedidos: 0, faturamento: 0 };
       map[k].pedidos += 1; map[k].faturamento += Number(p.valor_total || 0);
     });
@@ -3443,7 +3484,7 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
 
     // Junta despesas por dia na mesma série, pra alimentar o gráfico com faturamento/líquido/despesa lado a lado
     (despesas || []).forEach(d => {
-      const k = (d.data || '').slice(0, 10);
+      const k = dataBrasil(d.data);
       if (!map[k]) map[k] = { dia: k, pedidos: 0, faturamento: 0 };
       map[k].despesas = (map[k].despesas || 0) + Number(d.valor || 0);
     });
@@ -3919,11 +3960,12 @@ app.post('/api/webhook/pagamento', async (req, res) => {
       try { payload = JSON.parse(payload.toString('utf8')); } catch { payload = {}; }
     }
     const paymentId = payload.id || payload.data?.id || payload['collection_id'] || null;
+    console.log(`📩 [Webhook MP] Recebido — type: ${payload.type || payload.topic || '?'}, paymentId: ${paymentId}`);
     if (!paymentId) return res.status(400).json({ error: 'no id found' });
 
     const { valido } = verificarAssinaturaWebhookMP(req, String(paymentId));
     if (valido === false) {
-      console.warn('🚨 Webhook de pagamento com assinatura INVÁLIDA — recusado. paymentId:', paymentId);
+      console.warn(`🚨 [Webhook MP] Assinatura INVÁLIDA — recusado. paymentId: ${paymentId}, x-signature: ${req.headers['x-signature']}, x-request-id: ${req.headers['x-request-id']}`);
       return res.status(401).json({ error: 'assinatura inválida' });
     }
     if (valido === null) {
@@ -3933,14 +3975,17 @@ app.post('/api/webhook/pagamento', async (req, res) => {
     const { data: pedido } = await supabase.from('pedidos').select('*').eq('gateway_payment_id', String(paymentId)).maybeSingle();
 
     if (!pedido) {
-      console.warn('Pedido not found for paymentId', paymentId);
+      console.warn(`⚠️ [Webhook MP] Nenhum pedido encontrado com gateway_payment_id = "${paymentId}" — o pagamento pode ter chegado antes do pedido salvar esse ID, ou o ID não bate. Esse pagamento vai ser pego depois pela rede de segurança automática.`);
       return res.json({ ok: true });
     }
 
+    console.log(`✅ [Webhook MP] Pedido ${pedido.id} encontrado e marcado como pago (status anterior: ${pedido.status}).`);
     await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', pedido.id);
 
     if (!pedido.cotas_array || pedido.cotas_array.length === 0) {
       await gerarCotasUnicas(pedido);
+    } else {
+      console.log(`ℹ️ [Webhook MP] Pedido ${pedido.id} já tinha cotas geradas — não gerou de novo (evita duplicar).`);
     }
 
     return res.json({ ok: true });
@@ -4072,6 +4117,45 @@ app.use((err, _req, res, next) => {
   }
   return next(err);
 });
+
+// ==================================================================
+// 🛡️ REDE DE SEGURANÇA — confere pedidos "pendentes" direto com o Mercado Pago, de tempos em
+// tempos. Isso NÃO depende do webhook chegar, nem da pessoa continuar com a aba aberta esperando
+// a confirmação — resolve o caso mais comum de perda de rastreamento: alguém paga o PIX pelo
+// app do banco e nunca mais volta pro navegador. Sem isso, se o webhook falhar por qualquer
+// motivo (raro, mas acontece), aquele pagamento nunca seria conferido de novo por ninguém.
+async function conferirPagamentosPendentesComMercadoPago() {
+  try {
+    const cfg = await fetchConfigFromDB();
+    const MP_TOKEN = ((MP_ACCESS_TOKEN_FIXO && MP_ACCESS_TOKEN_FIXO.length > 20) ? MP_ACCESS_TOKEN_FIXO : (cfg.MERCADOPAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN) || '').trim();
+    if (!MP_TOKEN) return; // sem token configurado, não tem como perguntar nada ao Mercado Pago
+
+    const agora = new Date().toISOString();
+    const { data: pendentes } = await supabase.from('pedidos')
+      .select('*')
+      .eq('status', 'aguardando')
+      .eq('payment_provider', 'mercadopago')
+      .not('gateway_payment_id', 'is', null)
+      .gte('expira_em', agora) // não perde tempo checando pedido já expirado
+      .limit(200);
+
+    if (!pendentes || pendentes.length === 0) return;
+
+    for (const p of pendentes) {
+      try {
+        const resp = await fetch(`https://api.mercadopago.com/v1/payments/${p.gateway_payment_id}`, { headers: { Authorization: `Bearer ${MP_TOKEN}` } });
+        if (!resp.ok) continue;
+        const info = await resp.json();
+        if (info.status === 'approved' && (info.status_detail === 'accredited' || info.status_detail === 'approved')) {
+          await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', p.id);
+          if (!p.cotas_array || p.cotas_array.length === 0) await gerarCotasUnicas(p);
+          console.log(`🛡️ [Rede de segurança] Pedido ${p.id} estava pago no Mercado Pago mas não tinha sido processado — corrigido agora.`);
+        }
+      } catch (errUm) { console.error(`🛡️ [Rede de segurança] Erro conferindo pedido ${p.id}:`, errUm.message); }
+    }
+  } catch (err) { console.error('🛡️ [Rede de segurança] Erro geral', err.message); }
+}
+setInterval(conferirPagamentosPendentesComMercadoPago, 3 * 60 * 1000); // a cada 3 minutos
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);

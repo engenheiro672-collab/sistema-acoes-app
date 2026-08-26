@@ -1223,6 +1223,7 @@
                                 <th class="p-2">Visitas</th>
                                 <th class="p-2">Sim</th>
                                 <th class="p-2">Não</th>
+                                <th class="p-2">Avançou p/ site</th>
                                 <th class="p-2">Leads</th>
                                 <th class="p-2">Checkouts</th>
                                 <th class="p-2">Valor Checkout</th>
@@ -1231,7 +1232,7 @@
                                 <th class="p-2">Giros Roleta</th>
                                 <th class="p-2">Conversão</th>
                             </tr></thead>
-                            <tbody id="tabela-analise-cidades"><tr><td colspan="11" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr></tbody>
+                            <tbody id="tabela-analise-cidades"><tr><td colspan="12" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -3203,13 +3204,13 @@ function mudarModoAnalise(modo) {
     carregarAnaliseCidades();
 }
 function carregarAnaliseCidades() {
-    if (!SORTEIO_ANALISE_ID) { $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr>'); return; }
-    $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Carregando...</td></tr>');
+    if (!SORTEIO_ANALISE_ID) { $('#tabela-analise-cidades').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr>'); return; }
+    $('#tabela-analise-cidades').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Carregando...</td></tr>');
     if (MODO_ANALISE_ATUAL === 'cidade') {
         api('GET', `/api/admin/sorteios/${SORTEIO_ANALISE_ID}/analise-cidades`).then(d => {
             const cidades = d.cidades || [];
             if (cidades.length === 0) {
-                $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Nenhuma cidade com dados ainda pra esse sorteio.</td></tr>');
+                $('#tabela-analise-cidades').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Nenhuma cidade com dados ainda pra esse sorteio.</td></tr>');
                 return;
             }
             $('#tabela-analise-cidades').html(cidades.map(c => `
@@ -3218,6 +3219,7 @@ function carregarAnaliseCidades() {
                     <td class="p-2 text-pink-400">${c.visitas}</td>
                     <td class="p-2 text-green-400">${c.sim || 0}</td>
                     <td class="p-2 text-red-400">${c.nao || 0}</td>
+                    <td class="p-2 text-cyan-400">${c.avancou_site || 0}</td>
                     <td class="p-2 text-blue-400">${c.leads}</td>
                     <td class="p-2">${c.checkouts}</td>
                     <td class="p-2 text-yellow-400">${formatBR(c.valor_checkout)}</td>
@@ -3232,7 +3234,7 @@ function carregarAnaliseCidades() {
         api('GET', `/api/admin/sorteios/${SORTEIO_ANALISE_ID}/analise-prevendas`).then(d => {
             const prevendas = d.prevendas || [];
             if (prevendas.length === 0) {
-                $('#tabela-analise-cidades').html('<tr><td colspan="11" class="p-4 text-center text-gray-400">Nenhuma prévenda com dados ainda pra esse sorteio.</td></tr>');
+                $('#tabela-analise-cidades').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Nenhuma prévenda com dados ainda pra esse sorteio.</td></tr>');
                 return;
             }
             $('#tabela-analise-cidades').html(prevendas.map(p => `
@@ -3241,6 +3243,7 @@ function carregarAnaliseCidades() {
                     <td class="p-2 text-pink-400">${p.visitas}</td>
                     <td class="p-2 text-green-400">${p.sim || 0}</td>
                     <td class="p-2 text-red-400">${p.nao || 0}</td>
+                    <td class="p-2 text-cyan-400">${p.avancou_site || 0}</td>
                     <td class="p-2 text-blue-400">${p.leads}</td>
                     <td class="p-2">${p.checkouts}</td>
                     <td class="p-2 text-yellow-400">${formatBR(p.valor_checkout)}</td>
@@ -3262,6 +3265,7 @@ function abrirDetalheCidade(cidade) {
                 <div class="metric-card"><p class="text-xs opacity-60">Visitas na prévenda</p><p class="text-xl font-bold text-pink-400">${d.totais.visitas}</p></div>
                 <div class="metric-card"><p class="text-xs opacity-60">Confirmaram "Sim"</p><p class="text-xl font-bold text-green-400">${d.totais.sim || 0}</p></div>
                 <div class="metric-card"><p class="text-xs opacity-60">Confirmaram "Não"</p><p class="text-xl font-bold text-red-400">${d.totais.nao || 0}</p></div>
+                <div class="metric-card"><p class="text-xs opacity-60">Avançou p/ o site</p><p class="text-xl font-bold text-cyan-400">${d.totais.avancou_site || 0}</p></div>
                 <div class="metric-card"><p class="text-xs opacity-60">Leads</p><p class="text-xl font-bold text-blue-400">${d.totais.leads}</p></div>
                 <div class="metric-card"><p class="text-xs opacity-60">Checkouts iniciados</p><p class="text-xl font-bold text-white">${d.totais.checkouts}</p></div>
                 <div class="metric-card"><p class="text-xs opacity-60">Valor em checkout</p><p class="text-xl font-bold text-yellow-400">${formatBR(d.totais.valor_checkout)}</p></div>

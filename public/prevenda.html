@@ -494,6 +494,17 @@
         }
 
         function irParaDestino() {
+            // ⚡ Avisa o servidor que a pessoa avançou pro site — usando sendBeacon, que é feito
+            // exatamente pra isso (funciona mesmo com a página trocando na sequência, diferente de
+            // um fetch normal que pode ser cancelado no meio do caminho).
+            if (prevenda.id) {
+                var corpo = JSON.stringify({ prevenda_id: prevenda.id });
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/public/prevenda/avancou-site', new Blob([corpo], { type: 'application/json' }));
+                } else {
+                    fetch('/api/public/prevenda/avancou-site', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo, keepalive: true }).catch(function () {});
+                }
+            }
             if (htmlDestinoPronto) {
                 try {
                     history.pushState(null, '', urlDestino);
