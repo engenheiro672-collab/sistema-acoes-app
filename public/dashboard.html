@@ -1175,6 +1175,7 @@
                                     <option value="escuro">Fundo escuro</option>
                                     <option value="claro">Fundo claro (combina com o funil-01)</option>
                                     <option value="teste">🧪 Prévenda Teste (funil experimental, sem afetar as outras)</option>
+                                    <option value="direto">🎯 Direto no site (sem prévenda — pergunta aparece em cima do próprio sorteio)</option>
                                 </select>
                             </div>
                             <div>
@@ -3108,7 +3109,12 @@ function renderListaPrevendas() {
         return;
     }
     $('#lista-prevendas').html(lista.map(p => {
-        const link = `${DOMINIO_PUBLICO}/prevenda/${p.slug}`;
+        // ⚡ Tema "direto": não existe página de prévenda separada — o link vai direto pro
+        // sorteio/funil, com a pergunta "Você é dessa cidade?" aparecendo por cima do próprio site.
+        const sorteio = SORTEIOS_CACHE.find(s => s.id === SORTEIO_CIDADE_ID) || {};
+        const link = p.tema === 'direto'
+            ? `${DOMINIO_PUBLICO}/sorteio/${sorteio.slug || ''}${p.funis?.slug ? '/' + p.funis.slug : ''}?cidade=${encodeURIComponent(p.cidade)}&pid=${p.id}`
+            : `${DOMINIO_PUBLICO}/prevenda/${p.slug}`;
         return `
             <div class="funil-card">
                 <div class="flex justify-between items-start gap-3">

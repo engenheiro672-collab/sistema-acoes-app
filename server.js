@@ -1060,7 +1060,7 @@ app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) 
 
     const { data: inserted, error } = await supabase.from('prevendas').insert({
       sorteio_id, nome: body.nome, slug, cidade: body.cidade, canal: body.canal || 'facebook_ads',
-      tema: ['claro', 'teste'].includes(body.tema) ? body.tema : 'escuro',
+      tema: ['claro', 'teste', 'direto'].includes(body.tema) ? body.tema : 'escuro',
       funil_id: funilCriado.id, ativo: true, created_at: new Date().toISOString()
     }).select().single();
     if (error) return fail(res, error.message);
@@ -1185,7 +1185,7 @@ app.put('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
     if (body.nome !== undefined) payloadPrevenda.nome = body.nome;
     if (body.cidade !== undefined) payloadPrevenda.cidade = body.cidade;
     if (body.canal !== undefined) payloadPrevenda.canal = body.canal;
-    if (body.tema !== undefined) payloadPrevenda.tema = ['claro', 'teste'].includes(body.tema) ? body.tema : 'escuro';
+    if (body.tema !== undefined) payloadPrevenda.tema = ['claro', 'teste', 'direto'].includes(body.tema) ? body.tema : 'escuro';
     if (body.ativo !== undefined) payloadPrevenda.ativo = !!body.ativo;
 
     if (Object.keys(payloadPrevenda).length > 0) {
