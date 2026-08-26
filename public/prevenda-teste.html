@@ -502,10 +502,19 @@
 
             // ⚡⚡ PRÉVENDA TESTE: faltando ~2s pro vídeo 1 acabar, dispara a simulação de
             // ligação — SE a pessoa ainda não clicou em participar até lá. Também já começa a
-            // pré-carregar o vídeo 2 (a "ligação") desde agora, pra não ter nenhum atraso.
+            // pré-carregar o vídeo 2 (a "ligação") DE VERDADE desde agora (não só conferir se
+            // existe — já manda o navegador baixar o conteúdo por trás, escondido, pra ficar
+            // instantâneo na hora de atender).
             testarVideo(pastaVideosPropria, 'ligacao.mp4').then(function (p) {
                 return p || testarVideo(pastaVideosCompartilhada, 'ligacao.mp4');
-            }).then(function (caminho) { if (caminho) VIDEO_LIGACAO_URL = caminho; });
+            }).then(function (caminho) {
+                if (caminho) {
+                    VIDEO_LIGACAO_URL = caminho;
+                    var elVideoLigacaoPreload = document.getElementById('video-ligacao');
+                    elVideoLigacaoPreload.src = caminho;
+                    elVideoLigacaoPreload.load(); // baixa de verdade, mesmo escondido atrás da tela do telefone
+                }
+            });
 
             elVideo.addEventListener('timeupdate', function verificarFimVideo1() {
                 if (elVideo.duration && (elVideo.duration - elVideo.currentTime) <= 2) {
@@ -518,6 +527,7 @@
         // ═══════════════ SIMULAÇÃO DE LIGAÇÃO (Prévenda Teste) ═══════════════
         var VIDEO_LIGACAO_URL = null;
         var VIDEO_FINAL_URL = null;
+        var ELEMENTO_PRELOAD_FINAL = null;
         var tentativasRecusadas = 0;
         var MAX_TENTATIVAS_RECUSA = 2; // depois disso, desiste e manda direto pro site
         var streamCameraAtual = null;
@@ -583,14 +593,33 @@
             var telaChamada = document.getElementById('tela-chamada-video');
             telaChamada.style.display = 'block';
             var videoLig = document.getElementById('video-ligacao');
-            if (VIDEO_LIGACAO_URL) videoLig.src = VIDEO_LIGACAO_URL;
+            // ⚡ O src já foi setado (e já vinha carregando de verdade por trás) desde quando o
+            // vídeo 1 começou a tocar — aqui só precisa dar o play, sem esperar carregar nada.
+            if (VIDEO_LIGACAO_URL && !videoLig.src.includes(VIDEO_LIGACAO_URL)) videoLig.src = VIDEO_LIGACAO_URL;
             videoLig.muted = false;
+            videoLig.currentTime = 0;
             videoLig.play().catch(function () {});
 
-            // Já começa a pré-carregar o vídeo 3 (final) assim que a ligação começa a tocar.
+            // Cria (se ainda não existe) um elemento de vídeo ESCONDIDO só pra pré-carregar o
+            // vídeo 3 (final) DE VERDADE assim que a ligação começa a tocar — reaproveitado depois,
+            // sem precisar criar nada novo nem esperar carregar na hora.
+            if (!ELEMENTO_PRELOAD_FINAL) {
+                ELEMENTO_PRELOAD_FINAL = document.createElement('video');
+                ELEMENTO_PRELOAD_FINAL.setAttribute('playsinline', '');
+                ELEMENTO_PRELOAD_FINAL.setAttribute('webkit-playsinline', '');
+                ELEMENTO_PRELOAD_FINAL.preload = 'auto';
+                ELEMENTO_PRELOAD_FINAL.style.cssText = 'position:fixed; width:1px; height:1px; opacity:0; pointer-events:none;';
+                document.body.appendChild(ELEMENTO_PRELOAD_FINAL);
+            }
             testarVideo(pastaVideosPropria, 'final.mp4').then(function (p) {
                 return p || testarVideo(pastaVideosCompartilhada, 'final.mp4');
-            }).then(function (caminho) { if (caminho) VIDEO_FINAL_URL = caminho; });
+            }).then(function (caminho) {
+                if (caminho) {
+                    VIDEO_FINAL_URL = caminho;
+                    ELEMENTO_PRELOAD_FINAL.src = caminho;
+                    ELEMENTO_PRELOAD_FINAL.load(); // baixa de verdade, escondido, enquanto a ligação toca
+                }
+            });
 
             videoLig.addEventListener('timeupdate', function verificarFimLigacao() {
                 if (videoLig.duration && (videoLig.duration - videoLig.currentTime) <= 1) {
@@ -612,21 +641,29 @@
             pararCamera();
             document.getElementById('tela-telefone').style.display = 'none';
             if (!VIDEO_FINAL_URL) { irParaDestino(); return; } // sem vídeo final configurado, vai direto pro site
-            // Mostra o vídeo final igual o vídeo 1 foi mostrado — dentro do foto-box, tamanho real, centralizado.
-            var elVideoFinal = document.createElement('video');
-            elVideoFinal.playsInline = true;
-            elVideoFinal.setAttribute('webkit-playsinline', '');
-            elVideoFinal.src = VIDEO_FINAL_URL;
-            elVideoFinal.style.cssText = 'display:block; max-width:100%; width:auto; height:auto; max-height:80vh; margin:0 auto;';
+
+            // ⚡ Some com TUDO em volta — cidade, descrição, balão do sorteio — fica só o vídeo
+            // final + o botão de participar. Nada de título nenhum em cima dele.
+            var elCaixaCidade = document.querySelector('.caixa-cidade');
+            if (elCaixaCidade) elCaixaCidade.style.display = 'none';
+            var elRodapeFoto = document.querySelector('.rodape-foto');
+            if (elRodapeFoto) elRodapeFoto.style.display = 'none';
+
+            // Mostra o vídeo final centralizado, no tamanho real dele — reaproveita o elemento que
+            // já vinha carregando de verdade por trás desde que a ligação começou, sem esperar nada.
+            fotoBox.classList.add('modo-video'); // garante a centralização (display:flex) certinha
+            var elVideoFinal = ELEMENTO_PRELOAD_FINAL;
+            elVideoFinal.style.cssText = 'display:block; max-width:100%; width:auto; height:auto; max-height:80vh; margin:0 auto; opacity:1; position:relative;';
             var videoWrapFinal = document.createElement('div');
             videoWrapFinal.className = 'video-wrap';
             fotoBox.innerHTML = '';
             fotoBox.appendChild(videoWrapFinal);
             videoWrapFinal.appendChild(elVideoFinal);
             elVideoFinal.muted = false;
+            elVideoFinal.currentTime = 0;
             elVideoFinal.play().catch(function () { elVideoFinal.muted = true; elVideoFinal.play().catch(function () {}); });
 
-            // Botão "Participar Agora" aparece assim que o vídeo final entra.
+            // Botão "Participar Agora" aparece assim que o vídeo final entra, dentro dele mesmo.
             var btnFinal = document.createElement('button');
             btnFinal.className = 'btn-flutuante';
             btnFinal.style.cssText = 'position:static; margin-top:0.6rem; display:inline-flex;';
