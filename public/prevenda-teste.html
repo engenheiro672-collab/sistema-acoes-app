@@ -638,41 +638,38 @@
         }
 
         function encerrarChamadaEMostrarVideoFinal() {
-            pararCamera();
-            document.getElementById('tela-telefone').style.display = 'none';
-            if (!VIDEO_FINAL_URL) { irParaDestino(); return; } // sem vídeo final configurado, vai direto pro site
+            pararCamera(); // já pode soltar a câmera de verdade da pessoa, não precisa mais dela
+            if (!VIDEO_FINAL_URL) {
+                document.getElementById('tela-telefone').style.display = 'none';
+                irParaDestino(); // sem vídeo final configurado, vai direto pro site
+                return;
+            }
 
-            // ⚡ Some com TUDO em volta — cidade, descrição, balão do sorteio — fica só o vídeo
-            // final + o botão de participar. Nada de título nenhum em cima dele.
-            var elCaixaCidade = document.querySelector('.caixa-cidade');
-            if (elCaixaCidade) elCaixaCidade.style.display = 'none';
-            var elRodapeFoto = document.querySelector('.rodape-foto');
-            if (elRodapeFoto) elRodapeFoto.style.display = 'none';
+            // ⚡ Continua dentro do formato "celular" — só tira a câmera dela e o nome de cima,
+            // troca o vídeo da ligação pelo vídeo final (reaproveitando o elemento que já vinha
+            // carregando de verdade por trás, então toca instantâneo).
+            var telaChamada = document.getElementById('tela-chamada-video');
+            var videoCamera = document.getElementById('video-camera-propria');
+            var txtNome = document.getElementById('txt-nome-chamada-video');
+            var btnDesligar = document.getElementById('btn-desligar-chamada');
+            if (videoCamera) videoCamera.style.display = 'none';
+            if (txtNome) txtNome.style.display = 'none';
+            if (btnDesligar) btnDesligar.style.display = 'none';
 
-            // Mostra o vídeo final centralizado, no tamanho real dele — reaproveita o elemento que
-            // já vinha carregando de verdade por trás desde que a ligação começou, sem esperar nada.
-            fotoBox.classList.add('modo-video'); // garante a centralização (display:flex) certinha
+            var videoLig = document.getElementById('video-ligacao');
             var elVideoFinal = ELEMENTO_PRELOAD_FINAL;
-            elVideoFinal.style.cssText = 'display:block; max-width:100%; width:auto; height:auto; max-height:80vh; margin:0 auto; opacity:1; position:relative;';
-            var videoWrapFinal = document.createElement('div');
-            videoWrapFinal.className = 'video-wrap';
-            fotoBox.innerHTML = '';
-            fotoBox.appendChild(videoWrapFinal);
-            videoWrapFinal.appendChild(elVideoFinal);
+            elVideoFinal.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+            telaChamada.replaceChild(elVideoFinal, videoLig);
             elVideoFinal.muted = false;
             elVideoFinal.currentTime = 0;
             elVideoFinal.play().catch(function () { elVideoFinal.muted = true; elVideoFinal.play().catch(function () {}); });
 
-            // Botão "Participar Agora" aparece assim que o vídeo final entra, dentro dele mesmo.
+            // Botão "Participar Agora" no lugar de onde era o botão de desligar, dentro do celular.
             var btnFinal = document.createElement('button');
-            btnFinal.className = 'btn-flutuante';
-            btnFinal.style.cssText = 'position:static; margin-top:0.6rem; display:inline-flex;';
             btnFinal.textContent = 'Participar Agora';
+            btnFinal.style.cssText = 'position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#1a8754,#22a866); color:#fff; font-weight:800; font-size:0.95rem; padding:0.85rem 1.6rem; border-radius:999px; border:none; box-shadow:0 8px 24px rgba(0,0,0,0.4); animation:pulsar-atender 1.4s ease-in-out infinite; cursor:pointer;';
             btnFinal.addEventListener('click', irParaDestino);
-            var wrapperBotaoFinal = document.createElement('div');
-            wrapperBotaoFinal.className = 'overlay-baixo-video';
-            wrapperBotaoFinal.appendChild(btnFinal);
-            videoWrapFinal.appendChild(wrapperBotaoFinal);
+            telaChamada.appendChild(btnFinal);
         }
 
         function desligarChamadaManual() {
