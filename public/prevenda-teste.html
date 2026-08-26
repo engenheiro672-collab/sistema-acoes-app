@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">__OG_TITLE__</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:image" content="__OG_IMAGE__">
+    <link rel="preconnect" href="/">
+    <style>
+        /* ⚡ De propósito: SEM Google Fonts, SEM jQuery, SEM biblioteca nenhuma — essa página
+           precisa abrir o mais rápido fisicamente possível. Fonte do sistema (já vem instalada
+           no aparelho da pessoa, zero espera de rede) e só JavaScript puro. */
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #20242e; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+        .tela { position: relative; width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+
+        /* Caixa personalizada acima da foto: "Atenção, Cidade!" */
+        .caixa-cidade { padding: 1.1rem 1rem 0.9rem; text-align: center; animation: entrar 0.5s ease both; }
+        .atencao { display: inline-block; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.35rem; padding: 0.5rem 1.4rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(26,135,84,0.35); border: 2px solid rgba(255,255,255,0.15); }
+        .caixa-cidade .mensagem { margin-top: 0.7rem; font-size: 0.95rem; font-weight: 600; color: #e2e8f0; line-height: 1.4; padding: 0 0.5rem; }
+        .caixa-cidade .cta-clique { margin-top: 0.6rem; display: inline-block; font-size: 0.8rem; font-weight: 700; color: #4ade80; border: 1.5px dashed rgba(74,222,128,0.5); border-radius: 8px; padding: 0.3rem 0.8rem; }
+
+        /* Foto / carrossel */
+        .foto-box { position: relative; width: 100%; height: 360px; background: #111; overflow: hidden; }
+        .foto-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s ease; }
+        .foto-box img.ativa { opacity: 1; }
+
+        .tag-ending { position: absolute; top: 12px; left: 12px; background: #1a8754; color: #fff; font-size: 0.78rem; font-weight: 600; height: 26px; line-height: 26px; padding: 0 12px; border-radius: 8px; animation: piscar 2s infinite; z-index: 5; }
+        @keyframes piscar { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+        /* Botão pulsando em cima da foto */
+        .btn-flutuante { position: absolute; bottom: 14px; right: 14px; z-index: 6; background: #1a8754; color: #fff; font-weight: 700; font-size: 0.85rem; padding: 0.65rem 1.1rem; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: none; display: flex; align-items: center; gap: 0.4rem; animation: pulsarBotao 1.4s ease-in-out infinite; cursor: pointer; }
+        @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+        .rodape-foto { padding: 1rem; text-align: center; animation: entrar 0.6s ease both; animation-delay: 0.1s; }
+        .caixa-titulo { background: linear-gradient(145deg, rgba(13,16,21,0.65), rgba(26,31,43,0.65)); border: 1.5px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 0.7rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .rodape-foto h1 { font-size: 1.15rem; font-weight: 800; text-transform: uppercase; margin: 0; }
+        .rodape-foto p { margin: 0.1rem 0 0; font-size: 0.82rem; color: rgba(255,255,255,0.8); }
+
+        @keyframes entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Botão grande, pulsando, no final */
+
+
+
+        /* Overlay da pergunta — menos arredondado, fundo com desfoque mais leve (menos "embaçado"
+           que antes) */
+        #overlay-pergunta { position: fixed; inset: 0; background: rgba(10,14,20,0.45); backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .35s ease; padding: 1rem; }
+        #overlay-pergunta.visivel { opacity: 1; pointer-events: auto; }
+        .card-pergunta { background: linear-gradient(160deg, rgba(42,48,62,0.65), rgba(18,22,30,0.85)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 10px; padding: 1.8rem 1.6rem; max-width: 320px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); transform: translateY(12px) scale(0.97); transition: transform .35s ease; }
+        #overlay-pergunta.visivel .card-pergunta { transform: translateY(0) scale(1); }
+        .card-pergunta p { font-size: 1.1rem; font-weight: 800; margin: 0 0 1.3rem; }
+        .card-pergunta .opcoes { display: flex; gap: 0.7rem; }
+        .card-pergunta button { flex: 1; padding: 0.75rem; border-radius: 8px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: transform .15s ease; }
+        .card-pergunta button:active { transform: scale(0.96); }
+        .btn-sim { background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; box-shadow: 0 4px 14px rgba(26,135,84,0.4); }
+        .btn-nao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15) !important; }
+
+        /* ⚡ Modo vídeo: o vídeo aparece no TAMANHO REAL dele (nunca esticado maior que o
+           original), centralizado. O "video-wrap" abraça exatamente o tamanho renderizado do
+           vídeo — é por isso que os textos/balão/botão, posicionados dentro dele, ficam
+           literalmente EM CIMA do vídeo, e não numa borda preta ao redor. */
+        .foto-box.modo-video { height: auto; min-height: 200px; display: flex; align-items: center; justify-content: center; background: #000; padding: 0; }
+        .video-wrap { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+        .video-wrap video { display: block; max-width: 100%; width: auto; height: auto; max-height: 80vh; margin: 0 auto; }
+        .overlay-baixo-video { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; z-index: 4; padding: 0 0.6rem; }
+        .overlay-baixo-video #btn-participar { position: static !important; margin-top: 0.5rem; display: inline-flex; }
+
+        /* Tela de "verificando cidade" — aparece enquanto o vídeo termina de carregar por
+           completo, evitando qualquer travadinha quando ele aparecer */
+        #overlay-carregando-video { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; z-index: 10; color: #fff; gap: 0.9rem; }
+        .spinner-carregando { width: 38px; height: 38px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #4ade80; border-radius: 50%; animation: girar-spinner 0.8s linear infinite; }
+        @keyframes girar-spinner { to { transform: rotate(360deg); } }
+        #overlay-carregando-video p { margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.85); }
+
+        /* Confete — pedacinhos coloridos caindo, some sozinho depois de alguns segundos */
+        .confete-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; }
+
+        /* ═══════════════ SIMULAÇÃO DE LIGAÇÃO (só na Prévenda Teste) ═══════════════ */
+        #tela-telefone { display: none; position: fixed; inset: 0; background: #0b0f14; z-index: 99999; align-items: center; justify-content: center; }
+        .celular-moldura { width: 100%; max-width: 340px; height: 100%; max-height: 700px; background: #000; border-radius: 32px; border: 6px solid #1a1d22; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* Tela de "chamando" */
+        #tela-chamando { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 2rem 1rem; text-align: center; animation: fade-in-tel 0.3s ease both; }
+        #tela-chamando.vibrando { animation: vibrar-tela 0.35s ease infinite; }
+        @keyframes vibrar-tela { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+        @keyframes fade-in-tel { from { opacity: 0; } to { opacity: 1; } }
+        #foto-perfil-chamada { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        #tela-chamando h2 { color: #fff; font-size: 1.3rem; font-weight: 700; margin: 1rem 0 0.3rem; }
+        #txt-status-chamada { color: rgba(255,255,255,0.6); font-size: 0.95rem; margin: 0; }
+        #bolha-mensagem-wrap { min-height: 50px; margin-top: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        #bolha-mensagem { display: none; background: #262b38; color: #fff; padding: 0.6rem 1rem; border-radius: 14px 14px 14px 3px; font-size: 0.9rem; max-width: 220px; }
+        .pontinhos-digitando span { animation: piscar-ponto 1.2s infinite; opacity: 0.3; }
+        .pontinhos-digitando span:nth-child(2) { animation-delay: 0.2s; }
+        .pontinhos-digitando span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes piscar-ponto { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .botoes-chamada { display: flex; gap: 3.5rem; margin-top: 2.5rem; }
+        .btn-chamada { width: 58px; height: 58px; border-radius: 50%; border: none; font-size: 1.5rem; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+        .btn-recusar { background: #e5484d; }
+        .btn-atender { background: #30a46c; animation: pulsar-atender 1.2s ease-in-out infinite; }
+        @keyframes pulsar-atender { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+        /* Tela de chamada de vídeo em andamento (formato WhatsApp) */
+        #tela-chamada-video { display: none; width: 100%; height: 100%; position: relative; background: #000; }
+        #video-ligacao { width: 100%; height: 100%; object-fit: cover; }
+        #video-camera-propria { position: absolute; bottom: 90px; right: 14px; width: 82px; height: 120px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 6px 16px rgba(0,0,0,0.5); background: #111; }
+        #btn-desligar-chamada { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: #e5484d; border: none; color: #fff; font-size: 1.4rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: pointer; }
+        #txt-nome-chamada-video { position: absolute; top: 16px; left: 0; right: 0; text-align: center; color: #fff; font-weight: 700; font-size: 1rem; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+
+        @keyframes cair-confete { 0% { transform: translateY(-10px) rotate(0deg); opacity: 1; } 100% { transform: translateY(420px) rotate(var(--rot-final, 360deg)); opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div class="tela">
+        <div class="caixa-cidade">
+            <span class="atencao" id="txt-atencao">Atenção!</span>
+            <p class="mensagem" id="txt-mensagem">Transferência, documentação, emplacamento e entrega 100% grátis.</p>
+            <br>
+            <span class="cta-clique" id="txt-cta-clique">Clique abaixo para participar</span>
+        </div>
+
+        <div class="foto-box" id="foto-box">
+            <span class="tag-ending">Adquira Já</span>
+            <button class="btn-flutuante" id="btn-participar">Clique para participar</button>
+        </div>
+
+        <div class="rodape-foto">
+            <div class="caixa-titulo">
+                <h1 id="txt-nome-sorteio">Carregando...</h1>
+                <p>Participe e concorra!</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay-pergunta">
+        <div class="card-pergunta">
+            <p id="txt-pergunta-cidade">Você é dessa cidade?</p>
+            <div class="opcoes">
+                <button class="btn-nao" id="btn-resposta-nao">Não</button>
+                <button class="btn-sim" id="btn-resposta-sim">Sim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════ SIMULAÇÃO DE LIGAÇÃO (Prévenda Teste) ═══════════════ -->
+    <div id="tela-telefone">
+        <div class="celular-moldura">
+            <div id="tela-chamando">
+                <img id="foto-perfil-chamada" src="" alt="">
+                <h2>Christian Premiações</h2>
+                <p id="txt-status-chamada">chamando...</p>
+                <div id="bolha-mensagem-wrap">
+                    <div id="bolha-mensagem"></div>
+                </div>
+                <div class="botoes-chamada">
+                    <button class="btn-chamada btn-recusar" id="btn-recusar-chamada">✕</button>
+                    <button class="btn-chamada btn-atender" id="btn-atender-chamada">✓</button>
+                </div>
+            </div>
+            <div id="tela-chamada-video">
+                <span id="txt-nome-chamada-video">Christian Premiações</span>
+                <video id="video-ligacao" playsinline webkit-playsinline></video>
+                <video id="video-camera-propria" playsinline webkit-playsinline muted autoplay></video>
+                <button id="btn-desligar-chamada">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var DADOS = window.__DADOS_INICIAIS__ || {};
+        var sorteio = DADOS.sorteio || {};
+        var prevenda = DADOS.prevenda || {};
+        var cidade = prevenda.cidade || '';
+        var funilSlug = DADOS.funilSlug || null;
+        // Slug da PRÓPRIA prévenda (segundo pedaço da URL: /prevenda/<slug>)
+        var slugPrevenda = location.pathname.split('/').filter(Boolean)[1] || '';
+
+        // ── Textos personalizados com a cidade ──────────────────────────────
+        if (cidade) {
+            document.getElementById('txt-atencao').textContent = 'Atenção, ' + cidade + '!';
+            document.getElementById('txt-mensagem').textContent = 'Transferência, documentação, emplacamento e entrega 100% grátis para ' + cidade + '.';
+            document.getElementById('txt-pergunta-cidade').textContent = 'Você é de ' + cidade + '?';
+        }
+        document.getElementById('txt-nome-sorteio').textContent = sorteio.nome || 'Sorteio';
+        document.title = sorteio.nome || 'Sorteio';
+
+        // ── Guarda o fbclid (e outros parâmetros de anúncio) pra levar adiante ──
+        try {
+            var params = new URLSearchParams(location.search);
+            var fbclidUrl = params.get('fbclid');
+            if (fbclidUrl) localStorage.setItem('fbclid_salvo', fbclidUrl); // mesma chave usada em todas as páginas do sistema
+            ['gclid', 'ttclid'].forEach(function (chave) {
+                var valor = params.get(chave);
+                if (valor) localStorage.setItem(chave + '_prevenda', valor);
+            });
+            if (cidade) sessionStorage.setItem('cidade_prevenda', cidade);
+            if (prevenda.id) sessionStorage.setItem('prevenda_id_atual', prevenda.id);
+        } catch (e) {}
+
+        // ── Carrossel de fotos ───────────────────────────────────────────────
+        // ⚡ A foto do sorteio (já embutida nos dados, ZERO pedido extra à rede) sempre entra
+        // primeiro e na hora — garante que sempre tem uma imagem aparecendo instantaneamente,
+        // não importa se a pasta de imagens da prévenda existe, está incompleta ou com extensão
+        // diferente do esperado. As fotos da pasta entram como extras, buscadas em PARALELO (não
+        // uma esperando a outra falhar) — antes, cada número tentava as extensões uma de cada vez,
+        // em sequência; se a foto real fosse .png, por exemplo, isso desperdiçava várias buscas
+        // (.jpg, .JPG, .jpeg...) até acertar, e era exatamente isso que causava a demora.
+        var fotos = [];
+        var indiceAtual = 0;
+        var fotoBox = document.getElementById('foto-box');
+
+        function adicionarFotoNoCarrossel(src) {
+            var elImg = document.createElement('img');
+            elImg.src = src;
+            if (fotos.length === 0) elImg.className = 'ativa';
+            fotoBox.appendChild(elImg);
+            fotos.push(src);
+        }
+        if (sorteio.foto_url) adicionarFotoNoCarrossel(sorteio.foto_url);
+
+        var pastaFotosPropria = '/imagens-prevenda/' + slugPrevenda + '/';
+        var pastaFotosCompartilhada = '/imagens-prevenda/';
+        var EXTENSOES_TENTATIVA = ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp'];
+
+        // Testa TODAS as extensões de uma vez (em paralelo) pra cada número — usa a primeira que
+        // responder, ignora o resto. Muito mais rápido que testar uma de cada vez.
+        function buscarFotoDaPasta(pasta, n) {
+            return new Promise(function (resolve) {
+                var restantes = EXTENSOES_TENTATIVA.length;
+                var encontrada = false;
+                EXTENSOES_TENTATIVA.forEach(function (ext) {
+                    var caminho = pasta + n + '.' + ext;
+                    var img = new Image();
+                    img.onload = function () { if (!encontrada) { encontrada = true; resolve(caminho); } };
+                    img.onerror = function () { restantes--; if (restantes === 0 && !encontrada) resolve(null); };
+                    img.src = caminho;
+                });
+            });
+        }
+        function carregarFotosExtrasDaPasta(n) {
+            if (n > 5) return;
+            buscarFotoDaPasta(pastaFotosPropria, n).then(function (caminhoProprio) {
+                if (caminhoProprio) {
+                    adicionarFotoNoCarrossel(caminhoProprio);
+                    carregarFotosExtrasDaPasta(n + 1);
+                    return;
+                }
+                // Não achou na pasta própria dessa prévenda — tenta a compartilhada (usada por
+                // todas as cidades) só na primeira foto; se ela também não existir, não insiste
+                // mais (assume que não há fotos de pasta configuradas).
+                buscarFotoDaPasta(pastaFotosCompartilhada, n).then(function (caminhoCompartilhado) {
+                    if (caminhoCompartilhado) {
+                        adicionarFotoNoCarrossel(caminhoCompartilhado);
+                        carregarFotosExtrasDaPasta(n + 1);
+                    }
+                });
+            });
+        }
+        // ⚡ PRIORIDADE MÁXIMA: a foto do banco (já embutida) aparece na hora, sem concorrer com
+        // nada. As fotos extras da pasta (se existirem) só começam a ser procuradas depois de um
+        // pequeno atraso — assim elas nunca disputam a conexão do celular com o que já importa
+        // mais (a foto principal e o texto). Numa rede de celular mais lenta, isso faz diferença
+        // real: sem atraso, o navegador tentava abrir até 35 pedidos de imagem ao mesmo tempo,
+        // competindo pela mesma conexão limitada.
+        setTimeout(function () { carregarFotosExtrasDaPasta(1); }, 400);
+
+        var intervaloCarrossel = setInterval(function () {
+            if (fotos.length < 2) return;
+            var imgs = document.querySelectorAll('.foto-box img');
+            imgs[indiceAtual].classList.remove('ativa');
+            indiceAtual = (indiceAtual + 1) % imgs.length;
+            imgs[indiceAtual].classList.add('ativa');
+        }, 3000);
+
+        // ── Vídeo de revelação (opcional) — aparece só quando a pessoa confirma "Sim" na pergunta
+        // da cidade. Já fica CARREGANDO por trás desde o início (foto continua na tela normal
+        // igual sempre foi), pra virar instantâneo na hora do clique. Mesma lógica de pasta
+        // própria/compartilhada das fotos: público/videos-prevenda/<slug>/video.mp4, com fallback
+        // pra público/videos-prevenda/video.mp4 se não tiver um específico dessa cidade.
+        var videoDisponivel = false;
+        var elVideo = document.createElement('video');
+        elVideo.setAttribute('playsinline', '');
+        elVideo.setAttribute('webkit-playsinline', '');
+        elVideo.preload = 'auto';
+        elVideo.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s ease;z-index:2;';
+        fotoBox.appendChild(elVideo);
+
+        // ⚡ Pasta certa dos vídeos (antes estava, por engano, apontando pra pasta das FOTOS —
+        // por isso o vídeo nunca era encontrado, mesmo estando lá certinho).
+        var pastaVideosPropria = '/videos-prevenda/' + slugPrevenda + '/';
+        var pastaVideosCompartilhada = '/videos-prevenda/';
+
+        // ⚡ Verificação mais confiável: só confere se o ARQUIVO EXISTE (uma pergunta rápida ao
+        // servidor, sem baixar o vídeo inteiro) — em vez de esperar o navegador considerar o
+        // vídeo "pronto pra tocar sem travar" (canplaythrough), que em muitos celulares (principal-
+        // mente iPhone) nunca acontece de verdade, porque o navegador evita pré-carregar vídeo
+        // pra economizar dados — mesmo com o vídeo existindo e funcionando normalmente.
+        function testarVideo(pasta, nomeArquivo) {
+            var url = pasta + (nomeArquivo || 'video.mp4');
+            return fetch(url, { method: 'HEAD' }).then(function (r) { return r.ok ? url : null; }).catch(function () { return null; });
+        }
+        setTimeout(function () {
+            testarVideo(pastaVideosPropria, 'video.mp4').then(function (caminhoProprio) {
+                return caminhoProprio || testarVideo(pastaVideosCompartilhada, 'video.mp4');
+            }).then(function (caminhoFinal) {
+                if (caminhoFinal) {
+                    elVideo.src = caminhoFinal;
+                    elVideo.load(); // tenta pré-carregar o quanto der — se o celular não deixar, o play() de qualquer forma funciona, só começa a "bufferizar" na hora
+                    videoDisponivel = true;
+                }
+            });
+        }, 400);
+
+        // 🎉 Confete — pedacinhos coloridos caindo, leve, sem nenhuma biblioteca externa (só CSS).
+        function dispararConfete(container) {
+            var cores = ['#ff6b6b', '#4ade80', '#facc15', '#60a5fa', '#c084fc', '#fb923c'];
+            for (var i = 0; i < 90; i++) {
+                (function () {
+                    var conf = document.createElement('div');
+                    var cor = cores[Math.floor(Math.random() * cores.length)];
+                    var esquerda = Math.random() * 100;
+                    var atraso = Math.random() * 0.4;
+                    var duracao = 1.6 + Math.random() * 1.2;
+                    var tamanho = 6 + Math.random() * 7;
+                    var rotFinal = Math.random() * 720 - 360;
+                    conf.style.cssText = 'position:absolute; top:-10px; left:' + esquerda + '%; width:' + tamanho + 'px; height:' + (tamanho * 0.4) + 'px; background:' + cor + '; opacity:0.95; border-radius:1px; animation: cair-confete ' + duracao + 's ease-in ' + atraso + 's forwards;';
+                    conf.style.setProperty('--rot-final', rotFinal + 'deg');
+                    container.appendChild(conf);
+                    setTimeout(function () { conf.remove(); }, (duracao + atraso) * 1000 + 200);
+                })();
+            }
+        }
+        // 🔊 Som de confete estourando — sintetizado na hora (sem precisar hospedar arquivo de
+        // áudio nenhum, mantendo a agilidade da prévenda).
+        function tocarSomConfete() {
+            try {
+                var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                var ctx = new AudioCtx();
+                var agora = ctx.currentTime;
+
+                // 💥 O "BANG" principal: grave e agudo tocando JUNTOS, ao mesmo tempo — é isso que
+                // dá a sensação de estouro de verdade, em vez de um clique fraquinho.
+                var thump = ctx.createOscillator();
+                var thumpGanho = ctx.createGain();
+                thump.type = 'sine';
+                thump.frequency.setValueAtTime(160, agora);
+                thump.frequency.exponentialRampToValueAtTime(35, agora + 0.11);
+                thumpGanho.gain.setValueAtTime(0.9, agora);
+                thumpGanho.gain.exponentialRampToValueAtTime(0.001, agora + 0.18);
+                thump.connect(thumpGanho).connect(ctx.destination);
+                thump.start(agora);
+                thump.stop(agora + 0.2);
+
+                var duracaoEstalo = 0.09;
+                var bufferEstalo = ctx.createBuffer(1, ctx.sampleRate * duracaoEstalo, ctx.sampleRate);
+                var dadosEstalo = bufferEstalo.getChannelData(0);
+                for (var i = 0; i < dadosEstalo.length; i++) dadosEstalo[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / dadosEstalo.length, 1.4);
+                var fonteEstalo = ctx.createBufferSource();
+                fonteEstalo.buffer = bufferEstalo;
+                var filtroEstalo = ctx.createBiquadFilter();
+                filtroEstalo.type = 'bandpass';
+                filtroEstalo.frequency.value = 2500;
+                filtroEstalo.Q.value = 0.7;
+                var ganhoEstalo = ctx.createGain();
+                ganhoEstalo.gain.value = 0.9;
+                fonteEstalo.connect(filtroEstalo).connect(ganhoEstalo).connect(ctx.destination);
+                fonteEstalo.start(agora);
+
+                // Crepitar de confete se espalhando, logo depois do estouro
+                function crepitar(tempoInicio, volume) {
+                    var dur = 0.1;
+                    var buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+                    var d = buf.getChannelData(0);
+                    for (var j = 0; j < d.length; j++) d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / d.length, 2);
+                    var src = ctx.createBufferSource();
+                    src.buffer = buf;
+                    var hp = ctx.createBiquadFilter();
+                    hp.type = 'highpass';
+                    hp.frequency.value = 2000;
+                    var g = ctx.createGain();
+                    g.gain.value = volume;
+                    src.connect(hp).connect(g).connect(ctx.destination);
+                    src.start(tempoInicio);
+                }
+                crepitar(agora + 0.1, 0.3);
+                crepitar(agora + 0.2, 0.2);
+                crepitar(agora + 0.32, 0.12);
+            } catch (e) {}
+        }
+
+        // ── Pergunta automática da cidade, ~1s depois de abrir ──────────────
+        setTimeout(function () {
+            document.getElementById('overlay-pergunta').classList.add('visivel');
+        }, 1000);
+        function fecharPergunta(resposta) {
+            try { sessionStorage.setItem('respondeu_cidade_prevenda', resposta); } catch (e) {}
+            document.getElementById('overlay-pergunta').classList.remove('visivel');
+            // ⚡ Avisa o servidor (em segundo plano, sem esperar resposta) — é assim que o painel
+            // sabe quantas pessoas confirmaram "sim" ou "não" pra cada prévenda.
+            if (prevenda.id) {
+                fetch('/api/public/prevenda/resposta-cidade', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prevenda_id: prevenda.id, resposta: resposta })
+                }).catch(function () {});
+            }
+
+            if (videoDisponivel) mostrarCarregandoEDepoisRevelarVideo();
+        }
+
+        // ⚡ Em vez de abrir o vídeo na hora (o que podia dar uma travadinha se ele ainda não
+        // tivesse terminado de carregar), mostra uma tela de "Verificando cidade..." primeiro, e
+        // só revela o vídeo quando ele estiver 100% pronto pra tocar sem travar nenhuma vez.
+        function mostrarCarregandoEDepoisRevelarVideo() {
+            clearInterval(intervaloCarrossel);
+            var imgsAtuais = fotoBox.querySelectorAll('img');
+            imgsAtuais.forEach(function (img) { img.classList.remove('ativa'); });
+
+            var overlayCarregando = document.createElement('div');
+            overlayCarregando.id = 'overlay-carregando-video';
+            overlayCarregando.innerHTML = '<div class="spinner-carregando"></div><p>Verificando cidade...</p>';
+            fotoBox.appendChild(overlayCarregando);
+
+            var jaRevelou = false;
+            function revelarAgora() {
+                if (jaRevelou) return;
+                jaRevelou = true;
+                overlayCarregando.remove();
+                revelarVideoDeVerdade();
+            }
+
+            // readyState 4 (HAVE_ENOUGH_DATA) = já pode tocar sem travar. Se ainda não tiver
+            // chegado nesse ponto, espera o evento avisar — mas nunca mais que 4s, pra não travar
+            // a pessoa esperando pra sempre se algo inesperado acontecer com o vídeo.
+            if (elVideo.readyState >= 4) revelarAgora();
+            else {
+                elVideo.addEventListener('canplaythrough', revelarAgora, { once: true });
+                setTimeout(revelarAgora, 4000);
+            }
+        }
+
+        // ⚡ Reorganização completa quando o vídeo é revelado (em qualquer resposta, sim ou
+        // não): o "Autorizado, Cidade" vai pra dentro do vídeo, no topo; o balão do nome do
+        // sorteio + "Participe e concorra" vai pra dentro, embaixo; o botão de participar some da
+        // borda flutuante e fica logo abaixo desse balão; a descrição e o tutorial somem. Tudo isso
+        // MOVE os elementos de verdade (não duplica nada), então continuam sendo os mesmos que o
+        // resto do código já controla.
+        function revelarVideoDeVerdade() {
+            fotoBox.classList.add('modo-video');
+
+            // ⚡ Cria um "envoltório" que abraça o vídeo EXATAMENTE do tamanho renderizado
+            // dele (por isso o CSS usa display:inline-block) — é dentro desse envoltório que
+            // os textos/balão/botão ficam posicionados (position:absolute), garantindo que
+            // fiquem literalmente EM CIMA do vídeo, não numa faixa preta ao redor dele.
+            var videoWrap = document.createElement('div');
+            videoWrap.className = 'video-wrap';
+            fotoBox.appendChild(videoWrap);
+            videoWrap.appendChild(elVideo);
+
+            // "Atenção, Cidade!" e a descrição continuam no lugar de sempre, ACIMA do vídeo (fora
+            // dele) — não são movidas pra dentro. Só o "clique abaixo pra participar" some.
+            var elCtaClique = document.getElementById('txt-cta-clique');
+            if (elCtaClique) elCtaClique.style.display = 'none';
+
+            // Balão (nome do sorteio + "Participe e concorra") em cima do vídeo, embaixo —
+            // e o botão de participar (antes flutuando no canto) some daqui e vai logo abaixo dele.
+            var elCaixaTitulo = document.querySelector('.rodape-foto .caixa-titulo');
+            var elBtnParticipar = document.getElementById('btn-participar');
+            var wrapperBaixo = document.createElement('div');
+            wrapperBaixo.className = 'overlay-baixo-video';
+            if (elCaixaTitulo) wrapperBaixo.appendChild(elCaixaTitulo);
+            wrapperBaixo.appendChild(elBtnParticipar);
+            videoWrap.appendChild(wrapperBaixo);
+
+            // Vídeo no tamanho REAL dele (nunca esticado maior que o original), centralizado.
+            elVideo.style.position = 'relative';
+            elVideo.style.width = 'auto';
+            elVideo.style.height = 'auto';
+            elVideo.style.objectFit = 'unset';
+            elVideo.style.display = 'block';
+            elVideo.style.opacity = '1';
+            elVideo.muted = false;
+            elVideo.currentTime = 0;
+            var promessaPlay = elVideo.play();
+            if (promessaPlay && promessaPlay.catch) {
+                promessaPlay.catch(function () {
+                    // Em algum navegador mais restritivo, cai pra mudo em vez de não tocar nada.
+                    elVideo.muted = true;
+                    elVideo.play().catch(function () {});
+                });
+            }
+
+            // 🎉 Confete + som, só nesse momento da revelação
+            var confeteBox = document.createElement('div');
+            confeteBox.className = 'confete-container';
+            fotoBox.appendChild(confeteBox);
+            dispararConfete(confeteBox);
+            tocarSomConfete();
+            setTimeout(function () { confeteBox.remove(); }, 3000);
+
+            // ⚡⚡ PRÉVENDA TESTE: faltando ~2s pro vídeo 1 acabar, dispara a simulação de
+            // ligação — SE a pessoa ainda não clicou em participar até lá. Também já começa a
+            // pré-carregar o vídeo 2 (a "ligação") desde agora, pra não ter nenhum atraso.
+            testarVideo(pastaVideosPropria, 'ligacao.mp4').then(function (p) {
+                return p || testarVideo(pastaVideosCompartilhada, 'ligacao.mp4');
+            }).then(function (caminho) { if (caminho) VIDEO_LIGACAO_URL = caminho; });
+
+            elVideo.addEventListener('timeupdate', function verificarFimVideo1() {
+                if (elVideo.duration && (elVideo.duration - elVideo.currentTime) <= 2) {
+                    elVideo.removeEventListener('timeupdate', verificarFimVideo1);
+                    iniciarSequenciaTelefone();
+                }
+            });
+        }
+
+        // ═══════════════ SIMULAÇÃO DE LIGAÇÃO (Prévenda Teste) ═══════════════
+        var VIDEO_LIGACAO_URL = null;
+        var VIDEO_FINAL_URL = null;
+        var tentativasRecusadas = 0;
+        var MAX_TENTATIVAS_RECUSA = 2; // depois disso, desiste e manda direto pro site
+        var streamCameraAtual = null;
+
+        function iniciarSequenciaTelefone() {
+            document.getElementById('foto-perfil-chamada').src = (DADOS.sorteio && DADOS.sorteio.foto_url) || '';
+            mostrarTelaChamando();
+        }
+
+        function mostrarTelaChamando() {
+            var tel = document.getElementById('tela-telefone');
+            var chamando = document.getElementById('tela-chamando');
+            var chamadaVideo = document.getElementById('tela-chamada-video');
+            tel.style.display = 'flex';
+            chamando.style.display = 'flex';
+            chamadaVideo.style.display = 'none';
+            chamando.classList.add('vibrando');
+            document.getElementById('bolha-mensagem').style.display = 'none';
+            document.getElementById('txt-status-chamada').textContent = 'chamando...';
+            tocarToqueTelefone();
+            if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
+        }
+
+        function pararToqueEVibrar() {
+            pararToqueTelefone();
+            if (navigator.vibrate) navigator.vibrate(0);
+            document.getElementById('tela-chamando').classList.remove('vibrando');
+        }
+
+        function recusarOuIgnorarChamada() {
+            pararToqueEVibrar();
+            tentativasRecusadas++;
+            if (tentativasRecusadas >= MAX_TENTATIVAS_RECUSA) {
+                irParaDestino(); // insistiu em não atender — manda direto pro site, sem forçar mais
+                return;
+            }
+            // "Digitando..." e depois "Atende aí" — igual alguém mandando mensagem de verdade
+            var bolha = document.getElementById('bolha-mensagem');
+            bolha.style.display = 'block';
+            bolha.innerHTML = '<span class="pontinhos-digitando"><span>●</span><span>●</span><span>●</span></span>';
+            document.getElementById('txt-status-chamada').textContent = 'chamada encerrada';
+            setTimeout(function () {
+                bolha.textContent = 'Atende aí 📲';
+            }, 1000);
+            setTimeout(function () { mostrarTelaChamando(); }, 1900);
+        }
+
+        function atenderChamada() {
+            pararToqueEVibrar();
+            // ⚡ Pede a câmera DE VERDADE da pessoa — se autorizar, a chamada se completa; se
+            // negar, trata exatamente como se tivesse desligado (toca de novo em seguida).
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { recusarOuIgnorarChamada(); return; }
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (stream) {
+                streamCameraAtual = stream;
+                var videoCam = document.getElementById('video-camera-propria');
+                videoCam.srcObject = stream;
+                iniciarChamadaDeVideo();
+            }).catch(function () { recusarOuIgnorarChamada(); });
+        }
+
+        function iniciarChamadaDeVideo() {
+            document.getElementById('tela-chamando').style.display = 'none';
+            var telaChamada = document.getElementById('tela-chamada-video');
+            telaChamada.style.display = 'block';
+            var videoLig = document.getElementById('video-ligacao');
+            if (VIDEO_LIGACAO_URL) videoLig.src = VIDEO_LIGACAO_URL;
+            videoLig.muted = false;
+            videoLig.play().catch(function () {});
+
+            // Já começa a pré-carregar o vídeo 3 (final) assim que a ligação começa a tocar.
+            testarVideo(pastaVideosPropria, 'final.mp4').then(function (p) {
+                return p || testarVideo(pastaVideosCompartilhada, 'final.mp4');
+            }).then(function (caminho) { if (caminho) VIDEO_FINAL_URL = caminho; });
+
+            videoLig.addEventListener('timeupdate', function verificarFimLigacao() {
+                if (videoLig.duration && (videoLig.duration - videoLig.currentTime) <= 1) {
+                    videoLig.removeEventListener('timeupdate', verificarFimLigacao);
+                    tocarSomDesligando();
+                    encerrarChamadaEMostrarVideoFinal();
+                }
+            });
+        }
+
+        function pararCamera() {
+            if (streamCameraAtual) {
+                streamCameraAtual.getTracks().forEach(function (t) { t.stop(); });
+                streamCameraAtual = null;
+            }
+        }
+
+        function encerrarChamadaEMostrarVideoFinal() {
+            pararCamera();
+            document.getElementById('tela-telefone').style.display = 'none';
+            if (!VIDEO_FINAL_URL) { irParaDestino(); return; } // sem vídeo final configurado, vai direto pro site
+            // Mostra o vídeo final igual o vídeo 1 foi mostrado — dentro do foto-box, tamanho real, centralizado.
+            var elVideoFinal = document.createElement('video');
+            elVideoFinal.playsInline = true;
+            elVideoFinal.setAttribute('webkit-playsinline', '');
+            elVideoFinal.src = VIDEO_FINAL_URL;
+            elVideoFinal.style.cssText = 'display:block; max-width:100%; width:auto; height:auto; max-height:80vh; margin:0 auto;';
+            var videoWrapFinal = document.createElement('div');
+            videoWrapFinal.className = 'video-wrap';
+            fotoBox.innerHTML = '';
+            fotoBox.appendChild(videoWrapFinal);
+            videoWrapFinal.appendChild(elVideoFinal);
+            elVideoFinal.muted = false;
+            elVideoFinal.play().catch(function () { elVideoFinal.muted = true; elVideoFinal.play().catch(function () {}); });
+
+            // Botão "Participar Agora" aparece assim que o vídeo final entra.
+            var btnFinal = document.createElement('button');
+            btnFinal.className = 'btn-flutuante';
+            btnFinal.style.cssText = 'position:static; margin-top:0.6rem; display:inline-flex;';
+            btnFinal.textContent = 'Participar Agora';
+            btnFinal.addEventListener('click', irParaDestino);
+            var wrapperBotaoFinal = document.createElement('div');
+            wrapperBotaoFinal.className = 'overlay-baixo-video';
+            wrapperBotaoFinal.appendChild(btnFinal);
+            videoWrapFinal.appendChild(wrapperBotaoFinal);
+        }
+
+        function desligarChamadaManual() {
+            pararCamera();
+            irParaDestino();
+        }
+
+        document.getElementById('btn-recusar-chamada').addEventListener('click', recusarOuIgnorarChamada);
+        document.getElementById('btn-atender-chamada').addEventListener('click', atenderChamada);
+        document.getElementById('btn-desligar-chamada').addEventListener('click', desligarChamadaManual);
+
+        // 🔔 Toque de telefone — sintetizado (padrão "trim-trim" clássico e genérico, sem usar
+        // nenhuma melodia protegida de ninguém) e som de "desligando".
+        var _toqueTelefoneAtivo = false;
+        var _ctxToque = null;
+        function tocarToqueTelefone() {
+            try {
+                _toqueTelefoneAtivo = true;
+                var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                _ctxToque = new AudioCtx();
+                function umToque() {
+                    if (!_toqueTelefoneAtivo || !_ctxToque) return;
+                    var agora = _ctxToque.currentTime;
+                    [0, 0.4].forEach(function (offset) {
+                        var osc1 = _ctxToque.createOscillator();
+                        var osc2 = _ctxToque.createOscillator();
+                        var ganho = _ctxToque.createGain();
+                        osc1.frequency.value = 480;
+                        osc2.frequency.value = 620;
+                        ganho.gain.setValueAtTime(0.0001, agora + offset);
+                        ganho.gain.linearRampToValueAtTime(0.35, agora + offset + 0.05);
+                        ganho.gain.setValueAtTime(0.35, agora + offset + 0.35);
+                        ganho.gain.linearRampToValueAtTime(0.0001, agora + offset + 0.4);
+                        osc1.connect(ganho); osc2.connect(ganho); ganho.connect(_ctxToque.destination);
+                        osc1.start(agora + offset); osc1.stop(agora + offset + 0.4);
+                        osc2.start(agora + offset); osc2.stop(agora + offset + 0.4);
+                    });
+                }
+                umToque();
+                var intervaloToque = setInterval(function () {
+                    if (!_toqueTelefoneAtivo) { clearInterval(intervaloToque); return; }
+                    umToque();
+                }, 1500);
+            } catch (e) {}
+        }
+        function pararToqueTelefone() {
+            _toqueTelefoneAtivo = false;
+            if (_ctxToque) { try { _ctxToque.close(); } catch (e) {} _ctxToque = null; }
+        }
+        function tocarSomDesligando() {
+            try {
+                var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                var ctx = new AudioCtx();
+                var osc = ctx.createOscillator();
+                var ganho = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.35);
+                ganho.gain.setValueAtTime(0.4, ctx.currentTime);
+                ganho.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+                osc.connect(ganho).connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + 0.4);
+            } catch (e) {}
+        }
+
+        document.getElementById('btn-resposta-sim').addEventListener('click', function () { fecharPergunta('sim'); });
+        document.getElementById('btn-resposta-nao').addEventListener('click', function () { fecharPergunta('nao'); });
+
+        // ── Pixel: PageView aqui, nunca de novo no site de destino (mesma trava
+        // de sessão que o resto do sistema já usa) ─────────────────────────
+        var pixels = DADOS.pixels || {};
+        if (pixels.facebook_pixel_id) {
+            !function (f, b, e, v, n, t, s) {
+                if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
+                if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
+                t = b.createElement(e); t.async = !0; t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+            }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', pixels.facebook_pixel_id);
+            (pixels.facebook_pixel_ids_extras || []).forEach(function (id) { if (id && id !== pixels.facebook_pixel_id) fbq('init', id); });
+            var jaDisparouPageView = false;
+            try { jaDisparouPageView = sessionStorage.getItem('pageview_disparado') === '1'; } catch (e) {}
+            if (!jaDisparouPageView) {
+                fbq('track', 'PageView');
+                try { sessionStorage.setItem('pageview_disparado', '1'); } catch (e) {}
+            }
+        }
+
+        // ── Pré-carregamento "robusto" do site de destino ───────────────────
+        // Busca a página de verdade (já pronta, com os dados dela embutidos) enquanto a pessoa
+        // ainda está aqui na prévenda. Quando ela clicar em participar, se já tiver terminado de
+        // carregar, troca a página INSTANTANEAMENTE (sem esperar o servidor de novo).
+        // ⚡ Também com um pequeno atraso — não faz sentido essa busca (que é grande, é a página
+        // inteira de destino) competir com a foto principal aparecendo na tela agora mesmo.
+        var urlDestino = funilSlug && sorteio.slug
+            ? '/sorteio/' + encodeURIComponent(sorteio.slug) + '/' + encodeURIComponent(funilSlug) + (cidade ? '?cidade=' + encodeURIComponent(cidade) : '')
+            : (sorteio.slug ? '/sorteio/' + encodeURIComponent(sorteio.slug) + (cidade ? '?cidade=' + encodeURIComponent(cidade) : '') : '/');
+        // ⚡ Só começa a buscar o site de destino depois que a JANELA JÁ TERMINOU DE CARREGAR
+        // de verdade (evento "load" do navegador — a prévenda inteira, com a foto e tudo, já está
+        // 100% visível e pronta) + uma folga extra. Antes, isso disparava com um tempo fixo
+        // "chutado" que podia começar cedo demais, competindo com a prévenda ainda aparecendo na
+        // tela — agora é garantido pelo próprio navegador que a prévenda está pronta primeiro.
+        var htmlDestinoPronto = null;
+        function iniciarPreCarregamentoDestino() {
+            fetch(urlDestino, { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (html) { if (html) htmlDestinoPronto = html; })
+                .catch(function () {});
+        }
+        if (document.readyState === 'complete') {
+            setTimeout(iniciarPreCarregamentoDestino, 500);
+        } else {
+            window.addEventListener('load', function () { setTimeout(iniciarPreCarregamentoDestino, 500); });
+        }
+
+        function irParaDestino() {
+            if (htmlDestinoPronto) {
+                try {
+                    history.pushState(null, '', urlDestino);
+                    document.open();
+                    document.write(htmlDestinoPronto);
+                    document.close();
+                    return;
+                } catch (e) { /* se algo der errado, cai pro caminho normal abaixo */ }
+            }
+            window.location.href = urlDestino;
+        }
+        document.getElementById('btn-participar').addEventListener('click', irParaDestino);
+        document.getElementById('foto-box').addEventListener('click', irParaDestino);
+    })();
+    </script>
+</body>
+</html>
