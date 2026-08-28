@@ -816,7 +816,7 @@
                     videoLig.addEventListener('timeupdate', verificarFimLigacaoDireto);
                     videoLig.addEventListener('ended', dispararTransicaoDireto);
                 }
-                // Retorno local discreto da própria voz (efeito de viva-voz/sidetone).
+                // Retorno local perceptível da própria voz (efeito de viva-voz/sidetone).
                 // Mantido propositalmente baixo para não criar microfonia. O navegador/iOS ainda
                 // pode aplicar processamento acústico próprio quando microfone e alto-falante estão ativos.
                 var _ctxRetornoVozDireto = null;
@@ -830,10 +830,28 @@
                         _ctxRetornoVozDireto = new AudioCtx();
                         _fonteRetornoVozDireto = _ctxRetornoVozDireto.createMediaStreamSource(stream);
                         _ganhoRetornoVozDireto = _ctxRetornoVozDireto.createGain();
-                        // 5%: audível como retorno discreto, mas muito abaixo do vídeo principal.
-                        _ganhoRetornoVozDireto.gain.value = 0.05;
-                        _fonteRetornoVozDireto.connect(_ganhoRetornoVozDireto);
-                        _ganhoRetornoVozDireto.connect(_ctxRetornoVozDireto.destination);
+
+                        // Sidetone mais presente, semelhante ao retorno discreto de viva-voz.
+                        // O pequeno atraso evita a sensação de voz totalmente "seca" e deixa o efeito perceptível.
+                        var delayRetorno = _ctxRetornoVozDireto.createDelay(0.25);
+                        delayRetorno.delayTime.value = 0.045;
+                        var filtroRetorno = _ctxRetornoVozDireto.createBiquadFilter();
+                        filtroRetorno.type = 'bandpass';
+                        filtroRetorno.frequency.value = 1700;
+                        filtroRetorno.Q.value = 0.45;
+                        var compressorRetorno = _ctxRetornoVozDireto.createDynamicsCompressor();
+                        compressorRetorno.threshold.value = -20;
+                        compressorRetorno.knee.value = 10;
+                        compressorRetorno.ratio.value = 3;
+                        compressorRetorno.attack.value = 0.003;
+                        compressorRetorno.release.value = 0.18;
+                        _ganhoRetornoVozDireto.gain.value = 0.18;
+
+                        _fonteRetornoVozDireto.connect(filtroRetorno);
+                        filtroRetorno.connect(delayRetorno);
+                        delayRetorno.connect(_ganhoRetornoVozDireto);
+                        _ganhoRetornoVozDireto.connect(compressorRetorno);
+                        compressorRetorno.connect(_ctxRetornoVozDireto.destination);
                         if (_ctxRetornoVozDireto.state === 'suspended') {
                             _ctxRetornoVozDireto.resume().catch(function () {});
                         }
@@ -964,25 +982,40 @@
                         function umToque() {
                             if (!_toqueAtivoDireto || !_ctxToqueDireto || _ctxToqueDireto.state !== 'running') return;
                             var agora = _ctxToqueDireto.currentTime;
-                            [0, 0.4].forEach(function (offset) {
-                                var osc1 = _ctxToqueDireto.createOscillator();
-                                var osc2 = _ctxToqueDireto.createOscillator();
-                                var ganho = _ctxToqueDireto.createGain();
-                                osc1.frequency.value = 480; osc2.frequency.value = 620;
-                                ganho.gain.setValueAtTime(0.0001, agora + offset);
-                                ganho.gain.linearRampToValueAtTime(0.68, agora + offset + 0.05);
-                                ganho.gain.setValueAtTime(0.68, agora + offset + 0.35);
-                                ganho.gain.linearRampToValueAtTime(0.0001, agora + offset + 0.4);
+                            [0, 0.43].forEach(function (offset) {
+                                // Toque mais encorpado: frequências principais + harmônicos leves.
+                                // O ganho fica no máximo útil do WebAudio; o volume físico do iPhone continua soberano.
+                                var oscs = [
+                                    { f: 440, type: 'square', level: 0.36 },
+                                    { f: 520, type: 'square', level: 0.34 },
+                                    { f: 880, type: 'sine',   level: 0.16 },
+                                    { f: 1040, type: 'sine',  level: 0.14 }
+                                ];
+                                var master = _ctxToqueDireto.createGain();
                                 var compressor = _ctxToqueDireto.createDynamicsCompressor();
-                                compressor.threshold.value = -8;
-                                compressor.knee.value = 8;
-                                compressor.ratio.value = 10;
-                                compressor.attack.value = 0.003;
-                                compressor.release.value = 0.15;
-                                osc1.connect(ganho); osc2.connect(ganho);
-                                ganho.connect(compressor); compressor.connect(_ctxToqueDireto.destination);
-                                osc1.start(agora + offset); osc1.stop(agora + offset + 0.4);
-                                osc2.start(agora + offset); osc2.stop(agora + offset + 0.4);
+                                master.gain.setValueAtTime(0.0001, agora + offset);
+                                master.gain.linearRampToValueAtTime(1.0, agora + offset + 0.025);
+                                master.gain.setValueAtTime(1.0, agora + offset + 0.37);
+                                master.gain.linearRampToValueAtTime(0.0001, agora + offset + 0.43);
+                                compressor.threshold.value = -18;
+                                compressor.knee.value = 6;
+                                compressor.ratio.value = 4;
+                                compressor.attack.value = 0.002;
+                                compressor.release.value = 0.12;
+                                master.connect(compressor);
+                                compressor.connect(_ctxToqueDireto.destination);
+
+                                oscs.forEach(function (cfg) {
+                                    var osc = _ctxToqueDireto.createOscillator();
+                                    var nivel = _ctxToqueDireto.createGain();
+                                    osc.type = cfg.type;
+                                    osc.frequency.value = cfg.f;
+                                    nivel.gain.value = cfg.level;
+                                    osc.connect(nivel);
+                                    nivel.connect(master);
+                                    osc.start(agora + offset);
+                                    osc.stop(agora + offset + 0.43);
+                                });
                             });
                         }
                         if (_ctxToqueDireto.state === 'running') umToque();
