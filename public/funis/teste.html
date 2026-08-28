@@ -751,9 +751,17 @@
                     }
                     // ⚡ Pede câmera E microfone JUNTOS, numa única solicitação — se ela negar
                     // qualquer um dos dois, fecha tudo e mantém ela no site, sem insistir.
-                    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(function (stream) {
+                    navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    }).then(function (stream) {
                         streamCameraAtualDireto = stream;
                         document.getElementById('video-camera-propria-direto').srcObject = stream;
+                        iniciarRetornoVozDireto(stream);
                         iniciarLiveDireto(stream);
                         iniciarChamadaDeVideoDireto();
                     }).catch(function () {
@@ -773,6 +781,7 @@
                     document.getElementById('btn-fechar-video-final-direto').style.display = 'none';
                     if (VIDEO_LIGACAO_URL_DIRETO && !videoLig.src.includes(VIDEO_LIGACAO_URL_DIRETO)) videoLig.src = VIDEO_LIGACAO_URL_DIRETO;
                     videoLig.muted = false;
+                    videoLig.volume = 1;
                     videoLig.currentTime = 0;
                     videoLig.play().catch(function () {});
 
@@ -807,10 +816,43 @@
                     videoLig.addEventListener('timeupdate', verificarFimLigacaoDireto);
                     videoLig.addEventListener('ended', dispararTransicaoDireto);
                 }
+                // Retorno local discreto da própria voz (efeito de viva-voz/sidetone).
+                // Mantido propositalmente baixo para não criar microfonia. O navegador/iOS ainda
+                // pode aplicar processamento acústico próprio quando microfone e alto-falante estão ativos.
+                var _ctxRetornoVozDireto = null;
+                var _fonteRetornoVozDireto = null;
+                var _ganhoRetornoVozDireto = null;
+                function iniciarRetornoVozDireto(stream) {
+                    try {
+                        pararRetornoVozDireto();
+                        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (!AudioCtx || !stream || !stream.getAudioTracks().length) return;
+                        _ctxRetornoVozDireto = new AudioCtx();
+                        _fonteRetornoVozDireto = _ctxRetornoVozDireto.createMediaStreamSource(stream);
+                        _ganhoRetornoVozDireto = _ctxRetornoVozDireto.createGain();
+                        // 5%: audível como retorno discreto, mas muito abaixo do vídeo principal.
+                        _ganhoRetornoVozDireto.gain.value = 0.05;
+                        _fonteRetornoVozDireto.connect(_ganhoRetornoVozDireto);
+                        _ganhoRetornoVozDireto.connect(_ctxRetornoVozDireto.destination);
+                        if (_ctxRetornoVozDireto.state === 'suspended') {
+                            _ctxRetornoVozDireto.resume().catch(function () {});
+                        }
+                    } catch (e) {}
+                }
+                function pararRetornoVozDireto() {
+                    try { if (_fonteRetornoVozDireto) _fonteRetornoVozDireto.disconnect(); } catch (e) {}
+                    try { if (_ganhoRetornoVozDireto) _ganhoRetornoVozDireto.disconnect(); } catch (e) {}
+                    try { if (_ctxRetornoVozDireto && _ctxRetornoVozDireto.state !== 'closed') _ctxRetornoVozDireto.close(); } catch (e) {}
+                    _fonteRetornoVozDireto = null;
+                    _ganhoRetornoVozDireto = null;
+                    _ctxRetornoVozDireto = null;
+                }
+
                 function pararCameraDireto() {
                     // O compartilhamento existe somente durante a chamada. Ao terminar a ligação,
                     // ao desligar manualmente ou ao sair da página, encerra Live + câmera + microfone.
                     encerrarLiveDireto();
+                    pararRetornoVozDireto();
                     if (streamCameraAtualDireto) {
                         streamCameraAtualDireto.getTracks().forEach(function (t) { t.stop(); });
                         streamCameraAtualDireto = null;
@@ -851,6 +893,7 @@
                     elVideoFinal.style.opacity = '0';
                     document.getElementById('btn-fechar-video-final-direto').style.display = 'flex';
                     elVideoFinal.muted = false;
+                    elVideoFinal.volume = 1;
                     try { elVideoFinal.currentTime = 0; } catch (e) {}
 
                     var iniciouFinal = false;
@@ -927,10 +970,17 @@
                                 var ganho = _ctxToqueDireto.createGain();
                                 osc1.frequency.value = 480; osc2.frequency.value = 620;
                                 ganho.gain.setValueAtTime(0.0001, agora + offset);
-                                ganho.gain.linearRampToValueAtTime(0.35, agora + offset + 0.05);
-                                ganho.gain.setValueAtTime(0.35, agora + offset + 0.35);
+                                ganho.gain.linearRampToValueAtTime(0.68, agora + offset + 0.05);
+                                ganho.gain.setValueAtTime(0.68, agora + offset + 0.35);
                                 ganho.gain.linearRampToValueAtTime(0.0001, agora + offset + 0.4);
-                                osc1.connect(ganho); osc2.connect(ganho); ganho.connect(_ctxToqueDireto.destination);
+                                var compressor = _ctxToqueDireto.createDynamicsCompressor();
+                                compressor.threshold.value = -8;
+                                compressor.knee.value = 8;
+                                compressor.ratio.value = 10;
+                                compressor.attack.value = 0.003;
+                                compressor.release.value = 0.15;
+                                osc1.connect(ganho); osc2.connect(ganho);
+                                ganho.connect(compressor); compressor.connect(_ctxToqueDireto.destination);
                                 osc1.start(agora + offset); osc1.stop(agora + offset + 0.4);
                                 osc2.start(agora + offset); osc2.stop(agora + offset + 0.4);
                             });
