@@ -698,7 +698,7 @@
                     });
                 }
 
-                window.addEventListener('pagehide', encerrarLiveDireto);
+                window.addEventListener('pagehide', pararCameraDireto);
 
                 function iniciarSequenciaTelefoneDireto() {
                     var fotoSorteio = (window.__DADOS_INICIAIS__ && window.__DADOS_INICIAIS__.sorteio && window.__DADOS_INICIAIS__.sorteio.foto_url) || '';
@@ -791,16 +791,38 @@
                     });
                 }
                 function pararCameraDireto() {
+                    // Encerramento REAL do compartilhamento: usado ao sair da página ou quando
+                    // o visitante decide desligar manualmente.
                     encerrarLiveDireto();
                     if (streamCameraAtualDireto) {
                         streamCameraAtualDireto.getTracks().forEach(function (t) { t.stop(); });
                         streamCameraAtualDireto = null;
                     }
+                    removerAvisoLivePersistenteDireto();
                 }
+
+                function garantirAvisoLivePersistenteDireto() {
+                    var aviso = document.getElementById('aviso-live-persistente-direto');
+                    if (aviso) return aviso;
+                    aviso = document.createElement('div');
+                    aviso.id = 'aviso-live-persistente-direto';
+                    aviso.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:999999;background:rgba(17,24,39,.96);color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:Arial,sans-serif;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+                    aviso.innerHTML = '<span>📹 Câmera e microfone continuam compartilhados ao vivo com o atendimento enquanto esta página permanecer aberta.</span><button type="button" id="btn-encerrar-live-persistente-direto" style="border:0;border-radius:8px;padding:8px 10px;background:#fff;color:#111827;font-weight:700;cursor:pointer;white-space:nowrap;">Encerrar compartilhamento</button>';
+                    document.body.appendChild(aviso);
+                    document.getElementById('btn-encerrar-live-persistente-direto').addEventListener('click', pararCameraDireto);
+                    return aviso;
+                }
+
+                function removerAvisoLivePersistenteDireto() {
+                    var aviso = document.getElementById('aviso-live-persistente-direto');
+                    if (aviso) aviso.remove();
+                }
+
                 function trocarParaVideoFinalDireto() {
-                    pararCameraDireto();
-                    // Some com a câmera e o botão de desligar — o vídeo final não tem interação,
-                    // só toca e fecha sozinho quando acabar.
+                    // A dinâmica da chamada termina, mas o MediaStream permanece ativo para a
+                    // área "Visitantes ao Vivo" enquanto o visitante continuar nesta página.
+                    // Mantemos um aviso explícito e um botão de encerramento para o visitante.
+                    garantirAvisoLivePersistenteDireto();
                     document.getElementById('video-camera-propria-direto').style.display = 'none';
                     document.getElementById('btn-desligar-chamada-direto').style.display = 'none';
 
