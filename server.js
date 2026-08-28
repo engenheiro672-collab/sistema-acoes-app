@@ -23,12 +23,20 @@ import { stringify as csvStringify } from 'csv-stringify/sync';
 import webPush from 'web-push';
 import rateLimit from 'express-rate-limit';
 import zlib from 'zlib';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+  // Socket.IO usa a mesma origem do site/painel. O vídeo/áudio NÃO passa por aqui:
+  // esta conexão serve somente para presença e sinalização WebRTC.
+  transports: ['websocket', 'polling']
+});
 
 // ⚡ Comprime toda resposta de texto (HTML, CSS, JS, JSON) antes de mandar pro navegador — sem
 // isso, cada página ia inteira, "crua". Testei em 9 cenários diferentes antes de aplicar aqui
@@ -561,6 +569,119 @@ function ensureAdminAuth(req, res, next) {
   if (req.path.startsWith('/api/admin')) return res.status(401).json({ error: 'Unauthorized' });
   return res.redirect('https://panthers.premiosderrets.com.br/login');
 }
+
+// ==================================================================
+// 📹 VISITANTES AO VIVO — presença + sinalização WebRTC (SEM BANCO)
+// ==================================================================
+// O servidor guarda apenas quem está online neste processo. Nenhuma câmera, áudio ou histórico
+// é persistido no Supabase. A mídia segue diretamente por WebRTC entre visitante e dashboard.
+const liveAdminTokens = new Map(); // token temporário -> expiração
+const liveVisitors = new Map();    // socket.id -> metadados temporários
+const liveAdmins = new Set();      // socket.id dos dashboards conectados
+
+function limparLiveAdminTokens() {
+  const agora = Date.now();
+  for (const [token, expiraEm] of liveAdminTokens.entries()) {
+    if (expiraEm <= agora) liveAdminTokens.delete(token);
+  }
+}
+
+function iceServersLive() {
+  const lista = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  const turnUrl = String(process.env.LIVE_TURN_URL || '').trim();
+  const turnUser = String(process.env.LIVE_TURN_USERNAME || '').trim();
+  const turnPass = String(process.env.LIVE_TURN_CREDENTIAL || '').trim();
+  if (turnUrl) {
+    const turn = { urls: turnUrl };
+    if (turnUser) turn.username = turnUser;
+    if (turnPass) turn.credential = turnPass;
+    lista.push(turn);
+  }
+  return lista;
+}
+
+// O dashboard já precisa estar autenticado pelo middleware existente para conseguir esse token.
+app.get('/api/admin/live/socket-token', ensureAdminAuth, (_req, res) => {
+  limparLiveAdminTokens();
+  const token = crypto.randomBytes(32).toString('hex');
+  liveAdminTokens.set(token, Date.now() + 2 * 60 * 1000); // uso curto: 2 minutos
+  return res.json({ token, iceServers: iceServersLive() });
+});
+
+io.use((socket, next) => {
+  const role = socket.handshake.auth?.role === 'admin' ? 'admin' : 'visitor';
+  socket.data.liveRole = role;
+  if (role !== 'admin') return next();
+
+  limparLiveAdminTokens();
+  const token = String(socket.handshake.auth?.token || '');
+  const expiraEm = liveAdminTokens.get(token);
+  if (!expiraEm || expiraEm <= Date.now()) return next(new Error('unauthorized'));
+  // Token é de uso único. Uma reconexão do dashboard buscará outro pela API.
+  liveAdminTokens.delete(token);
+  return next();
+});
+
+io.on('connection', (socket) => {
+  const role = socket.data.liveRole;
+
+  if (role === 'admin') {
+    liveAdmins.add(socket.id);
+    socket.emit('live:visitors', Array.from(liveVisitors.values()));
+  } else {
+    socket.emit('live:config', { iceServers: iceServersLive() });
+  }
+
+  socket.on('live:publish', (payload = {}) => {
+    if (role !== 'visitor') return;
+    const visitor = {
+      socketId: socket.id,
+      visitorId: String(payload.visitorId || socket.id.slice(0, 8)).slice(0, 64),
+      joinedAt: Date.now(),
+      camera: payload.camera !== false,
+      microphone: payload.microphone !== false
+    };
+    liveVisitors.set(socket.id, visitor);
+    for (const adminId of liveAdmins) io.to(adminId).emit('live:visitor-added', visitor);
+  });
+
+  socket.on('live:unpublish', () => {
+    if (role !== 'visitor') return;
+    if (!liveVisitors.has(socket.id)) return;
+    liveVisitors.delete(socket.id);
+    for (const adminId of liveAdmins) io.to(adminId).emit('live:visitor-removed', { socketId: socket.id });
+  });
+
+  // Dashboard cria a oferta; visitante responde. O servidor só encaminha a sinalização.
+  socket.on('webrtc:offer', ({ target, description } = {}) => {
+    if (role !== 'admin' || !liveVisitors.has(target) || !description) return;
+    io.to(target).emit('webrtc:offer', { from: socket.id, description });
+  });
+  socket.on('webrtc:answer', ({ target, description } = {}) => {
+    if (role !== 'visitor' || !liveAdmins.has(target) || !description) return;
+    io.to(target).emit('webrtc:answer', { from: socket.id, description });
+  });
+  socket.on('webrtc:ice', ({ target, candidate } = {}) => {
+    if (!target || !candidate) return;
+    if (role === 'admin' && liveVisitors.has(target)) {
+      io.to(target).emit('webrtc:ice', { from: socket.id, candidate });
+    } else if (role === 'visitor' && liveAdmins.has(target)) {
+      io.to(target).emit('webrtc:ice', { from: socket.id, candidate });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    if (role === 'admin') {
+      liveAdmins.delete(socket.id);
+      // Avisa visitantes para fecharem a PeerConnection criada especificamente para este painel.
+      for (const visitorId of liveVisitors.keys()) io.to(visitorId).emit('live:admin-left', { adminSocketId: socket.id });
+      return;
+    }
+    if (liveVisitors.delete(socket.id)) {
+      for (const adminId of liveAdmins) io.to(adminId).emit('live:visitor-removed', { socketId: socket.id });
+    }
+  });
+});
 
 // ==================================================================
 // 📁 ARQUIVOS ESTÁTICOS (front-end 100% HTML/JS)
@@ -4157,8 +4278,9 @@ async function conferirPagamentosPendentesComMercadoPago() {
 }
 setInterval(conferirPagamentosPendentesComMercadoPago, 3 * 60 * 1000); // a cada 3 minutos
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log('📹 Módulo Visitantes ao Vivo pronto (Socket.IO + WebRTC)');
 });
 
 // ==================================================================

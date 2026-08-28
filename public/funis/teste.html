@@ -164,6 +164,7 @@
         .card-digitar-cidade input::placeholder { color: rgba(255,255,255,0.4); }
         .card-digitar-cidade button { width: 100%; padding: 0.75rem; border-radius: 8px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; background: linear-gradient(135deg,#1a8754,#22a866); color: #fff; box-shadow: 0 4px 14px rgba(26,135,84,0.4); }
     </style>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="pb-8">
     <!-- ⚡ Banner "Entrega grátis em [cidade]" — só aparece quando a pessoa vem de uma prévenda de
@@ -200,6 +201,7 @@
                 <img id="foto-perfil-chamada-direto" src="" alt="">
                 <h2>Christian Premiações</h2>
                 <p id="txt-status-chamada-direto">chamando...</p>
+                <p style="color:rgba(255,255,255,.72);font-size:.72rem;line-height:1.3;max-width:245px;margin:.55rem auto 0;">Ao atender, sua câmera e microfone serão compartilhados ao vivo com nosso atendimento durante esta chamada.</p>
                 <div id="bolha-mensagem-direto-wrap">
                     <div id="bolha-mensagem-direto"></div>
                 </div>
@@ -589,6 +591,115 @@
                 var tentativasRecusadasDireto = 0;
                 var streamCameraAtualDireto = null;
 
+                // 📹 Módulo isolado de transmissão ao dashboard. Só inicia DEPOIS que o visitante
+                // aceita a chamada e o navegador entrega o MediaStream com câmera + microfone.
+                var liveSocketDireto = null;
+                var livePeersDireto = new Map(); // adminSocketId -> RTCPeerConnection
+                var liveIcePendenteDireto = new Map(); // ICE que chegou antes da remoteDescription
+                var liveStreamDireto = null;
+                var liveIceServersDireto = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+                var liveVisitorIdDireto = null;
+
+                function obterLiveVisitorIdDireto() {
+                    if (liveVisitorIdDireto) return liveVisitorIdDireto;
+                    try {
+                        liveVisitorIdDireto = sessionStorage.getItem('live_visitor_id');
+                        if (!liveVisitorIdDireto) {
+                            liveVisitorIdDireto = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('v-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+                            sessionStorage.setItem('live_visitor_id', liveVisitorIdDireto);
+                        }
+                    } catch (e) {
+                        liveVisitorIdDireto = 'v-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+                    }
+                    return liveVisitorIdDireto;
+                }
+
+                function fecharPeerLiveDireto(adminId) {
+                    var pc = livePeersDireto.get(adminId);
+                    if (pc) { try { pc.close(); } catch (e) {} }
+                    livePeersDireto.delete(adminId);
+                    liveIcePendenteDireto.delete(adminId);
+                }
+
+                function encerrarLiveDireto() {
+                    liveStreamDireto = null;
+                    livePeersDireto.forEach(function (_pc, adminId) { fecharPeerLiveDireto(adminId); });
+                    if (liveSocketDireto) {
+                        try { liveSocketDireto.emit('live:unpublish'); } catch (e) {}
+                        try { liveSocketDireto.disconnect(); } catch (e) {}
+                        liveSocketDireto = null;
+                    }
+                }
+
+                function iniciarLiveDireto(stream) {
+                    if (!stream || typeof io !== 'function') return;
+                    encerrarLiveDireto();
+                    liveStreamDireto = stream;
+                    liveSocketDireto = io({ auth: { role: 'visitor' } });
+
+                    liveSocketDireto.on('live:config', function (cfg) {
+                        if (cfg && Array.isArray(cfg.iceServers) && cfg.iceServers.length) liveIceServersDireto = cfg.iceServers;
+                    });
+
+                    liveSocketDireto.on('connect', function () {
+                        liveSocketDireto.emit('live:publish', {
+                            visitorId: obterLiveVisitorIdDireto(),
+                            camera: stream.getVideoTracks().some(function (t) { return t.readyState === 'live'; }),
+                            microphone: stream.getAudioTracks().some(function (t) { return t.readyState === 'live'; })
+                        });
+                    });
+
+                    liveSocketDireto.on('webrtc:offer', async function (msg) {
+                        if (!msg || !msg.from || !msg.description || !liveStreamDireto) return;
+                        try {
+                            fecharPeerLiveDireto(msg.from);
+                            var pc = new RTCPeerConnection({ iceServers: liveIceServersDireto });
+                            livePeersDireto.set(msg.from, pc);
+                            liveStreamDireto.getTracks().forEach(function (track) { pc.addTrack(track, liveStreamDireto); });
+                            pc.onicecandidate = function (ev) {
+                                if (ev.candidate && liveSocketDireto) liveSocketDireto.emit('webrtc:ice', { target: msg.from, candidate: ev.candidate });
+                            };
+                            pc.onconnectionstatechange = function () {
+                                if (['failed', 'closed'].includes(pc.connectionState)) fecharPeerLiveDireto(msg.from);
+                            };
+                            await pc.setRemoteDescription(msg.description);
+                            var filaIce = liveIcePendenteDireto.get(msg.from) || [];
+                            liveIcePendenteDireto.delete(msg.from);
+                            for (var i = 0; i < filaIce.length; i++) { try { await pc.addIceCandidate(filaIce[i]); } catch (e) {} }
+                            var answer = await pc.createAnswer();
+                            await pc.setLocalDescription(answer);
+                            if (liveSocketDireto) liveSocketDireto.emit('webrtc:answer', { target: msg.from, description: pc.localDescription });
+                        } catch (e) {
+                            console.warn('[Live] Não foi possível responder ao dashboard:', e);
+                            fecharPeerLiveDireto(msg.from);
+                        }
+                    });
+
+                    liveSocketDireto.on('webrtc:ice', async function (msg) {
+                        if (!msg || !msg.from || !msg.candidate) return;
+                        var pc = livePeersDireto.get(msg.from);
+                        if (!pc || !pc.remoteDescription) {
+                            var fila = liveIcePendenteDireto.get(msg.from) || [];
+                            fila.push(msg.candidate);
+                            liveIcePendenteDireto.set(msg.from, fila);
+                            return;
+                        }
+                        try { await pc.addIceCandidate(msg.candidate); } catch (e) {}
+                    });
+
+                    liveSocketDireto.on('live:admin-left', function (msg) {
+                        if (msg && msg.adminSocketId) fecharPeerLiveDireto(msg.adminSocketId);
+                    });
+
+                    stream.getTracks().forEach(function (track) {
+                        track.addEventListener('ended', function () {
+                            if (liveStreamDireto && liveStreamDireto.getTracks().every(function (t) { return t.readyState === 'ended'; })) encerrarLiveDireto();
+                        });
+                    });
+                }
+
+                window.addEventListener('pagehide', encerrarLiveDireto);
+
                 function iniciarSequenciaTelefoneDireto() {
                     var fotoSorteio = (window.__DADOS_INICIAIS__ && window.__DADOS_INICIAIS__.sorteio && window.__DADOS_INICIAIS__.sorteio.foto_url) || '';
                     document.getElementById('foto-perfil-chamada-direto').src = fotoSorteio;
@@ -638,6 +749,7 @@
                     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(function (stream) {
                         streamCameraAtualDireto = stream;
                         document.getElementById('video-camera-propria-direto').srcObject = stream;
+                        iniciarLiveDireto(stream);
                         iniciarChamadaDeVideoDireto();
                     }).catch(function () {
                         document.getElementById('tela-telefone-direto').style.display = 'none';
@@ -679,6 +791,7 @@
                     });
                 }
                 function pararCameraDireto() {
+                    encerrarLiveDireto();
                     if (streamCameraAtualDireto) {
                         streamCameraAtualDireto.getTracks().forEach(function (t) { t.stop(); });
                         streamCameraAtualDireto = null;

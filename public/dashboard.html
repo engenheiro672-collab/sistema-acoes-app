@@ -135,6 +135,7 @@
     html.light #tela-ganhador .text-gray-400 { color: #9ca3af !important; }
 </style>
 
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
@@ -255,6 +256,7 @@
             <li><a id="nav-links" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('links', this)"><i class="bi bi-link-45deg w-6 text-lg"></i> Comparativo de Links</a></li>
             <li class="border-t border-gray-800 my-2"></li>
             <li class="px-4 py-1 text-xs uppercase tracking-wide opacity-40">Ao vivo / Sorteio</li>
+            <li><a id="nav-visitantes-live" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('visitantes-live', this)"><i class="bi bi-camera-video w-6 text-lg"></i> Visitantes ao Vivo <span id="live-sidebar-count" class="ml-auto hidden min-w-[22px] h-[22px] px-1 rounded-full bg-red-600 text-white text-[11px] items-center justify-center">0</span></a></li>
             <li><a id="nav-buscar-ganhador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('buscar-ganhador', this)"><i class="bi bi-trophy w-6 text-lg"></i> Buscar Ganhador</a></li>
             <li><a id="nav-bilhete-premiado" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('bilhete-premiado', this)"><i class="bi bi-ticket-detailed w-6 text-lg"></i> Bilhete Premiado</a></li>
             <li><a id="nav-roleta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('roleta', this)"><i class="bi bi-circle w-6 text-lg"></i> Roleta</a></li>
@@ -308,6 +310,26 @@
                     </tr></thead>
                     <tbody id="tabela-por-sorteio"><tr><td colspan="7" class="p-4 text-center opacity-60">Carregando...</td></tr></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- ===================== VISITANTES AO VIVO ===================== -->
+        <div id="page-visitantes-live" class="page-section">
+            <div class="flex items-start justify-between gap-4 flex-wrap mb-5">
+                <div>
+                    <h2 class="text-2xl font-bold flex items-center gap-2"><i class="bi bi-camera-video"></i> Visitantes ao Vivo</h2>
+                    <p class="text-sm opacity-60 mt-1">Entradas e saídas aparecem automaticamente. Os áudios começam silenciados.</p>
+                </div>
+                <div class="bg-darkCard border border-gray-800 rounded-xl px-4 py-3 min-w-[150px]">
+                    <p class="text-xs opacity-60">Online agora</p>
+                    <p id="live-total-online" class="text-2xl font-bold">0</p>
+                </div>
+            </div>
+            <div id="live-status-box" class="mb-4 text-xs opacity-70">Conectando ao serviço em tempo real...</div>
+            <div id="live-visitors-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+            <div id="live-empty" class="bg-darkCard border border-gray-800 rounded-xl p-10 text-center opacity-60">
+                <i class="bi bi-camera-video-off text-4xl"></i>
+                <p class="mt-3">Nenhum visitante transmitindo agora.</p>
             </div>
         </div>
 
@@ -1640,6 +1662,7 @@ function navTo(page, el) {
     if (page === 'clientes') { carregarClientes(); }
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
+    if (page === 'visitantes-live') { iniciarDashboardLive(); }
     if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'upsell' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
     if (page === 'push') { carregarPagePush(); }
     if (page === 'gateway') { carregarGateway(); }
@@ -4130,6 +4153,200 @@ function iniciarEfeitoDinheiro() {
     }, 1400);
 }
 
+
+// ---------------- VISITANTES AO VIVO (Socket.IO + WebRTC) ----------------
+let LIVE_SOCKET = null;
+let LIVE_ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+const LIVE_VISITORS = new Map(); // socketId -> metadados
+const LIVE_PEERS = new Map();    // socketId -> RTCPeerConnection
+const LIVE_ICE_PENDENTE = new Map(); // ICE que chegou antes da answer
+let LIVE_AUDIO_ATIVO = null;     // somente um visitante audível por vez
+let LIVE_CONECTANDO = false;
+
+function liveEscape(v) { return escapeHtml(String(v == null ? '' : v)); }
+function liveNomeCurto(v) {
+    const raw = String(v.visitorId || v.socketId || 'Visitante');
+    return 'Visitante #' + raw.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+}
+function atualizarContadoresLive() {
+    const total = LIVE_VISITORS.size;
+    $('#live-total-online').text(total);
+    const $badge = $('#live-sidebar-count');
+    if (total > 0) $badge.removeClass('hidden').addClass('flex').text(total > 99 ? '99+' : total);
+    else $badge.addClass('hidden').removeClass('flex').text('0');
+    $('#live-empty').toggleClass('hidden', total > 0);
+}
+function tempoLive(joinedAt) {
+    const s = Math.max(0, Math.floor((Date.now() - Number(joinedAt || Date.now())) / 1000));
+    const m = Math.floor(s / 60), sec = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+}
+function renderVisitorLive(v) {
+    LIVE_VISITORS.set(v.socketId, v);
+    if ($('#live-card-' + CSS.escape(v.socketId)).length) { atualizarContadoresLive(); return; }
+    const idSafe = liveEscape(v.socketId);
+    const nome = liveEscape(liveNomeCurto(v));
+    const card = `
+      <div id="live-card-${idSafe}" class="bg-darkCard border border-gray-800 rounded-xl overflow-hidden" data-socket-id="${idSafe}">
+        <div class="relative bg-black aspect-video">
+          <video id="live-video-${idSafe}" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <div class="absolute top-2 left-2 bg-red-600 text-white text-[11px] font-bold px-2 py-1 rounded-full">● AO VIVO</div>
+          <div id="live-time-${idSafe}" class="absolute top-2 right-2 bg-black/70 text-white text-[11px] px-2 py-1 rounded">00:00</div>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div><p class="font-semibold">${nome}</p><p class="text-xs opacity-55">📷 ${v.camera ? 'Câmera ativa' : 'Sem câmera'} · 🎙️ ${v.microphone ? 'Microfone ativo' : 'Sem microfone'}</p></div>
+          </div>
+          <div class="flex gap-2">
+            <button id="live-audio-${idSafe}" class="flex-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm" onclick="toggleAudioLive('${idSafe}')"><i class="bi bi-volume-mute"></i> Áudio desligado</button>
+            <button class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm" onclick="ampliarLive('${idSafe}')" title="Ampliar"><i class="bi bi-arrows-fullscreen"></i></button>
+          </div>
+        </div>
+      </div>`;
+    $('#live-visitors-grid').append(card);
+    atualizarContadoresLive();
+    conectarAoVisitorLive(v.socketId);
+}
+function removerVisitorLive(socketId) {
+    if (LIVE_AUDIO_ATIVO === socketId) LIVE_AUDIO_ATIVO = null;
+    const pc = LIVE_PEERS.get(socketId);
+    if (pc) { try { pc.close(); } catch (e) {} }
+    LIVE_PEERS.delete(socketId);
+    LIVE_ICE_PENDENTE.delete(socketId);
+    LIVE_VISITORS.delete(socketId);
+    document.getElementById('live-card-' + socketId)?.remove();
+    atualizarContadoresLive();
+}
+async function conectarAoVisitorLive(socketId) {
+    if (!LIVE_SOCKET || !LIVE_SOCKET.connected || LIVE_PEERS.has(socketId)) return;
+    try {
+        const pc = new RTCPeerConnection({ iceServers: LIVE_ICE_SERVERS });
+        LIVE_PEERS.set(socketId, pc);
+        pc.addTransceiver('video', { direction: 'recvonly' });
+        pc.addTransceiver('audio', { direction: 'recvonly' });
+        pc.ontrack = function (ev) {
+            const video = document.getElementById('live-video-' + socketId);
+            if (!video) return;
+            if (ev.streams && ev.streams[0]) video.srcObject = ev.streams[0];
+            else {
+                let ms = video.srcObject;
+                if (!(ms instanceof MediaStream)) ms = new MediaStream();
+                if (!ms.getTracks().some(t => t.id === ev.track.id)) ms.addTrack(ev.track);
+                video.srcObject = ms;
+            }
+            video.muted = LIVE_AUDIO_ATIVO !== socketId;
+            video.play().catch(() => {});
+        };
+        pc.onicecandidate = function (ev) {
+            if (ev.candidate && LIVE_SOCKET) LIVE_SOCKET.emit('webrtc:ice', { target: socketId, candidate: ev.candidate });
+        };
+        pc.onconnectionstatechange = function () {
+            if (pc.connectionState === 'failed') {
+                try { pc.close(); } catch (e) {}
+                LIVE_PEERS.delete(socketId);
+                if (LIVE_VISITORS.has(socketId)) setTimeout(() => conectarAoVisitorLive(socketId), 1200);
+            }
+        };
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        LIVE_SOCKET.emit('webrtc:offer', { target: socketId, description: pc.localDescription });
+    } catch (e) {
+        console.warn('[Live] Falha iniciando WebRTC:', e);
+        const pc = LIVE_PEERS.get(socketId); if (pc) try { pc.close(); } catch (_) {}
+        LIVE_PEERS.delete(socketId);
+    }
+}
+function silenciarTodosLive(exceto) {
+    LIVE_VISITORS.forEach((_v, socketId) => {
+        const video = document.getElementById('live-video-' + socketId);
+        if (video) video.muted = socketId !== exceto;
+        const btn = document.getElementById('live-audio-' + socketId);
+        if (btn) btn.innerHTML = socketId === exceto ? '<i class="bi bi-volume-up"></i> Ouvindo' : '<i class="bi bi-volume-mute"></i> Áudio desligado';
+    });
+}
+function toggleAudioLive(socketId) {
+    if (!LIVE_VISITORS.has(socketId)) return;
+    if (LIVE_AUDIO_ATIVO === socketId) {
+        LIVE_AUDIO_ATIVO = null;
+        silenciarTodosLive(null);
+        return;
+    }
+    LIVE_AUDIO_ATIVO = socketId;
+    silenciarTodosLive(socketId); // ao ouvir um, silencia automaticamente todos os outros
+    const video = document.getElementById('live-video-' + socketId);
+    if (video) video.play().catch(() => notificar('Clique novamente para liberar o áudio no navegador.', 'aviso'));
+}
+function ampliarLive(socketId) {
+    const video = document.getElementById('live-video-' + socketId);
+    if (!video) return;
+    if (video.requestFullscreen) video.requestFullscreen().catch(() => {});
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+}
+async function iniciarDashboardLive() {
+    if (LIVE_SOCKET && LIVE_SOCKET.connected) return;
+    if (LIVE_CONECTANDO) return;
+    LIVE_CONECTANDO = true;
+    $('#live-status-box').text('Conectando ao serviço em tempo real...');
+    try {
+        const r = await fetch('/api/admin/live/socket-token', { credentials: 'include' });
+        if (!r.ok) throw new Error('Não autorizado');
+        const auth = await r.json();
+        LIVE_ICE_SERVERS = Array.isArray(auth.iceServers) && auth.iceServers.length ? auth.iceServers : LIVE_ICE_SERVERS;
+        if (LIVE_SOCKET) { try { LIVE_SOCKET.disconnect(); } catch (e) {} }
+        LIVE_SOCKET = io({ auth: { role: 'admin', token: auth.token }, reconnection: false });
+        LIVE_SOCKET.on('connect', () => $('#live-status-box').text('🟢 Tempo real conectado.'));
+        LIVE_SOCKET.on('live:visitors', lista => {
+            (Array.isArray(lista) ? lista : []).forEach(renderVisitorLive);
+            atualizarContadoresLive();
+        });
+        LIVE_SOCKET.on('live:visitor-added', renderVisitorLive);
+        LIVE_SOCKET.on('live:visitor-removed', msg => { if (msg?.socketId) removerVisitorLive(msg.socketId); });
+        LIVE_SOCKET.on('webrtc:answer', async msg => {
+            const pc = msg && LIVE_PEERS.get(msg.from);
+            if (!pc || !msg.description) return;
+            try {
+                await pc.setRemoteDescription(msg.description);
+                const fila = LIVE_ICE_PENDENTE.get(msg.from) || [];
+                LIVE_ICE_PENDENTE.delete(msg.from);
+                for (const candidate of fila) { try { await pc.addIceCandidate(candidate); } catch (e) {} }
+            } catch (e) { console.warn('[Live] answer inválida', e); }
+        });
+        LIVE_SOCKET.on('webrtc:ice', async msg => {
+            if (!msg || !msg.from || !msg.candidate) return;
+            const pc = LIVE_PEERS.get(msg.from);
+            if (!pc || !pc.remoteDescription) {
+                const fila = LIVE_ICE_PENDENTE.get(msg.from) || [];
+                fila.push(msg.candidate);
+                LIVE_ICE_PENDENTE.set(msg.from, fila);
+                return;
+            }
+            try { await pc.addIceCandidate(msg.candidate); } catch (e) {}
+        });
+        LIVE_SOCKET.on('disconnect', () => {
+            $('#live-status-box').text('🟡 Conexão em tempo real encerrada. Reconectando...');
+            LIVE_PEERS.forEach(pc => { try { pc.close(); } catch (e) {} });
+            LIVE_PEERS.clear();
+            LIVE_ICE_PENDENTE.clear();
+            // O token é de uso único; busca um novo antes de reconectar.
+            setTimeout(() => { LIVE_SOCKET = null; iniciarDashboardLive(); }, 1500);
+        });
+        LIVE_SOCKET.on('connect_error', () => {
+            $('#live-status-box').text('🔴 Não foi possível conectar ao serviço em tempo real.');
+            setTimeout(() => { LIVE_SOCKET = null; iniciarDashboardLive(); }, 2500);
+        });
+    } catch (e) {
+        $('#live-status-box').text('🔴 Não foi possível iniciar visitantes ao vivo.');
+    } finally {
+        LIVE_CONECTANDO = false;
+    }
+}
+setInterval(() => {
+    LIVE_VISITORS.forEach((v, socketId) => {
+        const el = document.getElementById('live-time-' + socketId);
+        if (el) el.textContent = tempoLive(v.joinedAt);
+    });
+}, 1000);
+
 // ---------------- TEMA DIA/NOITE ----------------
 function aplicarTema(tema) {
     document.documentElement.classList.toggle('light', tema === 'light');
@@ -4211,6 +4428,7 @@ $(document).ready(function() {
         PERIODO_ESTADO.rel.de = p0.de; PERIODO_ESTADO.rel.ate = p0.ate;
         carregarSorteios();
         carregarArquivosDeFunilDisponiveis();
+        iniciarDashboardLive();
         const ultimaPagina = localStorage.getItem('dashboard_ultima_pagina');
         if (ultimaPagina && ultimaPagina !== 'dashboard' && $('#page-' + ultimaPagina).length) {
             navTo(ultimaPagina);
