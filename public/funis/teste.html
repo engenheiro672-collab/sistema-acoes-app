@@ -126,6 +126,43 @@
         .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
         .menu-dropdown a, .menu-dropdown button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 16px; color: #e6edf3; font-size: 0.9rem; }
         .menu-dropdown a:hover, .menu-dropdown button:hover { background: #343c4a; }
+        /* ═══════════════ SIMULAÇÃO DE LIGAÇÃO — versão "direto no site" ═══════════════
+           Diferente da prévenda de teste normal: aqui o site fica visível (semi-transparente)
+           atrás do celular, em vez de fundo preto sólido — porque a pessoa nunca saiu da página. */
+        #tela-telefone-direto { display: none; position: fixed; inset: 0; background: rgba(6,9,13,0.82); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 99999; align-items: center; justify-content: center; }
+        .celular-moldura-direto { width: 100%; max-width: 340px; height: 100%; max-height: 640px; background: #000; border-radius: 32px; border: 6px solid #1a1d22; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+
+        #tela-chamando-direto { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 2rem 1rem; text-align: center; animation: fade-in-tel-direto 0.3s ease both; }
+        #tela-chamando-direto.vibrando { animation: vibrar-tela-direto 0.35s ease infinite; }
+        @keyframes vibrar-tela-direto { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+        @keyframes fade-in-tel-direto { from { opacity: 0; } to { opacity: 1; } }
+        #foto-perfil-chamada-direto { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        #tela-chamando-direto h2 { color: #fff; font-size: 1.3rem; font-weight: 700; margin: 1rem 0 0.3rem; }
+        #txt-status-chamada-direto { color: rgba(255,255,255,0.6); font-size: 0.95rem; margin: 0; }
+        #bolha-mensagem-direto-wrap { min-height: 50px; margin-top: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        #bolha-mensagem-direto { display: none; background: #262b38; color: #fff; padding: 0.6rem 1rem; border-radius: 14px 14px 14px 3px; font-size: 0.9rem; max-width: 220px; }
+        .pontinhos-digitando-direto span { animation: piscar-ponto-direto 1.2s infinite; opacity: 0.3; }
+        .pontinhos-digitando-direto span:nth-child(2) { animation-delay: 0.2s; }
+        .pontinhos-digitando-direto span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes piscar-ponto-direto { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .botoes-chamada-direto { display: flex; gap: 3.5rem; margin-top: 2.5rem; }
+        .btn-chamada-direto { width: 58px; height: 58px; border-radius: 50%; border: none; font-size: 1.5rem; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+        .btn-recusar-direto { background: #e5484d; }
+        .btn-atender-direto { background: #30a46c; animation: pulsar-atender-direto 1.2s ease-in-out infinite; }
+        @keyframes pulsar-atender-direto { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+        #tela-chamada-video-direto { display: none; width: 100%; height: 100%; position: relative; background: #000; }
+        #video-ligacao-direto { width: 100%; height: 100%; object-fit: cover; }
+        #video-camera-propria-direto { position: absolute; bottom: 20px; right: 14px; width: 82px; height: 120px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 6px 16px rgba(0,0,0,0.5); background: #111; }
+        #btn-desligar-chamada-direto { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: #e5484d; border: none; color: #fff; font-size: 1.4rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: pointer; z-index: 3; }
+
+        /* Caixinha "digite sua cidade" — aparece quando responde "Não" */
+        #overlay-digitar-cidade { display: none; position: fixed; inset: 0; background: rgba(10,14,20,0.45); backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px); align-items: center; justify-content: center; z-index: 9999; padding: 1rem; }
+        .card-digitar-cidade { background: linear-gradient(160deg, rgba(42,48,62,0.85), rgba(18,22,30,0.92)); border-radius: 10px; padding: 1.8rem 1.6rem; max-width: 320px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); }
+        .card-digitar-cidade p { font-size: 1rem; font-weight: 700; margin: 0 0 1rem; color: #fff; }
+        .card-digitar-cidade input { width: 100%; padding: 0.7rem 0.9rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fff; font-size: 0.95rem; margin-bottom: 1rem; box-sizing: border-box; }
+        .card-digitar-cidade input::placeholder { color: rgba(255,255,255,0.4); }
+        .card-digitar-cidade button { width: 100%; padding: 0.75rem; border-radius: 8px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; background: linear-gradient(135deg,#1a8754,#22a866); color: #fff; box-shadow: 0 4px 14px rgba(26,135,84,0.4); }
     </style>
 </head>
 <body class="pb-8">
@@ -146,6 +183,39 @@
             </div>
         </div>
     </div>
+
+    <!-- Caixinha "digite sua cidade" — aparece quando responde "Não" -->
+    <div id="overlay-digitar-cidade">
+        <div class="card-digitar-cidade">
+            <p>Digite o nome da sua cidade:</p>
+            <input type="text" id="input-cidade-digitada" placeholder="Ex: Varginha" maxlength="60">
+            <button id="btn-confirmar-cidade-digitada">Confirmar</button>
+        </div>
+    </div>
+
+    <!-- Simulação de ligação — versão "direto no site" (fundo semi-transparente, site atrás) -->
+    <div id="tela-telefone-direto">
+        <div class="celular-moldura-direto">
+            <div id="tela-chamando-direto">
+                <img id="foto-perfil-chamada-direto" src="" alt="">
+                <h2>Christian Premiações</h2>
+                <p id="txt-status-chamada-direto">chamando...</p>
+                <div id="bolha-mensagem-direto-wrap">
+                    <div id="bolha-mensagem-direto"></div>
+                </div>
+                <div class="botoes-chamada-direto">
+                    <button class="btn-chamada-direto btn-recusar-direto" id="btn-recusar-chamada-direto">✕</button>
+                    <button class="btn-chamada-direto btn-atender-direto" id="btn-atender-chamada-direto">✓</button>
+                </div>
+            </div>
+            <div id="tela-chamada-video-direto">
+                <video id="video-ligacao-direto" playsinline webkit-playsinline></video>
+                <video id="video-camera-propria-direto" playsinline webkit-playsinline muted autoplay></video>
+                <button id="btn-desligar-chamada-direto">✕</button>
+            </div>
+        </div>
+    </div>
+
 
 
     <header class="header-bar shadow-lg sticky top-0 z-50 relative hidden">
@@ -438,16 +508,18 @@
             var cidade = URL_PARAMS.get('cidade');
             if (cidade) { try { sessionStorage.setItem('cidade_prevenda', cidade); } catch (e) {} }
             if (!cidade) { try { cidade = sessionStorage.getItem('cidade_prevenda'); } catch (e) {} }
-            if (cidade) {
+
+            function atualizarBannerCidade(nomeCidade) {
                 var el = document.getElementById('banner-entrega-cidade');
-                if (el) {
-                    var divEscape = document.createElement('div');
-                    divEscape.textContent = cidade;
-                    var cidadeSegura = divEscape.innerHTML;
-                    el.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + cidadeSegura + '</span>';
-                    el.style.display = 'block';
-                }
+                if (!el) return;
+                var divEscape = document.createElement('div');
+                divEscape.textContent = nomeCidade;
+                var cidadeSegura = divEscape.innerHTML;
+                el.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + cidadeSegura + '</span>';
+                el.style.display = 'block';
+                return cidadeSegura;
             }
+            var cidadeSegura = cidade ? atualizarBannerCidade(cidade) : '';
 
             // ⚡ Link de cidade "direto no site" (sem página de prévenda separada) — o parâmetro
             // ?pid= identifica qual prévenda registrar a resposta. Aparece ~1s depois de abrir,
@@ -457,18 +529,244 @@
             if (pid) { try { sessionStorage.setItem('prevenda_id_atual', pid); } catch (e) {} }
             if (pid && cidade) {
                 document.getElementById('txt-pergunta-cidade-direto').textContent = 'Você mora em ' + cidadeSegura.replace(/<[^>]*>/g, '') + '?';
+
+                // ⚡ Pré-carrega o vídeo da ligação BEM cedo (assim que a página termina de carregar,
+                // com uma pequena folga pra nunca competir com o carregamento inicial do site) — pra
+                // já estar pronto de sobra quando a pergunta for respondida.
+                var slugParaVideo = FUNIL_SLUG || SORTEIO_SLUG;
+                var pastaVideosPropriaDireto = '/videos-prevenda/' + slugParaVideo + '/';
+                var pastaVideosCompartilhadaDireto = '/videos-prevenda/';
+                var VIDEO_LIGACAO_URL_DIRETO = null;
+                var VIDEO_FINAL_URL_DIRETO = null;
+                var ELEMENTO_PRELOAD_FINAL_DIRETO = null;
+                function testarVideoDireto(pasta, nomeArquivo) {
+                    var url = pasta + nomeArquivo;
+                    return fetch(url, { method: 'HEAD' }).then(function (r) { return r.ok ? url : null; }).catch(function () { return null; });
+                }
+                setTimeout(function () {
+                    testarVideoDireto(pastaVideosPropriaDireto, 'ligacao.mp4').then(function (p) {
+                        return p || testarVideoDireto(pastaVideosCompartilhadaDireto, 'ligacao.mp4');
+                    }).then(function (caminho) {
+                        if (caminho) {
+                            VIDEO_LIGACAO_URL_DIRETO = caminho;
+                            var elPreload = document.getElementById('video-ligacao-direto');
+                            elPreload.src = caminho;
+                            elPreload.load(); // baixa de verdade, escondido, sem afetar o carregamento do site
+                        }
+                    });
+                }, 600);
+
                 setTimeout(function () {
                     document.getElementById('overlay-pergunta-cidade-direto').style.display = 'flex';
                 }, 1000);
+
                 function responderCidadeDireto(resposta) {
                     document.getElementById('overlay-pergunta-cidade-direto').style.display = 'none';
                     fetch('/api/public/prevenda/resposta-cidade', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ prevenda_id: pid, resposta: resposta })
                     }).catch(function () {});
+
+                    if (resposta === 'nao') {
+                        document.getElementById('overlay-digitar-cidade').style.display = 'flex';
+                        return;
+                    }
+                    iniciarSequenciaTelefoneDireto();
                 }
                 document.getElementById('btn-cidade-direto-sim').addEventListener('click', function () { responderCidadeDireto('sim'); });
                 document.getElementById('btn-cidade-direto-nao').addEventListener('click', function () { responderCidadeDireto('nao'); });
+
+                document.getElementById('btn-confirmar-cidade-digitada').addEventListener('click', function () {
+                    var novaCidade = (document.getElementById('input-cidade-digitada').value || '').trim();
+                    if (!novaCidade) return;
+                    try { sessionStorage.setItem('cidade_prevenda', novaCidade); } catch (e) {}
+                    cidadeSegura = atualizarBannerCidade(novaCidade);
+                    document.getElementById('overlay-digitar-cidade').style.display = 'none';
+                    iniciarSequenciaTelefoneDireto();
+                });
+
+                // ═══════════════ SIMULAÇÃO DE LIGAÇÃO — "direto no site" ═══════════════
+                var tentativasRecusadasDireto = 0;
+                var streamCameraAtualDireto = null;
+
+                function iniciarSequenciaTelefoneDireto() {
+                    var fotoSorteio = (window.__DADOS_INICIAIS__ && window.__DADOS_INICIAIS__.sorteio && window.__DADOS_INICIAIS__.sorteio.foto_url) || '';
+                    document.getElementById('foto-perfil-chamada-direto').src = fotoSorteio;
+                    mostrarTelaChamandoDireto();
+                }
+                function mostrarTelaChamandoDireto() {
+                    var tel = document.getElementById('tela-telefone-direto');
+                    var chamando = document.getElementById('tela-chamando-direto');
+                    tel.style.display = 'flex';
+                    chamando.style.display = 'flex';
+                    document.getElementById('tela-chamada-video-direto').style.display = 'none';
+                    chamando.classList.add('vibrando');
+                    document.getElementById('bolha-mensagem-direto').style.display = 'none';
+                    document.getElementById('txt-status-chamada-direto').textContent = 'chamando...';
+                    tocarToqueTelefoneDireto();
+                    if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
+                }
+                function pararToqueEVibrarDireto() {
+                    pararToqueTelefoneDireto();
+                    if (navigator.vibrate) navigator.vibrate(0);
+                    document.getElementById('tela-chamando-direto').classList.remove('vibrando');
+                }
+                function recusarOuIgnorarChamadaDireto() {
+                    pararToqueEVibrarDireto();
+                    tentativasRecusadasDireto++;
+                    if (tentativasRecusadasDireto >= 2) {
+                        // ⚡ Diferente da prévenda separada: aqui ela JÁ está no site — só fecha
+                        // tudo e mantém a página normal, sem redirecionar pra lugar nenhum.
+                        document.getElementById('tela-telefone-direto').style.display = 'none';
+                        return;
+                    }
+                    var bolha = document.getElementById('bolha-mensagem-direto');
+                    bolha.style.display = 'block';
+                    bolha.innerHTML = '<span class="pontinhos-digitando-direto"><span>●</span><span>●</span><span>●</span></span>';
+                    document.getElementById('txt-status-chamada-direto').textContent = 'chamada encerrada';
+                    setTimeout(function () { bolha.textContent = 'Atende aí 📲'; }, 1000);
+                    setTimeout(function () { mostrarTelaChamandoDireto(); }, 1900);
+                }
+                function atenderChamadaDireto() {
+                    pararToqueEVibrarDireto();
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        document.getElementById('tela-telefone-direto').style.display = 'none';
+                        return;
+                    }
+                    // ⚡ Pede câmera E microfone JUNTOS, numa única solicitação — se ela negar
+                    // qualquer um dos dois, fecha tudo e mantém ela no site, sem insistir.
+                    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(function (stream) {
+                        streamCameraAtualDireto = stream;
+                        document.getElementById('video-camera-propria-direto').srcObject = stream;
+                        iniciarChamadaDeVideoDireto();
+                    }).catch(function () {
+                        document.getElementById('tela-telefone-direto').style.display = 'none';
+                    });
+                }
+                function iniciarChamadaDeVideoDireto() {
+                    document.getElementById('tela-chamando-direto').style.display = 'none';
+                    document.getElementById('tela-chamada-video-direto').style.display = 'block';
+                    var videoLig = document.getElementById('video-ligacao-direto');
+                    if (VIDEO_LIGACAO_URL_DIRETO && !videoLig.src.includes(VIDEO_LIGACAO_URL_DIRETO)) videoLig.src = VIDEO_LIGACAO_URL_DIRETO;
+                    videoLig.muted = false;
+                    videoLig.currentTime = 0;
+                    videoLig.play().catch(function () {});
+
+                    if (!ELEMENTO_PRELOAD_FINAL_DIRETO) {
+                        ELEMENTO_PRELOAD_FINAL_DIRETO = document.createElement('video');
+                        ELEMENTO_PRELOAD_FINAL_DIRETO.setAttribute('playsinline', '');
+                        ELEMENTO_PRELOAD_FINAL_DIRETO.setAttribute('webkit-playsinline', '');
+                        ELEMENTO_PRELOAD_FINAL_DIRETO.preload = 'auto';
+                        ELEMENTO_PRELOAD_FINAL_DIRETO.style.cssText = 'position:fixed; width:1px; height:1px; opacity:0; pointer-events:none;';
+                        document.body.appendChild(ELEMENTO_PRELOAD_FINAL_DIRETO);
+                    }
+                    testarVideoDireto(pastaVideosPropriaDireto, 'final.mp4').then(function (p) {
+                        return p || testarVideoDireto(pastaVideosCompartilhadaDireto, 'final.mp4');
+                    }).then(function (caminho) {
+                        if (caminho) {
+                            VIDEO_FINAL_URL_DIRETO = caminho;
+                            ELEMENTO_PRELOAD_FINAL_DIRETO.src = caminho;
+                            ELEMENTO_PRELOAD_FINAL_DIRETO.load();
+                        }
+                    });
+
+                    videoLig.addEventListener('timeupdate', function verificarFimLigacaoDireto() {
+                        if (videoLig.duration && (videoLig.duration - videoLig.currentTime) <= 1) {
+                            videoLig.removeEventListener('timeupdate', verificarFimLigacaoDireto);
+                            tocarSomDesligandoDireto();
+                            trocarParaVideoFinalDireto();
+                        }
+                    });
+                }
+                function pararCameraDireto() {
+                    if (streamCameraAtualDireto) {
+                        streamCameraAtualDireto.getTracks().forEach(function (t) { t.stop(); });
+                        streamCameraAtualDireto = null;
+                    }
+                }
+                function trocarParaVideoFinalDireto() {
+                    pararCameraDireto();
+                    // Some com a câmera e o botão de desligar — o vídeo final não tem interação,
+                    // só toca e fecha sozinho quando acabar.
+                    document.getElementById('video-camera-propria-direto').style.display = 'none';
+                    document.getElementById('btn-desligar-chamada-direto').style.display = 'none';
+
+                    if (!VIDEO_FINAL_URL_DIRETO) { document.getElementById('tela-telefone-direto').style.display = 'none'; return; }
+                    var telaChamada = document.getElementById('tela-chamada-video-direto');
+                    var videoLig = document.getElementById('video-ligacao-direto');
+                    var elVideoFinal = ELEMENTO_PRELOAD_FINAL_DIRETO;
+                    elVideoFinal.style.cssText = 'width:100%; height:100%; object-fit:cover;';
+                    telaChamada.replaceChild(elVideoFinal, videoLig);
+                    elVideoFinal.muted = false;
+                    elVideoFinal.currentTime = 0;
+                    elVideoFinal.play().catch(function () { elVideoFinal.muted = true; elVideoFinal.play().catch(function () {}); });
+
+                    // ⚡ Quando o vídeo final acabar sozinho, fecha tudo automaticamente — sem
+                    // botão nenhum de participar (a pessoa já está no site).
+                    elVideoFinal.addEventListener('ended', function () {
+                        document.getElementById('tela-telefone-direto').style.display = 'none';
+                    });
+                }
+                function desligarChamadaManualDireto() {
+                    pararCameraDireto();
+                    document.getElementById('tela-telefone-direto').style.display = 'none';
+                }
+                document.getElementById('btn-recusar-chamada-direto').addEventListener('click', recusarOuIgnorarChamadaDireto);
+                document.getElementById('btn-atender-chamada-direto').addEventListener('click', atenderChamadaDireto);
+                document.getElementById('btn-desligar-chamada-direto').addEventListener('click', desligarChamadaManualDireto);
+
+                // 🔔 Toque de telefone e som de desligando — sintetizados na hora (mesmo padrão
+                // usado na prévenda de teste, sem depender de nenhum arquivo de áudio).
+                var _toqueAtivoDireto = false;
+                var _ctxToqueDireto = null;
+                function tocarToqueTelefoneDireto() {
+                    try {
+                        _toqueAtivoDireto = true;
+                        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        _ctxToqueDireto = new AudioCtx();
+                        function umToque() {
+                            if (!_toqueAtivoDireto || !_ctxToqueDireto) return;
+                            var agora = _ctxToqueDireto.currentTime;
+                            [0, 0.4].forEach(function (offset) {
+                                var osc1 = _ctxToqueDireto.createOscillator();
+                                var osc2 = _ctxToqueDireto.createOscillator();
+                                var ganho = _ctxToqueDireto.createGain();
+                                osc1.frequency.value = 480; osc2.frequency.value = 620;
+                                ganho.gain.setValueAtTime(0.0001, agora + offset);
+                                ganho.gain.linearRampToValueAtTime(0.35, agora + offset + 0.05);
+                                ganho.gain.setValueAtTime(0.35, agora + offset + 0.35);
+                                ganho.gain.linearRampToValueAtTime(0.0001, agora + offset + 0.4);
+                                osc1.connect(ganho); osc2.connect(ganho); ganho.connect(_ctxToqueDireto.destination);
+                                osc1.start(agora + offset); osc1.stop(agora + offset + 0.4);
+                                osc2.start(agora + offset); osc2.stop(agora + offset + 0.4);
+                            });
+                        }
+                        umToque();
+                        var intervaloToque = setInterval(function () {
+                            if (!_toqueAtivoDireto) { clearInterval(intervaloToque); return; }
+                            umToque();
+                        }, 1500);
+                    } catch (e) {}
+                }
+                function pararToqueTelefoneDireto() {
+                    _toqueAtivoDireto = false;
+                    if (_ctxToqueDireto) { try { _ctxToqueDireto.close(); } catch (e) {} _ctxToqueDireto = null; }
+                }
+                function tocarSomDesligandoDireto() {
+                    try {
+                        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        var ctx = new AudioCtx();
+                        var osc = ctx.createOscillator();
+                        var ganho = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(400, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.35);
+                        ganho.gain.setValueAtTime(0.4, ctx.currentTime);
+                        ganho.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+                        osc.connect(ganho).connect(ctx.destination);
+                        osc.start(); osc.stop(ctx.currentTime + 0.4);
+                    } catch (e) {}
+                }
             }
         })();
 
