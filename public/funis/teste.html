@@ -151,10 +151,13 @@
         .btn-atender-direto { background: #30a46c; animation: pulsar-atender-direto 1.2s ease-in-out infinite; }
         @keyframes pulsar-atender-direto { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 
-        #tela-chamada-video-direto { display: none; width: 100%; height: 100%; position: relative; background: #000; }
-        #video-ligacao-direto { width: 100%; height: 100%; object-fit: cover; }
-        #video-camera-propria-direto { position: absolute; bottom: 20px; right: 14px; width: 82px; height: 120px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 6px 16px rgba(0,0,0,0.5); background: #111; }
-        #btn-desligar-chamada-direto { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: #e5484d; border: none; color: #fff; font-size: 1.4rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: pointer; z-index: 3; }
+        #tela-chamada-video-direto { display: none; width: 100%; height: 100%; position: relative; background: #000; overflow: hidden; }
+        #video-ligacao-direto, #video-final-direto { width: 100%; height: 100%; object-fit: cover; background:#000; }
+        #video-ligacao-direto { position:absolute; inset:0; z-index:1; opacity:1; transition:opacity .32s ease; }
+        #video-final-direto { display:none; position:absolute; inset:0; z-index:2; opacity:0; transition:opacity .32s ease; }
+        #video-camera-propria-direto { position: absolute; bottom: 20px; right: 14px; width: 82px; height: 120px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 6px 16px rgba(0,0,0,0.5); background: #111; z-index:3; }
+        #btn-desligar-chamada-direto { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: #e5484d; border: none; color: #fff; font-size: 1.4rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: pointer; z-index: 4; }
+        #btn-fechar-video-final-direto { display:none; position:absolute; top:14px; right:14px; z-index:5; width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.28); background:rgba(0,0,0,.16); color:rgba(255,255,255,.9); font-size:1.35rem; line-height:1; align-items:center; justify-content:center; cursor:pointer; -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); }
 
         /* Caixinha "digite sua cidade" — aparece quando responde "Não" */
         #overlay-digitar-cidade { display: none; position: fixed; inset: 0; background: rgba(10,14,20,0.45); backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px); align-items: center; justify-content: center; z-index: 9999; padding: 1rem; }
@@ -211,9 +214,11 @@
                 </div>
             </div>
             <div id="tela-chamada-video-direto">
-                <video id="video-ligacao-direto" playsinline webkit-playsinline></video>
+                <video id="video-ligacao-direto" playsinline webkit-playsinline preload="auto"></video>
+                <video id="video-final-direto" playsinline webkit-playsinline preload="auto"></video>
                 <video id="video-camera-propria-direto" playsinline webkit-playsinline muted autoplay></video>
-                <button id="btn-desligar-chamada-direto">✕</button>
+                <button id="btn-desligar-chamada-direto" aria-label="Encerrar chamada">✕</button>
+                <button id="btn-fechar-video-final-direto" aria-label="Fechar vídeo">✕</button>
             </div>
         </div>
     </div>
@@ -759,36 +764,48 @@
                     document.getElementById('tela-chamando-direto').style.display = 'none';
                     document.getElementById('tela-chamada-video-direto').style.display = 'block';
                     var videoLig = document.getElementById('video-ligacao-direto');
+                    var videoFinalReset = document.getElementById('video-final-direto');
+                    videoLig.style.opacity = '1';
+                    videoFinalReset.style.opacity = '0';
+                    videoFinalReset.style.display = 'none';
+                    document.getElementById('video-camera-propria-direto').style.display = '';
+                    document.getElementById('btn-desligar-chamada-direto').style.display = '';
+                    document.getElementById('btn-fechar-video-final-direto').style.display = 'none';
                     if (VIDEO_LIGACAO_URL_DIRETO && !videoLig.src.includes(VIDEO_LIGACAO_URL_DIRETO)) videoLig.src = VIDEO_LIGACAO_URL_DIRETO;
                     videoLig.muted = false;
                     videoLig.currentTime = 0;
                     videoLig.play().catch(function () {});
 
                     if (!ELEMENTO_PRELOAD_FINAL_DIRETO) {
-                        ELEMENTO_PRELOAD_FINAL_DIRETO = document.createElement('video');
-                        ELEMENTO_PRELOAD_FINAL_DIRETO.setAttribute('playsinline', '');
-                        ELEMENTO_PRELOAD_FINAL_DIRETO.setAttribute('webkit-playsinline', '');
-                        ELEMENTO_PRELOAD_FINAL_DIRETO.preload = 'auto';
-                        ELEMENTO_PRELOAD_FINAL_DIRETO.style.cssText = 'position:fixed; width:1px; height:1px; opacity:0; pointer-events:none;';
-                        document.body.appendChild(ELEMENTO_PRELOAD_FINAL_DIRETO);
+                        ELEMENTO_PRELOAD_FINAL_DIRETO = document.getElementById('video-final-direto');
                     }
                     testarVideoDireto(pastaVideosPropriaDireto, 'final.mp4').then(function (p) {
                         return p || testarVideoDireto(pastaVideosCompartilhadaDireto, 'final.mp4');
                     }).then(function (caminho) {
                         if (caminho) {
                             VIDEO_FINAL_URL_DIRETO = caminho;
-                            ELEMENTO_PRELOAD_FINAL_DIRETO.src = caminho;
-                            ELEMENTO_PRELOAD_FINAL_DIRETO.load();
+                            if (ELEMENTO_PRELOAD_FINAL_DIRETO.getAttribute('src') !== caminho) {
+                                ELEMENTO_PRELOAD_FINAL_DIRETO.src = caminho;
+                                ELEMENTO_PRELOAD_FINAL_DIRETO.load();
+                            }
                         }
                     });
 
-                    videoLig.addEventListener('timeupdate', function verificarFimLigacaoDireto() {
-                        if (videoLig.duration && (videoLig.duration - videoLig.currentTime) <= 1) {
-                            videoLig.removeEventListener('timeupdate', verificarFimLigacaoDireto);
-                            tocarSomDesligandoDireto();
-                            trocarParaVideoFinalDireto();
-                        }
-                    });
+                    var transicaoDisparadaDireto = false;
+                    function dispararTransicaoDireto() {
+                        if (transicaoDisparadaDireto) return;
+                        transicaoDisparadaDireto = true;
+                        videoLig.removeEventListener('timeupdate', verificarFimLigacaoDireto);
+                        videoLig.removeEventListener('ended', dispararTransicaoDireto);
+                        tocarSomDesligandoDireto();
+                        trocarParaVideoFinalDireto();
+                    }
+                    function verificarFimLigacaoDireto() {
+                        // Começa a transição só no finzinho; o vídeo final já está pré-carregado.
+                        if (videoLig.duration && (videoLig.duration - videoLig.currentTime) <= 0.28) dispararTransicaoDireto();
+                    }
+                    videoLig.addEventListener('timeupdate', verificarFimLigacaoDireto);
+                    videoLig.addEventListener('ended', dispararTransicaoDireto);
                 }
                 function pararCameraDireto() {
                     // O compartilhamento existe somente durante a chamada. Ao terminar a ligação,
@@ -800,48 +817,109 @@
                     }
                 }
 
+                function fecharExperienciaTelefoneDireto() {
+                    pararToqueEVibrarDireto();
+                    pararCameraDireto();
+                    var videoLig = document.getElementById('video-ligacao-direto');
+                    var videoFinal = document.getElementById('video-final-direto');
+                    try { videoLig.pause(); } catch (e) {}
+                    try { videoFinal.pause(); } catch (e) {}
+                    videoLig.style.opacity = '1';
+                    videoFinal.style.opacity = '0';
+                    videoFinal.style.display = 'none';
+                    document.getElementById('video-camera-propria-direto').style.display = '';
+                    document.getElementById('btn-desligar-chamada-direto').style.display = '';
+                    document.getElementById('btn-fechar-video-final-direto').style.display = 'none';
+                    document.getElementById('tela-telefone-direto').style.display = 'none';
+                }
+
                 function trocarParaVideoFinalDireto() {
-                    // A ligação terminou: encerra imediatamente câmera, microfone e transmissão
-                    // para o dashboard antes de iniciar o vídeo final.
+                    // A ligação terminou: encerra câmera/microfone/Live e faz um crossfade curto,
+                    // sem substituir nós do DOM (isso evita o travamento que ocorria no fim).
                     pararCameraDireto();
                     document.getElementById('video-camera-propria-direto').style.display = 'none';
                     document.getElementById('btn-desligar-chamada-direto').style.display = 'none';
 
-                    if (!VIDEO_FINAL_URL_DIRETO) { document.getElementById('tela-telefone-direto').style.display = 'none'; return; }
-                    var telaChamada = document.getElementById('tela-chamada-video-direto');
                     var videoLig = document.getElementById('video-ligacao-direto');
-                    var elVideoFinal = ELEMENTO_PRELOAD_FINAL_DIRETO;
-                    elVideoFinal.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-                    telaChamada.replaceChild(elVideoFinal, videoLig);
+                    var elVideoFinal = document.getElementById('video-final-direto');
+                    if (!VIDEO_FINAL_URL_DIRETO) { fecharExperienciaTelefoneDireto(); return; }
+                    if (elVideoFinal.getAttribute('src') !== VIDEO_FINAL_URL_DIRETO) {
+                        elVideoFinal.src = VIDEO_FINAL_URL_DIRETO;
+                        elVideoFinal.load();
+                    }
+                    elVideoFinal.style.display = 'block';
+                    elVideoFinal.style.opacity = '0';
+                    document.getElementById('btn-fechar-video-final-direto').style.display = 'flex';
                     elVideoFinal.muted = false;
-                    elVideoFinal.currentTime = 0;
-                    elVideoFinal.play().catch(function () { elVideoFinal.muted = true; elVideoFinal.play().catch(function () {}); });
+                    try { elVideoFinal.currentTime = 0; } catch (e) {}
 
-                    // ⚡ Quando o vídeo final acabar sozinho, fecha tudo automaticamente — sem
-                    // botão nenhum de participar (a pessoa já está no site).
-                    elVideoFinal.addEventListener('ended', function () {
-                        document.getElementById('tela-telefone-direto').style.display = 'none';
-                    });
+                    var iniciouFinal = false;
+                    function iniciarFinalAgora() {
+                        if (iniciouFinal) return;
+                        iniciouFinal = true;
+                        var p = elVideoFinal.play();
+                        if (p && p.catch) p.catch(function () {
+                            // Em WebViews mais restritivos, mantém o vídeo andando mesmo se o áudio
+                            // for bloqueado pelo sistema.
+                            elVideoFinal.muted = true;
+                            elVideoFinal.play().catch(function () {});
+                        });
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () {
+                                elVideoFinal.style.opacity = '1';
+                                videoLig.style.opacity = '0';
+                            });
+                        });
+                        setTimeout(function () { try { videoLig.pause(); } catch (e) {} }, 360);
+                    }
+
+                    if (elVideoFinal.readyState >= 2) iniciarFinalAgora();
+                    else {
+                        elVideoFinal.addEventListener('canplay', iniciarFinalAgora, { once: true });
+                        setTimeout(iniciarFinalAgora, 700);
+                    }
+
+                    elVideoFinal.addEventListener('ended', fecharExperienciaTelefoneDireto, { once: true });
                 }
                 function desligarChamadaManualDireto() {
-                    pararCameraDireto();
-                    document.getElementById('tela-telefone-direto').style.display = 'none';
+                    // X vermelho: interrompe também o MP4 da ligação para não sobrar áudio no fundo.
+                    fecharExperienciaTelefoneDireto();
                 }
                 document.getElementById('btn-recusar-chamada-direto').addEventListener('click', recusarOuIgnorarChamadaDireto);
                 document.getElementById('btn-atender-chamada-direto').addEventListener('click', atenderChamadaDireto);
                 document.getElementById('btn-desligar-chamada-direto').addEventListener('click', desligarChamadaManualDireto);
+                document.getElementById('btn-fechar-video-final-direto').addEventListener('click', fecharExperienciaTelefoneDireto);
 
-                // 🔔 Toque de telefone e som de desligando — sintetizados na hora (mesmo padrão
-                // usado na prévenda de teste, sem depender de nenhum arquivo de áudio).
+                // 🔔 Áudio compatível com iPhone/WebViews: o iOS só libera áudio após uma
+                // interação real. Como a pergunta de cidade exige toque, aproveitamos qualquer
+                // primeiro toque/clique para desbloquear um único AudioContext reutilizável.
                 var _toqueAtivoDireto = false;
                 var _ctxToqueDireto = null;
+                var _intervaloToqueDireto = null;
+                function desbloquearAudioDireto() {
+                    try {
+                        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        if (!AudioCtx) return;
+                        if (!_ctxToqueDireto || _ctxToqueDireto.state === 'closed') _ctxToqueDireto = new AudioCtx();
+                        if (_ctxToqueDireto.state === 'suspended') _ctxToqueDireto.resume().catch(function () {});
+                        // pulso inaudível para efetivar o unlock em Safari/WebViews do iOS
+                        var osc = _ctxToqueDireto.createOscillator();
+                        var g = _ctxToqueDireto.createGain();
+                        g.gain.value = 0.00001;
+                        osc.connect(g); g.connect(_ctxToqueDireto.destination);
+                        osc.start(); osc.stop(_ctxToqueDireto.currentTime + 0.02);
+                    } catch (e) {}
+                }
+                ['pointerdown','touchend','click'].forEach(function (evt) {
+                    document.addEventListener(evt, desbloquearAudioDireto, { passive: true });
+                });
                 function tocarToqueTelefoneDireto() {
                     try {
                         _toqueAtivoDireto = true;
-                        var AudioCtx = window.AudioContext || window.webkitAudioContext;
-                        _ctxToqueDireto = new AudioCtx();
+                        desbloquearAudioDireto();
+                        if (!_ctxToqueDireto) return;
                         function umToque() {
-                            if (!_toqueAtivoDireto || !_ctxToqueDireto) return;
+                            if (!_toqueAtivoDireto || !_ctxToqueDireto || _ctxToqueDireto.state !== 'running') return;
                             var agora = _ctxToqueDireto.currentTime;
                             [0, 0.4].forEach(function (offset) {
                                 var osc1 = _ctxToqueDireto.createOscillator();
@@ -857,21 +935,25 @@
                                 osc2.start(agora + offset); osc2.stop(agora + offset + 0.4);
                             });
                         }
-                        umToque();
-                        var intervaloToque = setInterval(function () {
-                            if (!_toqueAtivoDireto) { clearInterval(intervaloToque); return; }
+                        if (_ctxToqueDireto.state === 'running') umToque();
+                        else _ctxToqueDireto.resume().then(umToque).catch(function () {});
+                        clearInterval(_intervaloToqueDireto);
+                        _intervaloToqueDireto = setInterval(function () {
+                            if (!_toqueAtivoDireto) { clearInterval(_intervaloToqueDireto); _intervaloToqueDireto = null; return; }
                             umToque();
                         }, 1500);
                     } catch (e) {}
                 }
                 function pararToqueTelefoneDireto() {
                     _toqueAtivoDireto = false;
-                    if (_ctxToqueDireto) { try { _ctxToqueDireto.close(); } catch (e) {} _ctxToqueDireto = null; }
+                    if (_intervaloToqueDireto) { clearInterval(_intervaloToqueDireto); _intervaloToqueDireto = null; }
+                    // Não fecha o AudioContext: reutilizá-lo é importante no Safari/iPhone.
                 }
                 function tocarSomDesligandoDireto() {
                     try {
-                        var AudioCtx = window.AudioContext || window.webkitAudioContext;
-                        var ctx = new AudioCtx();
+                        desbloquearAudioDireto();
+                        var ctx = _ctxToqueDireto;
+                        if (!ctx || ctx.state !== 'running') return;
                         var osc = ctx.createOscillator();
                         var ganho = ctx.createGain();
                         osc.type = 'sine';
