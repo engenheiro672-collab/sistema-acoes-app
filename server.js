@@ -1104,7 +1104,8 @@ app.get('/prevenda/:slug', async (req, res) => {
       registrarEventoLead({ sorteio_id: dados.prevenda.sorteio_id, tipo_evento: 'visita_prevenda', cidade: dados.prevenda.cidade || null, prevenda_id: dados.prevenda.id });
     }
 
-    const arquivo = dados.prevenda.tema === 'claro' ? 'prevenda-clara.html' : (dados.prevenda.tema === 'teste' ? 'prevenda-teste.html' : 'prevenda.html');
+    const temaParaArquivo = { claro: 'prevenda-clara.html', teste: 'prevenda-teste.html', simples: 'prevenda-simples.html' };
+    const arquivo = temaParaArquivo[dados.prevenda.tema] || 'prevenda.html';
     const html = lerHtmlComCache(arquivo);
     const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
     const htmlFinal = html
@@ -1181,7 +1182,7 @@ app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) 
 
     const { data: inserted, error } = await supabase.from('prevendas').insert({
       sorteio_id, nome: body.nome, slug, cidade: body.cidade, canal: body.canal || 'facebook_ads',
-      tema: ['claro', 'teste', 'direto'].includes(body.tema) ? body.tema : 'escuro',
+      tema: ['claro', 'teste', 'direto', 'simples'].includes(body.tema) ? body.tema : 'escuro',
       funil_id: funilCriado.id, ativo: true, created_at: new Date().toISOString()
     }).select().single();
     if (error) return fail(res, error.message);
@@ -1306,7 +1307,7 @@ app.put('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
     if (body.nome !== undefined) payloadPrevenda.nome = body.nome;
     if (body.cidade !== undefined) payloadPrevenda.cidade = body.cidade;
     if (body.canal !== undefined) payloadPrevenda.canal = body.canal;
-    if (body.tema !== undefined) payloadPrevenda.tema = ['claro', 'teste', 'direto'].includes(body.tema) ? body.tema : 'escuro';
+    if (body.tema !== undefined) payloadPrevenda.tema = ['claro', 'teste', 'direto', 'simples'].includes(body.tema) ? body.tema : 'escuro';
     if (body.ativo !== undefined) payloadPrevenda.ativo = !!body.ativo;
 
     if (Object.keys(payloadPrevenda).length > 0) {
