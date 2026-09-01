@@ -276,7 +276,11 @@ const ORIGENS_PERMITIDAS = [
   'https://premiosderrets.com.br',
   'https://www.premiosderrets.com.br',
   'https://panthers.premiosderrets.com.br',
-  'https://sistema-acoes-app.onrender.com'
+  'https://sistema-acoes-app.onrender.com',
+  // ⚡ Prévendas leves em domínios separados (contingência) — adiciona aqui cada domínio novo que
+  // você registrar. Sem isso, o navegador da pessoa bloqueia a prévenda de "conversar" com o
+  // servidor, mesmo sendo tudo seu.
+  'https://prevenda1.online', // ← troque pelo domínio de verdade que você comprar
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -1104,7 +1108,7 @@ app.get('/prevenda/:slug', async (req, res) => {
       registrarEventoLead({ sorteio_id: dados.prevenda.sorteio_id, tipo_evento: 'visita_prevenda', cidade: dados.prevenda.cidade || null, prevenda_id: dados.prevenda.id });
     }
 
-    const temaParaArquivo = { claro: 'prevenda-clara.html', teste: 'prevenda-teste.html', simples: 'prevenda-simples.html' };
+    const temaParaArquivo = { claro: 'prevenda-clara.html', teste: 'prevenda-teste.html', simples: 'prevenda-simples.html', avancar: 'prevenda-avancar.html' };
     const arquivo = temaParaArquivo[dados.prevenda.tema] || 'prevenda.html';
     const html = lerHtmlComCache(arquivo);
     const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
@@ -1122,26 +1126,73 @@ app.get('/prevenda/:slug', async (req, res) => {
 });
 
 // Registra se a pessoa confirmou "sim" ou "não" na pergunta automática da cidade.
+// ⚡ Prévendas leves (estáticas, hospedadas fora, tipo Cloudflare Pages) não são criadas
+// manualmente no painel — elas mandam o nome da cidade + o slug do sorteio direto na URL, e o
+// servidor garante que a cidade existe (cria na primeira visita real, ou reaproveita se já
+// existir). Sem funil vinculado — aponta direto pro sorteio, sem passo intermediário nenhum.
+async function garantirPrevendaAutomatica({ sorteio_slug, cidade, canal }) {
+  if (!sorteio_slug || !cidade) return null;
+  const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', sorteio_slug).maybeSingle();
+  if (!sorteio) return null;
+
+  const cidadeLimpa = String(cidade).trim().slice(0, 60);
+  const { data: existente } = await supabase.from('prevendas').select('id').eq('sorteio_id', sorteio.id).ilike('cidade', cidadeLimpa).maybeSingle();
+  if (existente) return existente.id;
+
+  let slugGerado = cidadeLimpa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+  const { data: slugExiste } = await supabase.from('prevendas').select('id').eq('sorteio_id', sorteio.id).eq('slug', slugGerado).limit(1);
+  if (slugExiste && slugExiste.length > 0) slugGerado = `${slugGerado}-${Date.now()}`;
+
+  const { data: novaPrevenda, error } = await supabase.from('prevendas').insert({
+    sorteio_id: sorteio.id, nome: cidadeLimpa, slug: slugGerado, cidade: cidadeLimpa,
+    canal: canal || 'facebook_ads', tema: 'simples', funil_id: null, ativo: true, created_at: new Date().toISOString()
+  }).select('id').single();
+  if (error) { console.error('[garantirPrevendaAutomatica] erro ao criar', error.message); return null; }
+  return novaPrevenda.id;
+}
+
+// Dados públicos e leves, pra uma prévenda ESTÁTICA (sem banco de dados própria) buscar via CORS,
+// de qualquer domínio autorizado — foto, nome do sorteio e pixels, só o essencial pra se montar.
+app.get('/api/public/prevenda-dados', async (req, res) => {
+  try {
+    const sorteioSlug = req.query.sorteio;
+    if (!sorteioSlug) return res.status(400).json({ error: 'sorteio é obrigatório' });
+    const { data: sorteio } = await supabase.from('sorteios').select('slug, nome, foto_url, pixel_fb_override').eq('slug', sorteioSlug).maybeSingle();
+    if (!sorteio) return res.status(404).json({ error: 'Sorteio não encontrado' });
+    const meta = await getPublicMeta();
+    return res.json({
+      sorteio: { slug: sorteio.slug, nome: sorteio.nome, foto_url: sorteio.foto_url || '' },
+      pixels: { facebook_pixel_id: sorteio.pixel_fb_override || meta.pixel_id || '', facebook_pixel_ids_extras: meta.pixel_ids_extras || [] }
+    });
+  } catch (err) { console.error('GET prevenda-dados', err); return res.status(500).json({ error: 'erro' }); }
+});
+
 app.post('/api/public/prevenda/resposta-cidade', async (req, res) => {
   try {
-    const { prevenda_id, resposta } = req.body || {};
-    if (!prevenda_id || (resposta !== 'sim' && resposta !== 'nao')) return res.status(400).json({ error: 'Dados inválidos' });
+    let { prevenda_id, resposta, sorteio, cidade, canal } = req.body || {};
+    if (resposta !== 'sim' && resposta !== 'nao') return res.status(400).json({ error: 'Dados inválidos' });
+    // ⚡ Prévenda estática (domínio separado) manda o slug do sorteio + a cidade, em vez de um
+    // prevenda_id já existente — o servidor garante que a cidade existe (cria na hora, se for a
+    // primeira vez) e segue normalmente com o ID resolvido.
+    if (!prevenda_id && sorteio && cidade) prevenda_id = await garantirPrevendaAutomatica({ sorteio_slug: sorteio, cidade, canal });
+    if (!prevenda_id) return res.status(400).json({ error: 'Dados inválidos' });
     const { data: prevenda } = await supabase.from('prevendas').select('sorteio_id, cidade').eq('id', prevenda_id).maybeSingle();
     if (!prevenda) return res.status(404).json({ error: 'Prévenda não encontrada' });
     registrarEventoLead({ sorteio_id: prevenda.sorteio_id, tipo_evento: 'resposta_cidade', cidade: prevenda.cidade, prevenda_id, metadata: { resposta } });
-    return res.json({ ok: true });
+    return res.json({ ok: true, prevenda_id });
   } catch (err) { console.error('POST resposta-cidade', err); return res.status(500).json({ error: 'erro' }); }
 });
 
 // Registra quando a pessoa clica em "participar" na prévenda e avança pro site do sorteio.
 app.post('/api/public/prevenda/avancou-site', async (req, res) => {
   try {
-    const { prevenda_id } = req.body || {};
+    let { prevenda_id, sorteio, cidade, canal } = req.body || {};
+    if (!prevenda_id && sorteio && cidade) prevenda_id = await garantirPrevendaAutomatica({ sorteio_slug: sorteio, cidade, canal });
     if (!prevenda_id) return res.status(400).json({ error: 'Dados inválidos' });
     const { data: prevenda } = await supabase.from('prevendas').select('sorteio_id, cidade').eq('id', prevenda_id).maybeSingle();
     if (!prevenda) return res.status(404).json({ error: 'Prévenda não encontrada' });
     registrarEventoLead({ sorteio_id: prevenda.sorteio_id, tipo_evento: 'avancou_site', cidade: prevenda.cidade, prevenda_id });
-    return res.json({ ok: true });
+    return res.json({ ok: true, prevenda_id });
   } catch (err) { console.error('POST avancou-site', err); return res.status(500).json({ error: 'erro' }); }
 });
 
@@ -1182,7 +1233,7 @@ app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) 
 
     const { data: inserted, error } = await supabase.from('prevendas').insert({
       sorteio_id, nome: body.nome, slug, cidade: body.cidade, canal: body.canal || 'facebook_ads',
-      tema: ['claro', 'teste', 'direto', 'simples'].includes(body.tema) ? body.tema : 'escuro',
+      tema: ['claro', 'teste', 'direto', 'simples', 'avancar'].includes(body.tema) ? body.tema : 'escuro',
       funil_id: funilCriado.id, ativo: true, created_at: new Date().toISOString()
     }).select().single();
     if (error) return fail(res, error.message);
@@ -1307,7 +1358,7 @@ app.put('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
     if (body.nome !== undefined) payloadPrevenda.nome = body.nome;
     if (body.cidade !== undefined) payloadPrevenda.cidade = body.cidade;
     if (body.canal !== undefined) payloadPrevenda.canal = body.canal;
-    if (body.tema !== undefined) payloadPrevenda.tema = ['claro', 'teste', 'direto', 'simples'].includes(body.tema) ? body.tema : 'escuro';
+    if (body.tema !== undefined) payloadPrevenda.tema = ['claro', 'teste', 'direto', 'simples', 'avancar'].includes(body.tema) ? body.tema : 'escuro';
     if (body.ativo !== undefined) payloadPrevenda.ativo = !!body.ativo;
 
     if (Object.keys(payloadPrevenda).length > 0) {

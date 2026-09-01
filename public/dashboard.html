@@ -1199,6 +1199,7 @@
                                     <option value="teste">🧪 Prévenda Teste (funil experimental, sem afetar as outras)</option>
                                     <option value="direto">🎯 Direto no site (sem prévenda — pergunta aparece em cima do próprio sorteio)</option>
                                     <option value="simples">🪶 Simples e leve (só foto + botão, ideal como porta de entrada antes do site principal)</option>
+                                    <option value="avancar">➡️ Só avançar (sem pergunta nenhuma — só foto + botão, direto pro funil escolhido)</option>
                                 </select>
                             </div>
                             <div>
@@ -3146,7 +3147,7 @@ function renderListaPrevendas() {
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 class="font-semibold text-white">${p.nome}</h4>
                             <span class="badge badge-outro">📍 ${p.cidade}</span>
-                            <span class="badge badge-outro">${({claro:'☀️ Claro', teste:'🧪 Teste', direto:'🎯 Direto no site', simples:'🪶 Simples'})[p.tema] || '🌙 Escuro'}</span>
+                            <span class="badge badge-outro">${({claro:'☀️ Claro', teste:'🧪 Teste', direto:'🎯 Direto no site', simples:'🪶 Simples', avancar:'➡️ Só avançar'})[p.tema] || '🌙 Escuro'}</span>
                             <span class="badge badge-outro">${canalLabel(p.canal)}</span>
                             ${p.ativo === false ? '<span class="badge badge-outro">Inativa</span>' : ''}
                         </div>

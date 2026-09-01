@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">__OG_TITLE__</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="__OG_TITLE__">
+    <meta property="og:image" content="__OG_IMAGE__">
+    <link rel="preconnect" href="/">
+    <style>
+        /* ⚡ De propósito: a página mais leve possível — sem Google Fonts, sem jQuery, sem
+           carrossel, sem vídeo, sem pergunta nenhuma de cidade. Só uma foto e um botão, levando
+           direto pro funil/checkout escolhido na hora de criar essa prévenda no painel. */
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #eef0f2; color: #212b36; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+        .tela { position: relative; width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+
+        .foto-box { width: 100%; max-width: 340px; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.12); background: #fff; min-height: 220px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.06); }
+        .foto-box img { display: block; width: 100%; height: auto; }
+
+        .btn-avancar { margin-top: 1.6rem; width: 100%; max-width: 340px; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.05rem; padding: 1rem; border-radius: 12px; border: none; box-shadow: 0 10px 28px rgba(26,135,84,0.3); cursor: pointer; animation: pulsarBotao 1.4s ease-in-out infinite; }
+        @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+    </style>
+</head>
+<body>
+    <div class="tela">
+        <div class="foto-box" id="foto-box"><img id="foto-sorteio" src="__OG_IMAGE__" alt=""></div>
+        <button class="btn-avancar" id="btn-avancar">Avançar</button>
+    </div>
+
+    <script>
+    (function () {
+        var DADOS = window.__DADOS_INICIAIS__ || {};
+        var sorteio = DADOS.sorteio || {};
+        var prevenda = DADOS.prevenda || {};
+        var funilSlug = DADOS.funilSlug || null;
+
+        document.title = sorteio.nome || 'Sorteio';
+
+        // ── Guarda o fbclid, igual as outras prévendas (pra API de Conversões funcionar certinho) ──
+        try {
+            var params = new URLSearchParams(location.search);
+            var fbclidUrl = params.get('fbclid');
+            if (fbclidUrl) localStorage.setItem('fbclid_salvo', fbclidUrl);
+            if (prevenda.id) sessionStorage.setItem('prevenda_id_atual', prevenda.id);
+        } catch (e) {}
+
+        // ── Pixel: PageView aqui, nunca de novo no site de destino ──────────
+        var pixels = DADOS.pixels || {};
+        if (pixels.facebook_pixel_id) {
+            !function (f, b, e, v, n, t, s) {
+                if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
+                if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
+                t = b.createElement(e); t.async = !0; t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+            }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', pixels.facebook_pixel_id);
+            (pixels.facebook_pixel_ids_extras || []).forEach(function (id) { if (id && id !== pixels.facebook_pixel_id) fbq('init', id); });
+            var jaDisparouPageView = false;
+            try { jaDisparouPageView = sessionStorage.getItem('pageview_disparado') === '1'; } catch (e) {}
+            if (!jaDisparouPageView) {
+                fbq('track', 'PageView');
+                try { sessionStorage.setItem('pageview_disparado', '1'); } catch (e) {}
+            }
+        }
+
+        // ── URL de destino — usa o funil/checkout escolhido na criação dessa prévenda no painel ──
+        var urlDestino = funilSlug && sorteio.slug
+            ? '/sorteio/' + encodeURIComponent(sorteio.slug) + '/' + encodeURIComponent(funilSlug)
+            : (sorteio.slug ? '/sorteio/' + encodeURIComponent(sorteio.slug) : '/');
+
+        // ── Pré-carregamento "robusto" do site de destino ───────────────────
+        var htmlDestinoPronto = null;
+        function iniciarPreCarregamentoDestino() {
+            fetch(urlDestino, { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (html) { if (html) htmlDestinoPronto = html; })
+                .catch(function () {});
+        }
+        if (document.readyState === 'complete') {
+            setTimeout(iniciarPreCarregamentoDestino, 500);
+        } else {
+            window.addEventListener('load', function () { setTimeout(iniciarPreCarregamentoDestino, 500); });
+        }
+
+        document.getElementById('btn-avancar').addEventListener('click', function () {
+            if (prevenda.id) {
+                var corpo = JSON.stringify({ prevenda_id: prevenda.id });
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/public/prevenda/avancou-site', new Blob([corpo], { type: 'application/json' }));
+                } else {
+                    fetch('/api/public/prevenda/avancou-site', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo, keepalive: true }).catch(function () {});
+                }
+            }
+            if (htmlDestinoPronto) {
+                try {
+                    history.pushState(null, '', urlDestino);
+                    document.open();
+                    document.write(htmlDestinoPronto);
+                    document.close();
+                    return;
+                } catch (e) { /* se algo der errado, cai pro caminho normal abaixo */ }
+            }
+            window.location.href = urlDestino;
+        });
+    })();
+    </script>
+</body>
+</html>
