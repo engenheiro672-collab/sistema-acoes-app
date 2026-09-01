@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">Sorteio</title>
+    <link rel="preconnect" href="/">
+    <style>
+        /* ⚡ De propósito: a página mais leve possível — sem Google Fonts, sem jQuery, sem
+           carrossel, sem vídeo, sem pergunta nenhuma. Só uma foto e um botão. Tema claro, no
+           mesmo estilo do funil-01/checkout-funil-01 ("white"), pra combinar com o destino. */
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #eef0f2; color: #212b36; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+        .tela { position: relative; width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+
+        .foto-box { width: 100%; max-width: 340px; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.12); background: #fff; min-height: 220px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.06); }
+        .foto-box img { display: block; width: 100%; height: auto; }
+
+        .btn-avancar { margin-top: 1.6rem; width: 100%; max-width: 340px; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1.05rem; padding: 1rem; border-radius: 12px; border: none; box-shadow: 0 10px 28px rgba(26,135,84,0.3); cursor: pointer; animation: pulsarBotao 1.4s ease-in-out infinite; }
+        @keyframes pulsarBotao { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+    </style>
+</head>
+<body>
+    <div class="tela">
+        <div class="foto-box" id="foto-box"><img id="foto-sorteio" src="" alt="" style="display:none;"></div>
+        <button class="btn-avancar" id="btn-avancar">Avançar</button>
+    </div>
+
+    <script>
+    (function () {
+        var DADOS = window.__DADOS_INICIAIS__ || {};
+        var sorteio = DADOS.sorteio || {};
+
+        document.title = sorteio.nome || 'Sorteio';
+        if (sorteio.foto_url) {
+            var img = document.getElementById('foto-sorteio');
+            img.src = sorteio.foto_url;
+            img.style.display = 'block';
+        }
+
+        // ⚡⚡ TROQUE AQUI se um dia quiser apontar pra outro funil — hoje configurado pra levar
+        // direto pro "funil-01" (o funil branco/white + checkout-funil-01), como combinado.
+        var FUNIL_DESTINO = 'funil-01';
+
+        var pathParts = location.pathname.split('/').filter(Boolean);
+        var sorteioSlug = pathParts[1] || sorteio.slug || '';
+        var urlDestino = '/sorteio/' + encodeURIComponent(sorteioSlug) + '/' + encodeURIComponent(FUNIL_DESTINO) + location.search;
+
+        // ── Pré-carregamento "robusto" — busca a página de destino de verdade, escondida, desde
+        // já, pra ficar instantâneo quando a pessoa clicar em avançar (mesmo domínio, então dá
+        // pra trocar a página "por trás" sem recarregar nada). ──────────────────────────────
+        var htmlDestinoPronto = null;
+        function iniciarPreCarregamentoDestino() {
+            fetch(urlDestino, { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (html) { if (html) htmlDestinoPronto = html; })
+                .catch(function () {});
+        }
+        if (document.readyState === 'complete') {
+            setTimeout(iniciarPreCarregamentoDestino, 400);
+        } else {
+            window.addEventListener('load', function () { setTimeout(iniciarPreCarregamentoDestino, 400); });
+        }
+
+        document.getElementById('btn-avancar').addEventListener('click', function () {
+            if (htmlDestinoPronto) {
+                try {
+                    history.pushState(null, '', urlDestino);
+                    document.open();
+                    document.write(htmlDestinoPronto);
+                    document.close();
+                    return;
+                } catch (e) { /* se algo der errado, cai pro caminho normal abaixo */ }
+            }
+            window.location.href = urlDestino;
+        });
+    })();
+    </script>
+</body>
+</html>
