@@ -466,6 +466,51 @@ async function fetchPixelsExtrasCompletos() {
 // só a "data" de um timestamp, tudo que acontece depois das 21h (Brasil) já vira o dia seguinte
 // em UTC, e os gráficos "por dia" mostravam a venda no dia errado. O Brasil é UTC-3 o ano
 // inteiro (não tem mais horário de verão desde 2019), então um deslocamento fixo já resolve.
+// ============================================================================
+// 🖼️ CACHE DE FOTO DO SORTEIO EM MEMÓRIA — a foto do sorteio, hoje, é buscada direto do Supabase
+// Storage TODA VEZ que alguém abre uma página do sorteio. Com bastante tráfego, isso consome a
+// cota de "saída em cache" do Supabase rapidinho, mesmo a foto sendo pequena — o problema não é o
+// tamanho do arquivo, é a quantidade de vezes que ele é buscado. Guardando uma cópia na memória do
+// próprio servidor, a esmagadora maioria das visitas passa a receber a foto DAQUI, sem precisar
+// perguntar pro Supabase de novo — só volta a buscar se o servidor reiniciar, ou depois de 24h.
+// ⚡ Mudança isolada — só troca de ONDE a foto é servida, nunca de como ela é cadastrada ou
+// mostrada. Tudo continua funcionando exatamente igual pra quem usa o sistema.
+const _cacheImagens = new Map();
+const IMAGEM_CACHE_MS = 24 * 60 * 60 * 1000;
+
+app.get('/imagem-cache', async (req, res) => {
+  try {
+    const urlOriginal = req.query.url;
+    // ⚡ Só permite "emprestar" imagens do NOSSO PRÓPRIO Supabase — evita virar um jeito de
+    // qualquer pessoa usar seu servidor pra buscar imagem de qualquer site (proxy aberto).
+    if (!urlOriginal || !urlOriginal.startsWith('https://') || !urlOriginal.includes('.supabase.co/')) {
+      return res.status(400).send('URL não permitida');
+    }
+    const cacheado = _cacheImagens.get(urlOriginal);
+    if (cacheado && (Date.now() - cacheado.em) < IMAGEM_CACHE_MS) {
+      res.set('Content-Type', cacheado.contentType);
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(cacheado.buffer);
+    }
+    const resp = await fetch(urlOriginal);
+    if (!resp.ok) return res.status(resp.status).send('Erro ao buscar imagem');
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    const contentType = resp.headers.get('content-type') || 'image/jpeg';
+    _cacheImagens.set(urlOriginal, { buffer, contentType, em: Date.now() });
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.send(buffer);
+  } catch (err) {
+    console.error('[imagem-cache] erro', err.message);
+    return res.status(500).send('Erro ao buscar imagem');
+  }
+});
+
+function comCacheDeImagem(urlOriginal) {
+  if (!urlOriginal || !urlOriginal.includes('.supabase.co/')) return urlOriginal; // não é do nosso Supabase, deixa como está
+  return '/imagem-cache?url=' + encodeURIComponent(urlOriginal);
+}
+
 function dataBrasil(isoOuData) {
   if (!isoOuData) return '';
   const d = new Date(isoOuData);
@@ -924,7 +969,7 @@ function enviarSorteioComOg(res, dadosCompletos, req, nomeArquivo = 'sorteio.htm
   const sorteio = dadosCompletos?.sorteio;
   const titulo = sorteio?.nome ? `${sorteio.nome} — Participe e concorra!` : 'Sorteio';
   const descricao = sorteio?.descricao ? String(sorteio.descricao).slice(0, 150) : 'Participe e concorra a prêmios incríveis!';
-  const imagem = sorteio?.foto_url || '';
+  const imagem = comCacheDeImagem(sorteio?.foto_url || '');
   const urlCompleta = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
   let htmlComOg = html
@@ -1114,7 +1159,7 @@ app.get('/prevenda/:slug', async (req, res) => {
     const dadosSeguro = JSON.stringify(dados).replace(/</g, '\\u003c');
     const htmlFinal = html
       .replaceAll('__OG_TITLE__', escaparAtributoHtml(dados.sorteio.nome || 'Sorteio'))
-      .replaceAll('__OG_IMAGE__', escaparAtributoHtml(dados.sorteio.foto_url || ''))
+      .replaceAll('__OG_IMAGE__', escaparAtributoHtml(comCacheDeImagem(dados.sorteio.foto_url || '')))
       .replace('</head>', `<script>window.__DADOS_INICIAIS__ = ${dadosSeguro};</script></head>`);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'no-cache');
