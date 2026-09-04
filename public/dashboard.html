@@ -3136,6 +3136,7 @@ function renderListaFunis() {
         }
         $('#lista-funis').html(funis.map(f => {
             const link = `${DOMINIO_PUBLICO}/sorteio/${sorteio.slug || ''}/${f.slug}?lk=funil-${f.slug}`;
+            const linkVsl = f.video_cidade_ativo ? `${DOMINIO_PUBLICO}/sorteio/${sorteio.slug || ''}/${f.slug}?cidade=NOME_DA_CIDADE&estado=SG` : null;
             const abLink = f.grupo_teste ? `${DOMINIO_PUBLICO}/sorteio/${sorteio.slug || ''}/teste/${f.grupo_teste}` : null;
             const abBadge = f.grupo_teste ? `<span class="badge badge-ads">A/B: ${f.grupo_teste} (${f.peso_trafego || 100}%)</span>` : '';
             return `
@@ -3151,9 +3152,11 @@ function renderListaFunis() {
                             <p class="text-xs text-gray-500 break-all">Link direto: ${link}</p>
                             ${f.arquivo_checkout_html && f.arquivo_checkout_html !== 'checkout.html' ? `<p class="text-xs text-purple-300">Checkout customizado: ${f.arquivo_checkout_html}</p>` : ''}
                             ${abLink ? `<p class="text-xs text-purple-300 break-all">Link do teste A/B: ${abLink}</p>` : ''}
+                            ${linkVsl ? `<p class="text-xs text-yellow-400 break-all mt-1">🎬 Link base pra automação (troque NOME_DA_CIDADE e SG): ${linkVsl}</p>` : ''}
                         </div>
                         <div class="flex gap-2 flex-shrink-0">
                             <button class="text-gray-300 hover:text-white text-sm" onclick="navigator.clipboard.writeText('${abLink || link}'); this.textContent='Copiado!'; setTimeout(()=>this.textContent='Copiar link',1500)">Copiar link</button>
+                            ${linkVsl ? `<button class="text-yellow-400 hover:text-yellow-300 text-sm" onclick="navigator.clipboard.writeText('${linkVsl}'); this.textContent='Copiado!'; setTimeout(()=>this.textContent='Copiar base VSL',1500)">Copiar base VSL</button>` : ''}
                             <button class="text-red-400 hover:text-red-300 text-sm" onclick="excluirFunil('${f.id}')"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
