@@ -1070,6 +1070,7 @@
                 <div class="tab-btn" data-linktab="criar-funil" onclick="mudarLinkTab('criar-funil', this)">🧩 Criar Funil</div>
                 <div class="tab-btn" data-linktab="cidades" onclick="mudarLinkTab('cidades', this)">🏙️ Cidades</div>
                 <div class="tab-btn" data-linktab="analisar-cidades" onclick="mudarLinkTab('analisar-cidades', this)">📊 Analisar Cidades</div>
+                <div class="tab-btn" data-linktab="analisar-vsl" onclick="mudarLinkTab('analisar-vsl', this)">🎬 Analisar VSL</div>
             </div>
 
             <div id="linktab-comparativo" class="linktab-content">
@@ -1297,6 +1298,34 @@
                                 <th class="p-2">Conversão</th>
                             </tr></thead>
                             <tbody id="tabela-analise-cidades"><tr><td colspan="12" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="linktab-analisar-vsl" class="linktab-content hidden">
+                <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <h4 class="font-semibold text-white mb-1">🎬 Cidades criadas pela automação (VSL)</h4>
+                    <p class="text-xs text-gray-500 mb-3">Só as cidades que a sua automação de anúncios criou sozinha (sem cadastro manual) — cada uma com o estado/sigla junto, pra não misturar cidades de nome igual em estados diferentes.</p>
+                    <select id="analise-vsl-sorteio-select" class="input-dark mb-3 max-w-md" onchange="carregarAnaliseVsl(this.value)"><option value="">Selecione o sorteio...</option></select>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead><tr class="text-left text-gray-400 border-b border-gray-800">
+                                <th class="p-2">Cidade</th>
+                                <th class="p-2">Estado</th>
+                                <th class="p-2">Visitas</th>
+                                <th class="p-2">Sim</th>
+                                <th class="p-2">Não</th>
+                                <th class="p-2">Avançou p/ site</th>
+                                <th class="p-2">Leads</th>
+                                <th class="p-2">Checkouts</th>
+                                <th class="p-2">Valor Checkout</th>
+                                <th class="p-2">Compras</th>
+                                <th class="p-2">Faturamento</th>
+                                <th class="p-2">Conversão</th>
+                            </tr></thead>
+                            <tbody id="tabela-analise-vsl"><tr><td colspan="12" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -3300,6 +3329,35 @@ function excluirPrevenda(id) {
 // ---------------- ANALISAR CIDADES ----------------
 let SORTEIO_ANALISE_ID = null;
 let MODO_ANALISE_ATUAL = 'cidade';
+function carregarAnaliseVsl(sorteioId) {
+    if (!sorteioId) { $('#tabela-analise-vsl').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Selecione um sorteio.</td></tr>'); return; }
+    $('#tabela-analise-vsl').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Carregando...</td></tr>');
+    api('GET', `/api/admin/sorteios/${sorteioId}/analise-vsl`).then(data => {
+        const cidades = data.cidades || [];
+        if (cidades.length === 0) {
+            $('#tabela-analise-vsl').html('<tr><td colspan="12" class="p-4 text-center text-gray-400">Nenhuma cidade criada pela automação ainda pra esse sorteio.</td></tr>');
+            return;
+        }
+        $('#tabela-analise-vsl').html(cidades.map(c => `
+            <tr class="border-b border-gray-800/60">
+                <td class="p-2 text-white">${escapeHtml(c.cidade || '')}</td>
+                <td class="p-2 text-gray-300">${escapeHtml(c.estado || '—')}</td>
+                <td class="p-2">${c.visitas}</td>
+                <td class="p-2 text-green-400">${c.sim || 0}</td>
+                <td class="p-2 text-red-400">${c.nao || 0}</td>
+                <td class="p-2 text-cyan-400">${c.avancou_site || 0}</td>
+                <td class="p-2 text-blue-400">${c.leads}</td>
+                <td class="p-2">${c.checkouts}</td>
+                <td class="p-2">${formatBR(c.valor_checkout)}</td>
+                <td class="p-2 text-green-400">${c.compras}</td>
+                <td class="p-2 text-green-400 font-semibold">${formatBR(c.valor_compra)}</td>
+                <td class="p-2">${c.conversao.toFixed(1)}%</td>
+            </tr>
+        `).join(''));
+    }).catch(() => {
+        $('#tabela-analise-vsl').html('<tr><td colspan="12" class="p-4 text-center text-red-400">Erro ao carregar.</td></tr>');
+    });
+}
 function onAnaliseSorteioChange(sorteioId) {
     SORTEIO_ANALISE_ID = sorteioId || null;
     carregarAnaliseCidades();
@@ -3628,7 +3686,7 @@ $(document).on('click', '.sortable-th', function() {
 
 function popularFiltroLinksSorteio() {
     $('#filtro-links-sorteio').html('<option value="todos">Todos os sorteios</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
-    $('#link-sorteio-select, #funil-sorteio-select, #cidade-sorteio-select, #analise-cidade-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
+    $('#link-sorteio-select, #funil-sorteio-select, #cidade-sorteio-select, #analise-cidade-sorteio-select, #analise-vsl-sorteio-select').html('<option value="">Selecione o sorteio...</option>' + SORTEIOS_CACHE.map(s => `<option value="${s.id}">${s.nome}</option>`).join(''));
 }
 
 // ---------------- PEDIDOS ----------------

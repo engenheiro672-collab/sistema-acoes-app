@@ -1181,22 +1181,28 @@ app.get('/prevenda/:slug', async (req, res) => {
 // manualmente no painel — elas mandam o nome da cidade + o slug do sorteio direto na URL, e o
 // servidor garante que a cidade existe (cria na primeira visita real, ou reaproveita se já
 // existir). Sem funil vinculado — aponta direto pro sorteio, sem passo intermediário nenhum.
-async function garantirPrevendaAutomatica({ sorteio_slug, cidade, canal }) {
+async function garantirPrevendaAutomatica({ sorteio_slug, cidade, estado, canal }) {
   if (!sorteio_slug || !cidade) return null;
   const { data: sorteio } = await supabase.from('sorteios').select('id').eq('slug', sorteio_slug).maybeSingle();
   if (!sorteio) return null;
 
   const cidadeLimpa = String(cidade).trim().slice(0, 60);
-  const { data: existente } = await supabase.from('prevendas').select('id').eq('sorteio_id', sorteio.id).ilike('cidade', cidadeLimpa).maybeSingle();
+  const estadoLimpo = estado ? String(estado).trim().slice(0, 2).toUpperCase() : null;
+  // ⚡ Busca por cidade E estado juntos — sem isso, duas cidades de nome igual em estados
+  // diferentes (ex: duas "Santo André") seriam tratadas como uma coisa só, misturando as métricas.
+  let query = supabase.from('prevendas').select('id').eq('sorteio_id', sorteio.id).ilike('cidade', cidadeLimpa);
+  query = estadoLimpo ? query.eq('estado', estadoLimpo) : query.is('estado', null);
+  const { data: existente } = await query.maybeSingle();
   if (existente) return existente.id;
 
   let slugGerado = cidadeLimpa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+  if (estadoLimpo) slugGerado = `${slugGerado}-${estadoLimpo.toLowerCase()}`;
   const { data: slugExiste } = await supabase.from('prevendas').select('id').eq('sorteio_id', sorteio.id).eq('slug', slugGerado).limit(1);
   if (slugExiste && slugExiste.length > 0) slugGerado = `${slugGerado}-${Date.now()}`;
 
   const { data: novaPrevenda, error } = await supabase.from('prevendas').insert({
-    sorteio_id: sorteio.id, nome: cidadeLimpa, slug: slugGerado, cidade: cidadeLimpa,
-    canal: canal || 'facebook_ads', tema: 'simples', funil_id: null, ativo: true, created_at: new Date().toISOString()
+    sorteio_id: sorteio.id, nome: cidadeLimpa, slug: slugGerado, cidade: cidadeLimpa, estado: estadoLimpo,
+    canal: canal || 'facebook_ads', tema: 'simples', funil_id: null, ativo: true, criado_automaticamente: true, created_at: new Date().toISOString()
   }).select('id').single();
   if (error) { console.error('[garantirPrevendaAutomatica] erro ao criar', error.message); return null; }
   return novaPrevenda.id;
@@ -1220,12 +1226,12 @@ app.get('/api/public/prevenda-dados', async (req, res) => {
 
 app.post('/api/public/prevenda/resposta-cidade', async (req, res) => {
   try {
-    let { prevenda_id, resposta, sorteio, cidade, canal } = req.body || {};
+    let { prevenda_id, resposta, sorteio, cidade, estado, canal } = req.body || {};
     if (resposta !== 'sim' && resposta !== 'nao') return res.status(400).json({ error: 'Dados inválidos' });
     // ⚡ Prévenda estática (domínio separado) manda o slug do sorteio + a cidade, em vez de um
     // prevenda_id já existente — o servidor garante que a cidade existe (cria na hora, se for a
     // primeira vez) e segue normalmente com o ID resolvido.
-    if (!prevenda_id && sorteio && cidade) prevenda_id = await garantirPrevendaAutomatica({ sorteio_slug: sorteio, cidade, canal });
+    if (!prevenda_id && sorteio && cidade) prevenda_id = await garantirPrevendaAutomatica({ sorteio_slug: sorteio, cidade, estado, canal });
     if (!prevenda_id) return res.status(400).json({ error: 'Dados inválidos' });
     const { data: prevenda } = await supabase.from('prevendas').select('sorteio_id, cidade').eq('id', prevenda_id).maybeSingle();
     if (!prevenda) return res.status(404).json({ error: 'Prévenda não encontrada' });
@@ -1237,8 +1243,8 @@ app.post('/api/public/prevenda/resposta-cidade', async (req, res) => {
 // Registra quando a pessoa clica em "participar" na prévenda e avança pro site do sorteio.
 app.post('/api/public/prevenda/avancou-site', async (req, res) => {
   try {
-    let { prevenda_id, sorteio, cidade, canal } = req.body || {};
-    if (!prevenda_id && sorteio && cidade) prevenda_id = await garantirPrevendaAutomatica({ sorteio_slug: sorteio, cidade, canal });
+    let { prevenda_id, sorteio, cidade, estado, canal } = req.body || {};
+    if (!prevenda_id && sorteio && cidade) prevenda_id = await garantirPrevendaAutomatica({ sorteio_slug: sorteio, cidade, estado, canal });
     if (!prevenda_id) return res.status(400).json({ error: 'Dados inválidos' });
     const { data: prevenda } = await supabase.from('prevendas').select('sorteio_id, cidade').eq('id', prevenda_id).maybeSingle();
     if (!prevenda) return res.status(404).json({ error: 'Prévenda não encontrada' });
@@ -1312,6 +1318,39 @@ app.delete('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
 // aqui, já que hoje o sistema rastreia "de qual cidade" e não "de qual prévenda exata" a partir
 // da etapa de lead em diante.
 // ============================================================================
+// ⚡ Análise dedicada só das cidades criadas AUTOMATICAMENTE (via automação de anúncios, sem
+// cadastro manual) — separado da análise de cidades geral, agrupado por prevenda_id (não só pelo
+// nome da cidade), pra não misturar cidades de nome igual em estados diferentes.
+app.get('/api/admin/sorteios/:id/analise-vsl', ensureAdminAuth, async (req, res) => {
+  try {
+    const sorteio_id = req.params.id;
+    const { data: prevendas } = await supabase.from('prevendas').select('id, cidade, estado, ativo, created_at').eq('sorteio_id', sorteio_id).eq('criado_automaticamente', true).order('created_at', { ascending: false });
+    if (!prevendas || prevendas.length === 0) return ok(res, { cidades: [] });
+
+    const idsPrevendas = prevendas.map(p => p.id);
+    const { data: eventos } = await supabase.from('eventos_lead').select('tipo_evento, valor, prevenda_id, metadata').eq('sorteio_id', sorteio_id).in('prevenda_id', idsPrevendas).limit(50000);
+
+    const porPrevenda = {};
+    prevendas.forEach(p => {
+      porPrevenda[p.id] = { prevenda_id: p.id, cidade: p.cidade, estado: p.estado, ativo: p.ativo, visitas: 0, sim: 0, nao: 0, avancou_site: 0, leads: 0, checkouts: 0, valor_checkout: 0, compras: 0, valor_compra: 0, giros_roleta: 0 };
+    });
+    (eventos || []).forEach(e => {
+      const c = porPrevenda[e.prevenda_id];
+      if (!c) return;
+      if (e.tipo_evento === 'visita_prevenda') c.visitas++;
+      else if (e.tipo_evento === 'resposta_cidade') { if (e.metadata?.resposta === 'sim') c.sim++; else if (e.metadata?.resposta === 'nao') c.nao++; }
+      else if (e.tipo_evento === 'avancou_site') c.avancou_site++;
+      else if (e.tipo_evento === 'lead') c.leads++;
+      else if (e.tipo_evento === 'iniciar_checkout') { c.checkouts++; c.valor_checkout += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'compra') { c.compras++; c.valor_compra += Number(e.valor || 0); }
+      else if (e.tipo_evento === 'giro_roleta') c.giros_roleta++;
+    });
+    const resultado = Object.values(porPrevenda).map(c => ({ ...c, conversao: c.visitas > 0 ? (c.compras / c.visitas) * 100 : 0 }));
+    resultado.sort((a, b) => b.valor_compra - a.valor_compra);
+    return ok(res, { cidades: resultado });
+  } catch (e) { console.error('GET analise-vsl', e); return fail(res); }
+});
+
 app.get('/api/admin/sorteios/:id/analise-cidades', ensureAdminAuth, async (req, res) => {
   try {
     const sorteio_id = req.params.id;
