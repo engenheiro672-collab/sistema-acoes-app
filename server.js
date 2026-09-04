@@ -608,7 +608,13 @@ async function getPublicMeta() {
       whatsapp_grupo: { ativo: cfg.SOCIAL_WHATSAPP_GRUPO_ATIVO === 'true', url: cfg.SOCIAL_WHATSAPP_GRUPO_URL || '' },
       whatsapp_suporte: { ativo: cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true', numero: cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '' }
     },
-    push_ativo: cfg.PUSH_ATIVO === 'true'
+    push_ativo: cfg.PUSH_ATIVO === 'true',
+    // ⚡ Roleta de desconto — só usada na página de teste (teste.html). Some por aqui MAS não
+    // aparece em sorteio.html/funil-01.html porque só o teste.html tem o código que lê isso.
+    roleta_desconto: {
+      ativa: cfg.ROLETA_DESCONTO_ATIVA === 'true',
+      percentual: parseInt(cfg.ROLETA_DESCONTO_PERCENTUAL || '50', 10)
+    }
   };
 }
 
@@ -1603,7 +1609,17 @@ async function getSorteioPublicData(slug, funilSlug) {
   const chance_dobro_ativa = (chancesDobroTodas || []).find(c => c.data_inicio <= nowISO2 && c.data_fim >= nowISO2) || null;
   const aviso_urgencia_ativo = (avisosTodos || []).find(a => a.data_inicio <= nowISO2 && a.data_fim >= nowISO2) || null;
 
-  return { sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo, promocoes: promocoesAtivas || [] };
+  return {
+    sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo, promocoes: promocoesAtivas || [],
+    // ⚡ Roleta de desconto (teste) — só o essencial pro navegador desenhar a roleta e animar o
+    // giro; o "sempre_cai_em" pode ser visto pelo navegador sem problema (é só o resultado visual),
+    // o que garante segurança de verdade é o código único gerado no momento do giro, não isso aqui.
+    roleta_desconto: {
+      ativa: !!sorteio.roleta_desconto_ativa,
+      opcoes: sorteio.roleta_desconto_opcoes || [10, 50, 70, 80],
+      percentual: Number(sorteio.roleta_desconto_sempre_cai_em || 50)
+    }
+  };
 }
 
 app.get('/api/public/sorteio/:slug', async (req, res) => {
@@ -2362,9 +2378,31 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
 }
 
 // --- API PEDIDOS PUBLIC (com suporte a funil_id) ---
+// ⚡ Roleta de desconto (teste) — o navegador NUNCA diz "eu ganhei X%"; ele só pede pra girar, e o
+// SERVIDOR decide o percentual (lendo a configuração do sorteio) e devolve um código único,
+// gravado no banco, que será conferido de verdade na hora de fechar o pedido. Isso fecha a
+// brecha de alguém abrir o console do navegador e inventar um desconto que nunca ganhou.
+app.post('/api/public/roleta-desconto/girar', limitePublicoSensivel, async (req, res) => {
+  try {
+    const { sorteio_id } = req.body || {};
+    if (!sorteio_id) return res.status(400).json({ error: 'Dados inválidos' });
+    const { data: sorteio } = await supabase.from('sorteios').select('roleta_desconto_ativa, roleta_desconto_sempre_cai_em').eq('id', sorteio_id).maybeSingle();
+    if (!sorteio || !sorteio.roleta_desconto_ativa) return res.status(400).json({ error: 'Roleta de desconto não está ativa pra esse sorteio' });
+
+    const percentual = Number(sorteio.roleta_desconto_sempre_cai_em || 50);
+    const codigo = uuidv4();
+    const expira_em = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2h de validade, dá tempo de sobra pra fechar a compra
+
+    const { error } = await supabase.from('descontos_roleta').insert({ sorteio_id, codigo, percentual, expira_em });
+    if (error) { console.error('[roleta-desconto/girar] erro ao gravar', error.message); return res.status(500).json({ error: 'erro' }); }
+
+    return res.json({ codigo, percentual });
+  } catch (err) { console.error('POST roleta-desconto/girar', err); return res.status(500).json({ error: 'erro' }); }
+});
+
 app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) => {
   try {
-    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid } = req.body || {};
+    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, codigo_desconto } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
@@ -2423,6 +2461,21 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
         promocao_aplicada = 'Oferta especial';
       }
     }
+
+    // ⚡ Roleta de desconto (teste) — só aplica se o código existir de verdade no banco, pertencer
+    // a ESSE sorteio, ainda não ter sido usado, e não estar expirado. O percentual usado é sempre
+    // o que está GRAVADO no banco (do momento do giro) — nunca um valor que o navegador manda.
+    let desconto_roleta_aplicado = null;
+    let descontoRoletaRow = null;
+    if (codigo_desconto) {
+      const { data: descontoRow } = await supabase.from('descontos_roleta').select('*').eq('codigo', codigo_desconto).eq('sorteio_id', sorteio_id).eq('usado', false).gte('expira_em', new Date().toISOString()).maybeSingle();
+      if (descontoRow) {
+        descontoRoletaRow = descontoRow;
+        valor_total = Number((valor_total * (1 - Number(descontoRow.percentual) / 100)).toFixed(2));
+        desconto_roleta_aplicado = Number(descontoRow.percentual);
+      }
+    }
+
     const token = uuidv4();
     const expira = new Date(Date.now() + (Number(sorteio.tempo_pagamento || 15) * 60000)).toISOString();
 
@@ -2448,6 +2501,12 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       fbclid: usuario.fbclid || fbclid || null,
       created_at: new Date().toISOString()
     }).select().single();
+
+    // ⚡ Marca o código da roleta como usado, já vinculado a esse pedido específico — nunca pode
+    // ser reaproveitado de novo, nem por essa pessoa nem por ninguém que descobrir o código.
+    if (descontoRoletaRow && pedido) {
+      await supabase.from('descontos_roleta').update({ usado: true, pedido_id: pedido.id }).eq('id', descontoRoletaRow.id);
+    }
 
     // ⚡ Registra o passo "iniciou o checkout" na linha do tempo do lead — base do CRM completo
     // por cidade (métricas de conversão real, sem depender de nada do Meta).
@@ -2486,6 +2545,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       redirect: `/checkout/${token}`,
       payment: pagamento,
       pixel_data: { value: valor_total, currency: 'BRL', num_items: quantidade, event_id: eventIdInitiateCheckout },
+      desconto_roleta_aplicado, // % aplicado de verdade (null se não teve desconto) — o cliente usa isso pra confirmar que valeu
       pedido: {
         ...pedido,
         pix_copia_cola: pagamento.pix_copia_cola || null,
@@ -3013,6 +3073,27 @@ app.delete('/api/admin/upsell-ofertas/:id', ensureAdminAuth, async (req, res) =>
 });
 
 // Liga/desliga a roleta pra um sorteio sem precisar reenviar o formulário inteiro
+app.post('/api/admin/sorteios/:id/roleta-desconto', ensureAdminAuth, async (req, res) => {
+  try {
+    const { ativa, opcoes, sempre_cai_em } = req.body || {};
+    const payload = {};
+    if (ativa !== undefined) payload.roleta_desconto_ativa = !!ativa;
+    if (Array.isArray(opcoes) && opcoes.length > 0) {
+      const opcoesValidas = opcoes.map(n => Number(n)).filter(n => !isNaN(n) && n > 0 && n < 100);
+      if (opcoesValidas.length === 0) return fail(res, 'Informe pelo menos uma opção de desconto válida (entre 1 e 99).', 400);
+      payload.roleta_desconto_opcoes = opcoesValidas;
+    }
+    if (sempre_cai_em !== undefined) {
+      const valor = Number(sempre_cai_em);
+      if (isNaN(valor) || valor <= 0 || valor >= 100) return fail(res, 'O percentual precisa ser um número entre 1 e 99.', 400);
+      payload.roleta_desconto_sempre_cai_em = valor;
+    }
+    const { error } = await supabase.from('sorteios').update(payload).eq('id', req.params.id);
+    if (error) return fail(res, error.message);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+
 app.post('/api/admin/sorteios/:id/roleta-ativada', ensureAdminAuth, async (req, res) => {
   try {
     const { roleta_ativada } = req.body || {};

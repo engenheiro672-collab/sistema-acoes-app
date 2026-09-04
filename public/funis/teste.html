@@ -166,6 +166,25 @@
         .card-digitar-cidade input { width: 100%; padding: 0.7rem 0.9rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fff; font-size: 0.95rem; margin-bottom: 1rem; box-sizing: border-box; }
         .card-digitar-cidade input::placeholder { color: rgba(255,255,255,0.4); }
         .card-digitar-cidade button { width: 100%; padding: 0.75rem; border-radius: 8px; border: none; font-weight: 700; font-size: 0.95rem; cursor: pointer; background: linear-gradient(135deg,#1a8754,#22a866); color: #fff; box-shadow: 0 4px 14px rgba(26,135,84,0.4); }
+        /* ═══════════════ ROLETA DE DESCONTO (só na página de teste) ═══════════════ */
+        #overlay-roleta { display: none; position: fixed; inset: 0; background: rgba(10,14,20,0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 99998; align-items: center; justify-content: center; padding: 1.5rem; }
+        #overlay-roleta.visivel { display: flex; }
+        .card-roleta { background: linear-gradient(160deg, rgba(30,35,46,0.97), rgba(15,18,25,0.98)); border-radius: 18px; padding: 1.8rem 1.6rem; max-width: 340px; width: 100%; text-align: center; box-shadow: 0 24px 70px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.12); }
+        .card-roleta h2 { color: #fff; font-size: 1.15rem; font-weight: 800; margin: 0 0 1.2rem; }
+        .roleta-wrap { position: relative; width: 230px; height: 230px; margin: 0 auto 1.5rem; }
+        .roleta-ponteiro { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 22px solid #ffd23f; z-index: 3; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); }
+        #roleta-disco { width: 230px; height: 230px; border-radius: 50%; position: relative; border: 6px solid #1a1d26; box-shadow: 0 0 0 3px rgba(255,255,255,0.08), 0 10px 30px rgba(0,0,0,0.5); transition: transform 4.5s cubic-bezier(0.12, 0.72, 0.1, 1); background: conic-gradient(#1a8754 0deg 90deg, #22a866 90deg 180deg, #1a8754 180deg 270deg, #22a866 270deg 360deg); }
+        .roleta-fatia-txt { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
+        .roleta-fatia-txt span { position: absolute; color: #fff; font-weight: 800; font-size: 1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        #roleta-centro { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: #ffd23f; box-shadow: 0 3px 10px rgba(0,0,0,0.4); z-index: 2; }
+        .btn-girar-roleta { width: 100%; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; font-weight: 800; font-size: 1rem; padding: 0.9rem; border-radius: 12px; border: none; box-shadow: 0 10px 26px rgba(26,135,84,0.4); cursor: pointer; animation: pulsarBotaoRoleta 1.3s ease-in-out infinite; }
+        @keyframes pulsarBotaoRoleta { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        .roleta-resultado { display: none; }
+        .roleta-resultado.visivel { display: block; }
+        .roleta-resultado h3 { color: #4ade80; font-size: 1.4rem; font-weight: 800; margin: 0 0 0.5rem; }
+        .roleta-resultado p { color: #e2e8f0; font-size: 0.95rem; margin: 0 0 1.3rem; }
+        .roleta-confete-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; border-radius: 18px; }
+        @keyframes cair-confete-roleta { 0% { transform: translateY(-10px) rotate(0deg); opacity: 1; } 100% { transform: translateY(420px) rotate(var(--rot-final, 360deg)); opacity: 0; } }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -496,6 +515,33 @@
                     Concluir Reserva
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════ ROLETA DE DESCONTO (só nessa página de teste) ═══════════════ -->
+    <div id="overlay-roleta">
+        <div class="card-roleta">
+            <div id="roleta-etapa-girar">
+                <h2>🎁 Gire e ganhe um desconto exclusivo!</h2>
+                <div class="roleta-wrap">
+                    <div class="roleta-ponteiro"></div>
+                    <div id="roleta-disco">
+                        <div class="roleta-fatia-txt">
+                            <span style="left:calc(50% + 46px); top:calc(50% - 46px); transform:translate(-50%,-50%);">50%</span>
+                            <span style="left:calc(50% + 46px); top:calc(50% + 46px); transform:translate(-50%,-50%);">10%</span>
+                            <span style="left:calc(50% - 46px); top:calc(50% + 46px); transform:translate(-50%,-50%);">70%</span>
+                            <span style="left:calc(50% - 46px); top:calc(50% - 46px); transform:translate(-50%,-50%);">80%</span>
+                        </div>
+                    </div>
+                    <div id="roleta-centro"></div>
+                </div>
+                <button class="btn-girar-roleta" id="btn-girar-roleta">Girar agora</button>
+            </div>
+            <div id="roleta-etapa-resultado" class="roleta-resultado">
+                <h3 id="roleta-txt-resultado-titulo">Parabéns!</h3>
+                <p id="roleta-txt-resultado-desc">Você ganhou desconto na sua compra.</p>
+                <button class="btn-girar-roleta" id="btn-fechar-roleta">Aproveitar agora</button>
+            </div>
         </div>
     </div>
 
@@ -1369,9 +1415,19 @@
             $('#input-qtd').val(quantidadeCotas);
 
             const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === quantidadeCotas);
+            var descontoRoleta = 0;
+            try { descontoRoleta = parseFloat(sessionStorage.getItem('roleta_desconto_percentual') || '0'); } catch (e) {}
             if (promoAtiva) {
                 const precoNormal = quantidadeCotas * PRECO;
                 $('#cta-preco-total').html(`<span style="text-decoration:line-through; opacity:0.6; font-size:0.85em; margin-right:6px;">${formatarMoeda(precoNormal)}</span>${formatarMoeda(promoAtiva.preco_promocional)}`);
+            } else if (descontoRoleta > 0) {
+                // ⚡ Desconto ganho na roleta — o percentual mostrado aqui é o mesmo que o SERVIDOR
+                // confirmou no momento do giro (via código único); o valor cobrado de verdade no
+                // checkout é recalculado de novo, no servidor, a partir desse mesmo código — nunca
+                // confiando só nesse número mostrado na tela.
+                const precoNormal = quantidadeCotas * PRECO;
+                const precoComDesconto = precoNormal * (1 - descontoRoleta / 100);
+                $('#cta-preco-total').html(`<span style="text-decoration:line-through; opacity:0.6; font-size:0.85em; margin-right:6px;">${formatarMoeda(precoNormal)}</span>${formatarMoeda(precoComDesconto)}`);
             } else {
                 const total = quantidadeCotas * PRECO;
                 $('#cta-preco-total').text(formatarMoeda(total));
@@ -2034,7 +2090,8 @@
                         veio_de_combo_roleta: VEIO_DE_COMBO_ROLETA,
                         cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(),
                         prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(),
-                        fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })()
+                        fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })(),
+                        codigo_desconto: (function(){ try { return sessionStorage.getItem('roleta_desconto_codigo'); } catch(e){ return null; } })()
                     }),
                     beforeSend: function() {
                         $('#btn-participar').prop('disabled', true); $('#btn-participar-label').text('Processando...');
@@ -2074,6 +2131,92 @@
                 });
             }
         });
+
+        // ═══════════════ ROLETA DE DESCONTO (só nessa página de teste) ═══════════════
+        (function () {
+            var config = (window.__DADOS_INICIAIS__ && window.__DADOS_INICIAIS__.roleta_desconto) || {};
+            if (!config.ativa) return; // desligada no painel — não faz nada
+
+            var chaveJaViu = 'roleta_desconto_ja_viu';
+            var jaViu = false;
+            try { jaViu = localStorage.getItem(chaveJaViu) === '1'; } catch (e) {}
+            if (jaViu) return; // já apareceu uma vez pra essa pessoa, nunca mais mostra
+
+            var PERCENTUAL_PARA_ANGULO = { 50: 45, 10: 135, 70: 225, 80: 315 };
+            var percentualConfigurado = [10, 50, 70, 80].includes(config.percentual) ? config.percentual : 50;
+
+            setTimeout(function () {
+                document.getElementById('overlay-roleta').classList.add('visivel');
+            }, 3000);
+
+            document.getElementById('btn-girar-roleta').addEventListener('click', function () {
+                this.disabled = true;
+                var angulo = PERCENTUAL_PARA_ANGULO[percentualConfigurado] || 45;
+                var rotacaoFinal = 360 * 6 + (360 - angulo);
+                document.getElementById('roleta-disco').style.transform = 'rotate(' + rotacaoFinal + 'deg)';
+
+                // ⚡ Pede o código de verdade pro servidor, em paralelo com a animação — o SERVIDOR
+                // decide o percentual (nunca confiando em nada que já sabemos aqui na tela), e
+                // devolve um código único que vai ser conferido de verdade na hora de fechar a
+                // compra. Espera o maior entre "animação terminou" e "servidor respondeu", pra
+                // nunca mostrar o resultado antes da roleta visualmente parar de girar.
+                var pedirCodigo = fetch('/api/public/roleta-desconto/girar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sorteio_id: SORTEIO_DATA.id })
+                }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+                var esperarAnimacao = new Promise(function (resolve) { setTimeout(resolve, 4700); });
+
+                Promise.all([pedirCodigo, esperarAnimacao]).then(function (resultados) {
+                    var resp = resultados[0];
+                    var codigo = resp ? resp.codigo : null;
+                    var percentualFinal = resp ? resp.percentual : percentualConfigurado;
+                    mostrarResultadoRoleta(percentualFinal, codigo);
+                });
+            });
+
+            function mostrarResultadoRoleta(percentual, codigo) {
+                try {
+                    localStorage.setItem(chaveJaViu, '1');
+                    if (codigo) {
+                        sessionStorage.setItem('roleta_desconto_codigo', codigo);
+                        sessionStorage.setItem('roleta_desconto_percentual', String(percentual));
+                    }
+                } catch (e) {}
+                document.getElementById('roleta-txt-resultado-titulo').textContent = 'Parabéns! 🎉';
+                document.getElementById('roleta-txt-resultado-desc').textContent = 'Você ganhou ' + percentual + '% de desconto na sua compra!';
+                document.getElementById('roleta-etapa-girar').style.display = 'none';
+                document.getElementById('roleta-etapa-resultado').classList.add('visivel');
+                dispararConfeteRoleta();
+                if (typeof atualizarPreco === 'function') atualizarPreco();
+            }
+
+            document.getElementById('btn-fechar-roleta').addEventListener('click', function () {
+                document.getElementById('overlay-roleta').classList.remove('visivel');
+            });
+
+            function dispararConfeteRoleta() {
+                var container = document.createElement('div');
+                container.className = 'roleta-confete-container';
+                document.querySelector('.card-roleta').appendChild(container);
+                var cores = ['#ff6b6b', '#4ade80', '#facc15', '#60a5fa', '#c084fc', '#fb923c'];
+                for (var i = 0; i < 60; i++) {
+                    (function () {
+                        var conf = document.createElement('div');
+                        var cor = cores[Math.floor(Math.random() * cores.length)];
+                        var esquerda = Math.random() * 100;
+                        var atraso = Math.random() * 0.4;
+                        var duracao = 1.4 + Math.random() * 1.1;
+                        var tamanho = 6 + Math.random() * 6;
+                        var rotFinal = Math.random() * 720 - 360;
+                        conf.style.cssText = 'position:absolute; top:-10px; left:' + esquerda + '%; width:' + tamanho + 'px; height:' + (tamanho * 0.4) + 'px; background:' + cor + '; opacity:0.95; border-radius:1px; animation: cair-confete-roleta ' + duracao + 's ease-in ' + atraso + 's forwards;';
+                        conf.style.setProperty('--rot-final', rotFinal + 'deg');
+                        container.appendChild(conf);
+                        setTimeout(function () { conf.remove(); }, (duracao + atraso) * 1000 + 200);
+                    })();
+                }
+                setTimeout(function () { container.remove(); }, 2500);
+            }
+        })();
     </script>
 </body>
 </html>

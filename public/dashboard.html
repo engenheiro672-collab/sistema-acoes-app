@@ -462,6 +462,26 @@
                     </div>
                 </div>
 
+                <div class="bg-darkCard border border-yellow-700/40 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h4 class="font-semibold text-white">🎁 Roleta de Desconto <span class="text-yellow-500 text-xs font-bold">(TESTE — só aparece em teste.html)</span></h4>
+                            <p class="text-xs text-gray-500">Aparece uma vez por navegador, no primeiro acesso. Diferente da roleta de giros acima — essa dá desconto direto no preço, antes da compra.</p>
+                        </div>
+                        <label class="toggle-switch"><input type="checkbox" id="inp-roleta-desconto-ativa" onchange="salvarRoletaDesconto()"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label class="text-xs text-gray-400">Opções mostradas na roleta (separadas por vírgula)</label>
+                            <input type="text" id="inp-roleta-desconto-opcoes" class="input-dark mt-1" placeholder="10,50,70,80" onchange="salvarRoletaDesconto()">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Sempre cai em (%) — decidido só pelo servidor</label>
+                            <input type="number" min="1" max="99" id="inp-roleta-desconto-sempre-cai" class="input-dark mt-1" placeholder="50" onchange="salvarRoletaDesconto()">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
                     <h4 class="font-semibold text-white mb-2">Faixas: título → giros ganhos</h4>
                     <div class="flex gap-2 mb-3">
@@ -1395,6 +1415,25 @@
                         </div>
                     </div>
                     <button type="submit" class="btn-primary w-full mt-4">Salvar redes sociais</button>
+                </form>
+            </div>
+
+            <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md">
+                <h3 class="font-bold mb-1">🎡 Roleta de Desconto (página de teste)</h3>
+                <p class="text-xs text-gray-400 mb-4">Aparece só no teste.html, uma única vez por pessoa. Ela sempre para no desconto configurado aqui — não é sorteada de verdade.</p>
+                <form id="form-roleta-desconto">
+                    <div class="flex items-center gap-3 mb-4">
+                        <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="roleta-desconto-ativa"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                        <span class="text-sm">Ativar roleta na página de teste</span>
+                    </div>
+                    <label class="text-sm text-gray-400">Desconto em que ela sempre para</label>
+                    <select id="roleta-desconto-percentual" class="input-dark mt-1 mb-4">
+                        <option value="10">10%</option>
+                        <option value="50">50%</option>
+                        <option value="70">70%</option>
+                        <option value="80">80%</option>
+                    </select>
+                    <button type="submit" class="btn-primary w-full">Salvar roleta</button>
                 </form>
             </div>
             <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md text-center">
@@ -2504,11 +2543,27 @@ function selecionarSorteioRoleta(id) {
     const sorteio = SORTEIOS_CACHE.find(s => s.id === id);
     $('#inp-roleta-ativada-page').prop('checked', !!sorteio?.roleta_ativada);
     $('#inp-giros-por-compra').val(sorteio?.roleta_giros_por_compra ?? 1);
+    $('#inp-roleta-desconto-ativa').prop('checked', !!sorteio?.roleta_desconto_ativa);
+    $('#inp-roleta-desconto-opcoes').val((sorteio?.roleta_desconto_opcoes || [10, 50, 70, 80]).join(','));
+    $('#inp-roleta-desconto-sempre-cai').val(sorteio?.roleta_desconto_sempre_cai_em ?? 50);
     carregarRoleta(id);
     carregarRoletaTiers(id);
     carregarRoletaResultadosAdmin(id);
     carregarBloqueiosRoleta(id);
     mudarModoRoleta('visualizar', $('#roleta-conteudo [data-modoR="visualizar"]')[0]);
+}
+function salvarRoletaDesconto() {
+    const ativa = $('#inp-roleta-desconto-ativa').is(':checked');
+    const opcoesTexto = $('#inp-roleta-desconto-opcoes').val() || '';
+    const opcoes = opcoesTexto.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0 && n < 100);
+    const sempreCaiEm = parseFloat($('#inp-roleta-desconto-sempre-cai').val());
+    if (opcoes.length === 0) { notificar('Informe pelo menos uma opção de desconto válida (ex: 10,50,70,80).', 'erro'); return; }
+    if (isNaN(sempreCaiEm) || sempreCaiEm <= 0 || sempreCaiEm >= 100) { notificar('O percentual "sempre cai em" precisa ser um número entre 1 e 99.', 'erro'); return; }
+    api('POST', `/api/admin/sorteios/${SORTEIO_ROLETA_ID}/roleta-desconto`, { ativa, opcoes, sempre_cai_em: sempreCaiEm }).then(() => {
+        notificar('Roleta de desconto salva!', 'sucesso');
+        const s = SORTEIOS_CACHE.find(x => x.id === SORTEIO_ROLETA_ID);
+        if (s) { s.roleta_desconto_ativa = ativa; s.roleta_desconto_opcoes = opcoes; s.roleta_desconto_sempre_cai_em = sempreCaiEm; }
+    });
 }
 function salvarRoletaAtivada() {
     const ativada = $('#inp-roleta-ativada-page').is(':checked');
@@ -4082,8 +4137,18 @@ function carregarConta() {
         $('#social-whatsapp-grupo-url').val(cfg.SOCIAL_WHATSAPP_GRUPO_URL || '');
         $('#social-whatsapp-suporte-ativo').prop('checked', cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true');
         $('#social-whatsapp-suporte-numero').val(cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '');
+
+        $('#roleta-desconto-ativa').prop('checked', cfg.ROLETA_DESCONTO_ATIVA === 'true');
+        $('#roleta-desconto-percentual').val(cfg.ROLETA_DESCONTO_PERCENTUAL || '50');
     });
 }
+$('#form-roleta-desconto').on('submit', function (e) {
+    e.preventDefault();
+    api('POST', '/api/admin/configuracoes', {
+        ROLETA_DESCONTO_ATIVA: String($('#roleta-desconto-ativa').is(':checked')),
+        ROLETA_DESCONTO_PERCENTUAL: String($('#roleta-desconto-percentual').val() || '50')
+    }).then(() => notificar('Roleta de desconto salva!', 'sucesso'));
+});
 $('#form-social').on('submit', function(e) {
     e.preventDefault();
     const payload = {
