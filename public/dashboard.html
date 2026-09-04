@@ -1177,6 +1177,25 @@
                                 <input id="funil-grupo-teste" class="input-dark mt-1" placeholder="Ex: teste-headline">
                             </div>
                         </div>
+                        <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <h4 class="font-semibold text-white text-sm">🎬 Vídeo por cidade <span class="text-gray-500 text-xs">(só funciona no vsl.html)</span></h4>
+                                    <p class="text-xs text-gray-500">Puxa um vídeo do Cloudflare R2 pelo nome da cidade, com uma foto interrompendo em um momento configurável.</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" id="funil-video-cidade-ativa"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <div>
+                                    <label class="text-xs text-gray-400">Foto interrompe no segundo</label>
+                                    <input type="number" min="1" step="0.5" id="funil-video-cidade-timestamp" class="input-dark mt-1" value="20">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-400">Foto fica quantos segundos</label>
+                                    <input type="number" min="1" step="0.5" id="funil-video-cidade-duracao" class="input-dark mt-1" value="4">
+                                </div>
+                            </div>
+                        </div>
                         <div class="mb-3" id="funil-peso-box" style="display:none;">
                             <label class="text-xs text-gray-400">% do tráfego para este funil dentro do grupo de teste</label>
                             <input id="funil-peso" type="number" min="1" max="100" value="50" class="input-dark mt-1">
@@ -3144,11 +3163,15 @@ function criarFunil() {
         arquivo_html: $('#funil-arquivo-html').val(),
         arquivo_checkout_html: $('#funil-arquivo-checkout').val(),
         grupo_teste: $('#funil-grupo-teste').val() || null,
-        peso_trafego: $('#funil-peso').val() || 100
+        peso_trafego: $('#funil-peso').val() || 100,
+        video_cidade_ativo: $('#funil-video-cidade-ativa').is(':checked'),
+        video_cidade_timestamp_seg: $('#funil-video-cidade-timestamp').val() || 20,
+        video_cidade_duracao_seg: $('#funil-video-cidade-duracao').val() || 4
     };
     api('POST', `/api/admin/sorteios/${SORTEIO_FUNIL_ID}/funis`, payload).then(() => {
         $('#funil-nome').val('');
         $('#funil-grupo-teste').val(''); $('#funil-peso-box').hide();
+        $('#funil-video-cidade-ativa').prop('checked', false);
         carregarFunis(SORTEIO_FUNIL_ID);
         notificar('Funil criado!', 'sucesso');
     }).catch(err => notificar('Erro ao criar funil: ' + (err.error || ''), 'erro'));
