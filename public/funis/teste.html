@@ -170,10 +170,21 @@
         #overlay-roleta { display: none; position: fixed; inset: 0; background: rgba(6,8,14,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 99998; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
         #overlay-roleta.visivel { display: flex; }
         .roleta-titulo-flutuante { color: #fff; font-size: 1.15rem; font-weight: 800; margin-bottom: 1.8rem; text-align: center; text-shadow: 0 3px 12px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; }
-        .roleta-icone-estrela-topo { margin-bottom: 0.4rem; filter: drop-shadow(0 2px 6px rgba(255,210,63,0.5)); animation: girarEstrelaTopo 3s ease-in-out infinite; }
-        @keyframes girarEstrelaTopo { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+        .roleta-icone-estrela-topo { display: none; } /* não usamos mais o título fixo de cima */
 
-        .roleta-wrap { position: relative; width: 280px; height: 280px; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.55)); }
+        #roleta-wrap.entrando { animation: entradaRoletaCaindo 1s cubic-bezier(0.34,1.15,0.64,1) both; }
+        @keyframes entradaRoletaCaindo {
+            0% { transform: translateY(-160vh) rotate(-620deg); opacity: 0; }
+            72% { transform: translateY(8px) rotate(12deg); opacity: 1; }
+            86% { transform: translateY(-5px) rotate(-4deg); }
+            100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+        }
+
+        .roleta-wrap { position: relative; width: clamp(260px, 84vw, 340px); height: clamp(260px, 84vw, 340px); filter: drop-shadow(0 20px 50px rgba(0,0,0,0.55)); }
+
+        /* Título temporário, só durante a entrada — não fica fixo o tempo todo */
+        .roleta-titulo-entrada { position: absolute; top: -66px; left: 50%; transform: translateX(-50%); color: #fff; font-size: clamp(1.05rem, 4.2vw, 1.35rem); font-weight: 900; text-align: center; white-space: nowrap; text-shadow: 0 3px 14px rgba(0,0,0,0.7); opacity: 0; animation: apareceSomeTituloRoleta 2.6s ease 0.7s both; }
+        @keyframes apareceSomeTituloRoleta { 0% { opacity: 0; transform: translateX(-50%) translateY(12px); } 18%, 62% { opacity: 1; transform: translateX(-50%) translateY(0); } 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
         .roleta-luz { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #ffe27a; box-shadow: 0 0 6px 2px rgba(255,226,122,0.8); top: 50%; left: 50%; margin: -4px; animation: piscarLuzRoleta 1.4s ease-in-out infinite; }
         @keyframes piscarLuzRoleta { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
         .roleta-ponteiro { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 30px; height: 34px; z-index: 4; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5)); }
@@ -196,8 +207,10 @@
         @keyframes sacudirTela { 0%, 100% { transform: translate(0,0); } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(6px, -3px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(4px, 2px); } }
         .sacudir-roleta { animation: sacudirTela 0.4s ease; }
 
-        /* Número do prêmio "voando" até o botão de participar */
-        .roleta-reveal-numero { position: fixed; z-index: 99999; font-size: 4.4rem; font-weight: 900; background: linear-gradient(135deg, #ffe27a, #ff9d1f); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 20px rgba(255,157,31,0.7)); pointer-events: none; }
+        /* Número do prêmio "voando" até o botão de participar — texto SÓLIDO com contorno grosso
+           (não usa gradiente "recortado" no texto, que em alguns aparelhos pode ficar quase
+           invisível dependendo do que está atrás) — sempre legível, contra qualquer fundo. */
+        .roleta-reveal-numero { position: fixed; z-index: 99999; font-size: clamp(3.2rem, 15vw, 4.8rem); font-weight: 900; color: #ffd23f; -webkit-text-stroke: 3px #4a2a00; text-shadow: 3px 3px 0 #4a2a00, -3px -3px 0 #4a2a00, 3px -3px 0 #4a2a00, -3px 3px 0 #4a2a00, 0 3px 0 #4a2a00, 0 -3px 0 #4a2a00, 3px 0 0 #4a2a00, -3px 0 0 #4a2a00, 0 14px 28px rgba(0,0,0,0.55); pointer-events: none; }
         .roleta-confete-container-global { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 99997; }
         @keyframes cair-confete-roleta { 0% { transform: translateY(-10px) rotate(0deg); opacity: 1; } 100% { transform: translateY(60vh) rotate(var(--rot-final, 360deg)); opacity: 0; } }
         @keyframes flashBotaoPreco { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,0.7); } 60% { box-shadow: 0 0 0 16px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
@@ -537,11 +550,9 @@
 
     <!-- ═══════════════ ROLETA DE DESCONTO (só nessa página de teste) ═══════════════ -->
     <div id="overlay-roleta">
-        <div class="roleta-titulo-flutuante">
-            <svg class="roleta-icone-estrela-topo" viewBox="0 0 24 24" width="30" height="30"><path d="M12 1l2.6 7.9H23l-6.7 4.9L18.9 22 12 17.1 5.1 22l2.6-8.2L1 8.9h8.4z" fill="#ffd23f"/></svg>
-            Gire e ganhe um desconto exclusivo!
-        </div>
+
         <div class="roleta-wrap" id="roleta-wrap">
+            <div class="roleta-titulo-entrada" id="roleta-titulo-entrada">Giro Exclusivo!</div>
             <div class="roleta-ponteiro">
                 <svg viewBox="0 0 30 34"><path d="M15 34 L2 10 Q15 18 28 10 Z" fill="#ffd23f" stroke="#2a2115" stroke-width="2"/></svg>
             </div>
@@ -2160,7 +2171,7 @@
 
             // ⚡ Monta a roleta na hora, com uma fatia extra "Não foi dessa vez" (vermelha) além das
             // opções configuradas no painel — fica mais realista que só ter fatias de prêmio.
-            var CORES_PREMIO = ['#22a866', '#eab308', '#7c3aed', '#0891b2', '#d97706', '#db2777'];
+            var CORES_PREMIO = ['#00c853', '#ffd600', '#8b5cf6', '#00b8d4', '#ff6d00', '#e91e63'];
             var fatias = [{ tipo: 'nada', cor: '#dc2626' }].concat(opcoesConfiguradas.map(function (p, i) {
                 return { tipo: 'desconto', valor: p, cor: CORES_PREMIO[i % CORES_PREMIO.length] };
             }));
@@ -2172,13 +2183,20 @@
             });
             document.getElementById('roleta-disco').style.background = 'conic-gradient(' + stopsGradiente.join(', ') + ')';
 
+            // ⚡ O tamanho da roleta é responsivo (clamp no CSS) — calculamos aqui o mesmo valor em
+            // JS, pra saber o raio de verdade e posicionar luzes/textos proporcionalmente certo em
+            // qualquer tamanho de tela, sem precisar medir o elemento (que ainda está escondido
+            // nesse momento, então medir daria sempre zero).
+            var larguraRoletaPx = Math.min(Math.max(260, window.innerWidth * 0.84), 340);
+            var raioRoletaPx = larguraRoletaPx / 2;
+
             var PERCENTUAL_PARA_ANGULO = {};
             var containerLabels = document.getElementById('roleta-fatia-txt');
             fatias.forEach(function (f, i) {
                 var anguloCentro = i * anguloPorFatia + anguloPorFatia / 2;
                 if (f.tipo === 'desconto') PERCENTUAL_PARA_ANGULO[f.valor] = anguloCentro;
 
-                var raio = totalFatias > 6 ? 98 : 88; // fatias menores (mais opções) ficam um pouco mais afastadas do centro
+                var raio = raioRoletaPx * (totalFatias > 6 ? 0.63 : 0.58); // fatias menores (mais opções) ficam um pouco mais afastadas do centro
                 var label = document.createElement('div');
                 label.className = 'roleta-fatia-label' + (f.tipo === 'nada' ? ' roleta-fatia-nada' : '');
                 label.style.transform = 'translate(-50%, -50%) rotate(' + anguloCentro + 'deg) translateY(-' + raio + 'px) rotate(' + (-anguloCentro) + 'deg)';
@@ -2191,17 +2209,41 @@
             // ⚡ Luzinhas ao redor da roleta, tipo roleta de cassino de verdade — só decoração.
             var wrapRoleta = document.getElementById('roleta-wrap');
             var qtdLuzes = 16;
+            var raioLuzesPx = raioRoletaPx + 10;
             for (var l = 0; l < qtdLuzes; l++) {
                 var anguloLuz = (360 / qtdLuzes) * l;
                 var luz = document.createElement('div');
                 luz.className = 'roleta-luz';
-                luz.style.transform = 'rotate(' + anguloLuz + 'deg) translateY(-138px)';
+                luz.style.transform = 'rotate(' + anguloLuz + 'deg) translateY(-' + raioLuzesPx + 'px)';
                 luz.style.animationDelay = (l % 2 === 0 ? '0s' : '0.7s');
                 wrapRoleta.appendChild(luz);
             }
 
+            // 🔊 Som de entrada — um "whoosh" caindo, sincronizado com a roleta descendo girando.
+            function tocarWhooshEntrada() {
+                var ctx = getCtxRoleta();
+                if (!ctx) return;
+                try {
+                    var osc = ctx.createOscillator();
+                    var ganho = ctx.createGain();
+                    var filtro = ctx.createBiquadFilter();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(70, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(560, ctx.currentTime + 0.55);
+                    osc.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.85);
+                    filtro.type = 'lowpass'; filtro.frequency.value = 1700;
+                    ganho.gain.setValueAtTime(0.001, ctx.currentTime);
+                    ganho.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.15);
+                    ganho.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
+                    osc.connect(filtro).connect(ganho).connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.95);
+                } catch (e) {}
+            }
+
             setTimeout(function () {
                 document.getElementById('overlay-roleta').classList.add('visivel');
+                wrapRoleta.classList.add('entrando');
+                tocarWhooshEntrada();
             }, 3000);
 
             // ⚡⚡ Duração e número de voltas do giro — usados tanto na animação quanto no cálculo
@@ -2402,6 +2444,12 @@
                 }
 
                 dispararConfeteGlobal();
+
+                // ⚡ A roleta em si sai de cena, encolhendo e desaparecendo, pra toda atenção ir
+                // pro número do prêmio crescendo — sem competir visualmente com ela ainda ali.
+                wrapRoleta.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                wrapRoleta.style.opacity = '0';
+                wrapRoleta.style.transform = 'scale(0.8)';
 
                 var numero = document.getElementById('roleta-reveal-numero');
                 numero.textContent = percentual + '%';
