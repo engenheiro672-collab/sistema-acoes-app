@@ -127,7 +127,7 @@
         /* ═══════════════ VÍDEO POR CIDADE — puxado do R2, aparece no lugar das fotos ═══════════════ */
         .video-cidade-overlay { position: absolute; inset: 0; z-index: 15; background: #000; overflow: hidden; transition: transform 0.6s cubic-bezier(0.5,0,0.75,0.4); }
         .video-cidade-overlay.saindo { transform: translateY(100%); }
-        #video-cidade-player { position: absolute; inset: 0; width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center center; display: block; }
+        #video-cidade-player { display: block; width: 100%; height: 100%; object-fit: cover; }
         .video-cidade-foto-interrupt { position: absolute; inset: 0; z-index: 2; transform: translateX(105%); transition: transform 0.5s cubic-bezier(0.22,0.9,0.3,1); }
         .video-cidade-foto-interrupt.visivel { transform: translateX(0); }
         .video-cidade-foto-interrupt.saindo { transform: translateX(-105%); }
@@ -607,14 +607,21 @@
                 player.addEventListener('ended', function () {
                     overlay.classList.add('saindo');
                     setTimeout(function () { overlay.style.display = 'none'; }, 650);
-                    // ⚡ Vídeo terminou — se o tutorial guiado estiver ativado nesse funil, mostra o
-                    // botão "Tutorial" (empurra o "Por apenas R$X" pro lado direito, abrindo espaço
-                    // no canto esquerdo pro botão).
-                    if (funil.tutorial_compra_ativo) {
-                        document.getElementById('btn-tutorial-vsl').style.display = 'inline-block';
-                        document.getElementById('title-bar-preco').style.justifyContent = 'space-between';
-                    }
                 });
+                // ⚡ Botão "Tutorial" aparece 5s ANTES do vídeo acabar (não só quando termina de
+                // verdade) — fica melhor porque a pessoa já vê ele chegando, sem esperar o vídeo
+                // sumir de vez primeiro.
+                if (funil.tutorial_compra_ativo) {
+                    var jaMostrouBotaoTutorial = false;
+                    player.addEventListener('timeupdate', function verificarFimProximo() {
+                        if (!jaMostrouBotaoTutorial && player.duration && (player.duration - player.currentTime) <= 5) {
+                            jaMostrouBotaoTutorial = true;
+                            player.removeEventListener('timeupdate', verificarFimProximo);
+                            document.getElementById('btn-tutorial-vsl').style.display = 'inline-block';
+                            document.getElementById('title-bar-preco').style.justifyContent = 'space-between';
+                        }
+                    });
+                }
             }
             function mostrarFotoSobreVideo(duracaoSeg) {
                 var fotoOverlay = document.getElementById('video-cidade-foto-interrupt');
@@ -1658,27 +1665,44 @@
                 document.body.appendChild(elTooltip);
             }
 
-            function posicionarNoAlvo(seletor, texto, posicaoBalao) {
-                var alvo = typeof seletor === 'string' ? document.querySelector(seletor) : seletor;
-                if (!alvo) return false;
-                var r = alvo.getBoundingClientRect();
-                var folga = 8;
-                elSpotlight.style.top = (r.top - folga) + 'px';
-                elSpotlight.style.left = (r.left - folga) + 'px';
-                elSpotlight.style.width = (r.width + folga * 2) + 'px';
-                elSpotlight.style.height = (r.height + folga * 2) + 'px';
+            function calcularRetanguloUniao(elementos) {
+                var rects = elementos.map(function (el) { return el.getBoundingClientRect(); });
+                var top = Math.min.apply(null, rects.map(function (r) { return r.top; }));
+                var left = Math.min.apply(null, rects.map(function (r) { return r.left; }));
+                var right = Math.max.apply(null, rects.map(function (r) { return r.right; }));
+                var bottom = Math.max.apply(null, rects.map(function (r) { return r.bottom; }));
+                return { top: top, left: left, width: right - left, height: bottom - top, bottom: bottom };
+            }
 
-                elTooltip.innerHTML = '<div class="tutorial-tooltip-seta ' + (posicaoBalao === 'acima' ? 'seta-baixo' : 'seta-cima') + '"></div>' + texto;
-                var tooltipTop = posicaoBalao === 'acima' ? (r.top - folga - 12) : (r.bottom + folga + 12);
-                elTooltip.style.left = Math.max(12, Math.min(window.innerWidth - 282, r.left)) + 'px';
-                // ⚡ Quando o balão fica ACIMA do alvo, precisa medir a própria altura dele antes de
-                // subtrair — senão ele desce até "vazar" por cima do elemento.
-                if (posicaoBalao === 'acima') {
-                    elTooltip.style.top = (tooltipTop - elTooltip.offsetHeight) + 'px';
-                } else {
-                    elTooltip.style.top = tooltipTop + 'px';
-                }
-                alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // ⚡ Aceita um seletor só, OU uma lista de seletores/elementos — nesse caso, o holofote
+            // cobre a área que envolve todos juntos (ex: a grade de quantidades + o botão participar).
+            function posicionarNoAlvo(seletorOuLista, texto, posicaoBalao) {
+                var lista = Array.isArray(seletorOuLista) ? seletorOuLista : [seletorOuLista];
+                var elementos = lista.map(function (s) { return typeof s === 'string' ? document.querySelector(s) : s; }).filter(Boolean);
+                if (elementos.length === 0) return false;
+
+                // ⚡ Rola até o alvo de forma INSTANTÂNEA (não suave) e só mede a posição DEPOIS
+                // que o navegador realmente aplicou o scroll — antes disso, a posição medida
+                // ainda seria a de antes de rolar, e o quadrinho ficava fora do lugar certo.
+                elementos[0].scrollIntoView({ block: 'center' });
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        var r = calcularRetanguloUniao(elementos);
+                        var folga = 8;
+                        elSpotlight.style.top = (r.top - folga) + 'px';
+                        elSpotlight.style.left = (r.left - folga) + 'px';
+                        elSpotlight.style.width = (r.width + folga * 2) + 'px';
+                        elSpotlight.style.height = (r.height + folga * 2) + 'px';
+
+                        elTooltip.innerHTML = '<div class="tutorial-tooltip-seta ' + (posicaoBalao === 'acima' ? 'seta-baixo' : 'seta-cima') + '"></div>' + texto;
+                        elTooltip.style.left = Math.max(12, Math.min(window.innerWidth - 282, r.left)) + 'px';
+                        if (posicaoBalao === 'acima') {
+                            elTooltip.style.top = (r.top - folga - 12 - elTooltip.offsetHeight) + 'px';
+                        } else {
+                            elTooltip.style.top = (r.bottom + folga + 12) + 'px';
+                        }
+                    });
+                });
                 return true;
             }
 
@@ -1694,17 +1718,15 @@
                 passoQuantidade();
             }
 
-            // Passo 1 — quantidade + valor
+            // Passo 1 — quantidade (grade de opções + seletor manual) + valor total, tudo junto
             function passoQuantidade() {
-                if (!posicionarNoAlvo('.purchase-grid', 'Selecione a quantidade de cotas que você deseja comprar. Observe o valor que está ficando o seu pedido.', 'acima')) return encerrarTutorial();
-                function aoClicarQuantidade() {
-                    document.removeEventListener('click', delegado, true);
+                if (!posicionarNoAlvo(['#cota-grid', '.purchase-grid'], 'Selecione a quantidade de cotas que você deseja comprar. Observe o valor que está ficando o seu pedido.', 'acima')) return encerrarTutorial();
+                function aoClicarQuantidade(ev) {
+                    if (!ev.target.closest('#cota-grid') && !ev.target.closest('.purchase-grid .manual-selector')) return;
+                    document.removeEventListener('click', aoClicarQuantidade, true);
                     setTimeout(passoParticipar, 250); // pequena folga pra o preço já ter atualizado na tela
                 }
-                function delegado(ev) {
-                    if (ev.target.closest('.purchase-grid .manual-selector') || ev.target.closest('#cota-grid')) aoClicarQuantidade();
-                }
-                document.addEventListener('click', delegado, true);
+                document.addEventListener('click', aoClicarQuantidade, true);
             }
 
             // Passo 2 — botão "Quero participar"
@@ -1722,8 +1744,8 @@
                 document.getElementById('form-checkout-telefone').addEventListener('submit', function aoEnviarTelefone() {
                     document.getElementById('form-checkout-telefone').removeEventListener('submit', aoEnviarTelefone);
                     // ⚡ Depois do telefone, o site pode mostrar duas telas diferentes (comprador já
-                    // conhecido, ou formulário pra preencher os dados) — espera qual das duas
-                    // realmente aparece, e guia a partir dela.
+                    // conhecido, direto pra confirmação, ou formulário pra preencher nome/CPF/etc
+                    // antes) — espera qual das duas realmente aparece, e guia a partir dela.
                     esperarProximaEtapaAposTelefone();
                 });
             }
@@ -1732,13 +1754,13 @@
                 var intervalo = setInterval(function () {
                     tentativas++;
                     var formDados = document.getElementById('form-checkout-dados');
-                    var btnConhecido = document.getElementById('btn-finalizar-pedido-conhecido');
+                    var etapaConfirmar = document.getElementById('etapa-confirmar-comprador');
                     if (formDados && !formDados.classList.contains('hidden')) {
                         clearInterval(intervalo);
-                        passoNomeENovosDados();
-                    } else if (btnConhecido && btnConhecido.offsetParent !== null) {
+                        passoCamposDados(0);
+                    } else if (etapaConfirmar && !etapaConfirmar.classList.contains('hidden')) {
                         clearInterval(intervalo);
-                        passoFinalizarConhecido();
+                        passoConfirmacaoFinal();
                     } else if (tentativas > 40) { // ~10s de segurança, evita ficar esperando pra sempre
                         clearInterval(intervalo);
                         encerrarTutorial();
@@ -1746,25 +1768,50 @@
                 }, 250);
             }
 
-            // Passo 4a — comprador já conhecido, só confirmar
-            function passoFinalizarConhecido() {
-                if (!posicionarNoAlvo('#btn-finalizar-pedido-conhecido', 'Perfeito! Agora é só clicar em "Finalizar Pedido" pra ir pro pagamento.', 'acima')) return encerrarTutorial();
-                encerrarTutorialAoClicar('#btn-finalizar-pedido-conhecido');
-            }
-
-            // Passo 4b — comprador novo, preenche nome (e demais dados, se pedidos) antes de concluir
-            function passoNomeENovosDados() {
-                if (!posicionarNoAlvo('#campo-nome', 'Digite seu nome completo aqui.', 'abaixo')) return encerrarTutorial();
-                document.getElementById('form-checkout-dados').addEventListener('submit', function aoConcluir() {
-                    document.getElementById('form-checkout-dados').removeEventListener('submit', aoConcluir);
-                    encerrarTutorial();
+            // Passo 4 — comprador novo: guia campo por campo, só os que estiverem realmente sendo
+            // usados nesse sorteio (nome sempre; CPF/e-mail/endereço só se não estiverem escondidos).
+            var CAMPOS_DADOS = [
+                { id: 'campo-nome', input: '#checkout-nome', texto: 'Digite seu nome completo aqui.' },
+                { id: 'campo-cpf', input: '#checkout-cpf', texto: 'Digite seu CPF aqui.' },
+                { id: 'campo-email', input: '#checkout-email', texto: 'Digite seu e-mail aqui.' },
+                { id: 'campo-endereco', input: '#checkout-endereco', texto: 'Digite seu endereço aqui.' }
+            ];
+            function passoCamposDados(indice) {
+                if (indice >= CAMPOS_DADOS.length) {
+                    var formDados = document.getElementById('form-checkout-dados');
+                    var btnConcluir = formDados.querySelector('button[type="submit"]');
+                    if (!posicionarNoAlvo(btnConcluir, 'Perfeito! Agora clique em "Concluir Reserva" pra continuar.', 'acima')) return encerrarTutorial();
+                    formDados.addEventListener('submit', function aoConcluir() {
+                        formDados.removeEventListener('submit', aoConcluir);
+                        setTimeout(passoConfirmacaoFinal, 500);
+                    });
+                    return;
+                }
+                var campo = CAMPOS_DADOS[indice];
+                var elCampo = document.getElementById(campo.id);
+                if (!elCampo || elCampo.classList.contains('hidden')) return passoCamposDados(indice + 1); // não usado nesse sorteio, pula
+                if (!posicionarNoAlvo(campo.input, campo.texto, 'abaixo')) return encerrarTutorial();
+                var inputEl = document.querySelector(campo.input);
+                inputEl.addEventListener('change', function aoMudar() {
+                    inputEl.removeEventListener('change', aoMudar);
+                    setTimeout(function () { passoCamposDados(indice + 1); }, 300);
                 });
             }
-            function encerrarTutorialAoClicar(seletor) {
-                var el = document.querySelector(seletor);
-                if (!el) return;
-                el.addEventListener('click', function aoClicarFinal() {
-                    el.removeEventListener('click', aoClicarFinal);
+
+            // Passo 5 — confirmação final (com a oferta de desconto/turbinar, se ela existir)
+            function passoConfirmacaoFinal() {
+                var upsellVisivel = !!document.querySelector('#upsell-box:not(.hidden)');
+                var texto = upsellVisivel
+                    ? 'Confira os dados da sua compra aqui — e se quiser, dá pra levar mais títulos com desconto especial, aumentando suas chances.'
+                    : 'Confira os dados da sua compra aqui.';
+                if (!posicionarNoAlvo('#etapa-confirmar-comprador', texto, 'acima')) return encerrarTutorial();
+                setTimeout(passoFinalizarBotao, 3200); // mostra por um tempo, depois avança sozinho pro botão final
+            }
+            function passoFinalizarBotao() {
+                if (!posicionarNoAlvo('#btn-finalizar-pedido-conhecido', 'Agora é só clicar em "Finalizar Pedido" pra ir pro pagamento.', 'acima')) return encerrarTutorial();
+                var btn = document.getElementById('btn-finalizar-pedido-conhecido');
+                btn.addEventListener('click', function aoClicarFinal() {
+                    btn.removeEventListener('click', aoClicarFinal);
                     encerrarTutorial();
                 });
             }
