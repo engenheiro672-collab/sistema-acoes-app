@@ -1196,6 +1196,13 @@
                                     <input type="number" min="1" step="0.5" id="funil-video-cidade-duracao" class="input-dark mt-1" value="4">
                                 </div>
                             </div>
+                            <div class="flex items-center justify-between mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.08);">
+                                <div>
+                                    <h4 class="font-semibold text-white text-sm">🎓 Tutorial guiado da compra</h4>
+                                    <p class="text-xs text-gray-500">Aparece um botão "Tutorial" assim que o vídeo termina — leva o lead passo a passo até o checkout.</p>
+                                </div>
+                                <label class="toggle-switch"><input type="checkbox" id="funil-tutorial-compra-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                            </div>
                         </div>
                         <div class="mb-3" id="funil-peso-box" style="display:none;">
                             <label class="text-xs text-gray-400">% do tráfego para este funil dentro do grupo de teste</label>
@@ -3198,12 +3205,14 @@ function criarFunil() {
         peso_trafego: $('#funil-peso').val() || 100,
         video_cidade_ativo: $('#funil-video-cidade-ativa').is(':checked'),
         video_cidade_timestamp_seg: $('#funil-video-cidade-timestamp').val() || 20,
-        video_cidade_duracao_seg: $('#funil-video-cidade-duracao').val() || 4
+        video_cidade_duracao_seg: $('#funil-video-cidade-duracao').val() || 4,
+        tutorial_compra_ativo: $('#funil-tutorial-compra-ativo').is(':checked')
     };
     api('POST', `/api/admin/sorteios/${SORTEIO_FUNIL_ID}/funis`, payload).then(() => {
         $('#funil-nome').val('');
         $('#funil-grupo-teste').val(''); $('#funil-peso-box').hide();
         $('#funil-video-cidade-ativa').prop('checked', false);
+        $('#funil-tutorial-compra-ativo').prop('checked', false);
         carregarFunis(SORTEIO_FUNIL_ID);
         notificar('Funil criado!', 'sucesso');
     }).catch(err => notificar('Erro ao criar funil: ' + (err.error || ''), 'erro'));

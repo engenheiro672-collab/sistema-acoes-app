@@ -2688,6 +2688,7 @@ app.post('/api/admin/sorteios/:id/funis', ensureAdminAuth, async (req, res) => {
       video_cidade_ativo: !!body.video_cidade_ativo,
       video_cidade_timestamp_seg: body.video_cidade_timestamp_seg !== undefined ? Number(body.video_cidade_timestamp_seg) : 20,
       video_cidade_duracao_seg: body.video_cidade_duracao_seg !== undefined ? Number(body.video_cidade_duracao_seg) : 4,
+      tutorial_compra_ativo: !!body.tutorial_compra_ativo,
       created_at: new Date().toISOString()
     };
 
@@ -2720,6 +2721,7 @@ app.put('/api/admin/funis/:id', ensureAdminAuth, async (req, res) => {
     if (body.video_cidade_ativo !== undefined) payload.video_cidade_ativo = !!body.video_cidade_ativo;
     if (body.video_cidade_timestamp_seg !== undefined) payload.video_cidade_timestamp_seg = Number(body.video_cidade_timestamp_seg);
     if (body.video_cidade_duracao_seg !== undefined) payload.video_cidade_duracao_seg = Number(body.video_cidade_duracao_seg);
+    if (body.tutorial_compra_ativo !== undefined) payload.tutorial_compra_ativo = !!body.tutorial_compra_ativo;
 
     const { data, error } = await supabase.from('funis').update(payload).eq('id', req.params.id).select().single();
     if (error) return fail(res, error.message);
