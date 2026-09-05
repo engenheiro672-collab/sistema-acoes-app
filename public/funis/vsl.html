@@ -566,7 +566,7 @@
             function normalizarSlugCidade(nome) {
                 return String(nome).toLowerCase()
                     .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // tira acento
-                    .replace(/[^a-z0-9\s]/g, '') // tira qualquer outro caractere especial
+                    .replace(/[^a-z0-9\s_]/g, '') // tira qualquer outro caractere especial — MAS mantém o "_" (que já pode vir assim da automação)
                     .trim().replace(/\s+/g, '_'); // espaço vira "_"
             }
             function iniciarVideoCidade(nomeCidade) {
