@@ -130,6 +130,7 @@
         #video-cidade-player { width: 100%; height: 100%; object-fit: cover; display: block; }
         .video-cidade-foto-interrupt { position: absolute; inset: 0; z-index: 2; transform: translateX(105%); transition: transform 0.5s cubic-bezier(0.22,0.9,0.3,1); }
         .video-cidade-foto-interrupt.visivel { transform: translateX(0); }
+        .video-cidade-foto-interrupt.saindo { transform: translateX(-105%); }
         .video-cidade-foto-interrupt img { width: 100%; height: 100%; object-fit: cover; display: block; }
         /* Menu dropdown */
         .menu-dropdown { position: absolute; right: 1rem; top: 100%; margin-top: 8px; background: #2a303c; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); min-width: 200px; z-index: 60; overflow: hidden; }
@@ -457,9 +458,23 @@
         // ou guardado na sessão caso a troca de página tenha sido feita via pré-carregamento).
         // Pra qualquer acesso sem esse dado, o banner simplesmente nunca aparece.
         (function () {
+            // ⚡ Guardado permanentemente no navegador (localStorage, não some ao atualizar a
+            // página nem fechar o site) — só mostra a pergunta + vídeo UMA VEZ pra cada pessoa,
+            // pra sempre. Da segunda vez em diante (mesmo voltando dias depois pra comprar), só
+            // aparece a foto normal + a mensagem de entrega grátis, sem pergunta nem vídeo de novo.
+            var CHAVE_CIDADE_PERMANENTE = 'vsl_cidade_permanente';
+            var CHAVE_JA_VIU_PERGUNTA = 'vsl_ja_viu_pergunta';
+
             var cidade = URL_PARAMS.get('cidade');
-            if (cidade) { try { sessionStorage.setItem('cidade_prevenda', cidade); } catch (e) {} }
+            if (cidade) {
+                try { sessionStorage.setItem('cidade_prevenda', cidade); } catch (e) {}
+                try { localStorage.setItem(CHAVE_CIDADE_PERMANENTE, cidade); } catch (e) {}
+            }
             if (!cidade) { try { cidade = sessionStorage.getItem('cidade_prevenda'); } catch (e) {} }
+            if (!cidade) { try { cidade = localStorage.getItem(CHAVE_CIDADE_PERMANENTE); } catch (e) {} }
+
+            var jaViuPergunta = false;
+            try { jaViuPergunta = localStorage.getItem(CHAVE_JA_VIU_PERGUNTA) === '1'; } catch (e) {}
 
             function atualizarBannerCidade(nomeCidade) {
                 var el = document.getElementById('banner-entrega-cidade');
@@ -473,6 +488,20 @@
             }
             var cidadeSegura = cidade ? atualizarBannerCidade(cidade) : '';
 
+            // ⚡ Pré-carrega o vídeo dessa cidade BEM cedo, assim que a página abre — bem antes da
+            // pergunta aparecer — pra já estar pronto de sobra na hora que a pessoa confirmar
+            // "sim", sem nenhuma travadinha esperando carregar. Só faz sentido pré-carregar se a
+            // pergunta ainda vai aparecer — se ela já viu antes, nem tenta.
+            var VIDEO_CIDADE_URL_PRELOAD = null;
+            if (cidade && !jaViuPergunta) {
+                setTimeout(function () {
+                    VIDEO_CIDADE_URL_PRELOAD = 'https://pub-24c086b94c1148e6a9b13e0aee453026.r2.dev/' + normalizarSlugCidade(cidade) + '.mp4';
+                    var playerPreload = document.getElementById('video-cidade-player');
+                    playerPreload.src = VIDEO_CIDADE_URL_PRELOAD;
+                    playerPreload.load();
+                }, 500);
+            }
+
             // ⚡ Link de cidade "direto no site" (sem página de prévenda separada) — pode vir de
             // duas formas: 1) já com ?pid= de uma prévenda já cadastrada (fluxo antigo), ou 2) só
             // com ?cidade=&estado= vindo direto da automação de anúncios — nesse segundo caso, o
@@ -482,13 +511,14 @@
             var pid = URL_PARAMS.get('pid');
             var estado = URL_PARAMS.get('estado');
             if (pid) { try { sessionStorage.setItem('prevenda_id_atual', pid); } catch (e) {} }
-            if (cidade) {
+            if (cidade && !jaViuPergunta) {
                 document.getElementById('txt-pergunta-cidade-direto').textContent = 'Você mora em ' + cidadeSegura.replace(/<[^>]*>/g, '') + '?';
                 setTimeout(function () {
                     document.getElementById('overlay-pergunta-cidade-direto').style.display = 'flex';
                 }, 1000);
                 function responderCidadeDireto(resposta) {
                     document.getElementById('overlay-pergunta-cidade-direto').style.display = 'none';
+                    try { localStorage.setItem(CHAVE_JA_VIU_PERGUNTA, '1'); } catch (e) {}
                     var corpo = pid
                         ? { prevenda_id: pid, resposta: resposta }
                         : { sorteio: SORTEIO_SLUG, cidade: cidade, estado: estado, resposta: resposta };
@@ -516,6 +546,7 @@
                     var novaCidade = (document.getElementById('input-cidade-direto-digitada').value || '').trim();
                     if (!novaCidade) return;
                     try { sessionStorage.setItem('cidade_prevenda', novaCidade); } catch (e) {}
+                    try { localStorage.setItem(CHAVE_CIDADE_PERMANENTE, novaCidade); } catch (e) {}
                     atualizarBannerCidade(novaCidade);
                     document.getElementById('overlay-digitar-cidade-direto').style.display = 'none';
                 });
@@ -531,21 +562,25 @@
             function iniciarVideoCidade(nomeCidade) {
                 var funil = (window.__DADOS_INICIAIS__ && window.__DADOS_INICIAIS__.funil) || {};
                 if (!funil.video_cidade_ativo || !nomeCidade) return;
-                var slug = normalizarSlugCidade(nomeCidade);
-                var urlVideo = 'https://pub-24c086b94c1148e6a9b13e0aee453026.r2.dev/' + slug + '.mp4';
-                // ⚡ Confere se o vídeo existe ANTES de mostrar — se essa cidade ainda não tiver
-                // vídeo gravado, simplesmente mantém as fotos normais, sem quebrar nada.
-                fetch(urlVideo, { method: 'HEAD' }).then(function (r) {
-                    if (!r.ok) return;
-                    mostrarVideoCidade(urlVideo, funil);
-                }).catch(function () {});
+                var urlVideo = VIDEO_CIDADE_URL_PRELOAD || ('https://pub-24c086b94c1148e6a9b13e0aee453026.r2.dev/' + normalizarSlugCidade(nomeCidade) + '.mp4');
+                mostrarVideoCidade(urlVideo, funil);
             }
             function mostrarVideoCidade(urlVideo, funil) {
                 var overlay = document.getElementById('video-cidade-overlay');
                 var player = document.getElementById('video-cidade-player');
-                player.src = urlVideo;
+                // ⚡ Se já veio pré-carregado (o caminho normal), o src já é esse mesmo — não
+                // define de novo, pra não reiniciar um carregamento que já estava em andamento.
+                if (player.getAttribute('src') !== urlVideo) player.src = urlVideo;
                 overlay.style.display = 'block';
                 player.muted = false;
+                player.currentTime = 0;
+
+                // ⚡ Se o vídeo não existir de verdade (ou der qualquer erro carregando), esconde
+                // o overlay de novo e mantém as fotos normais — sem travar nem quebrar a página.
+                player.addEventListener('error', function () {
+                    overlay.style.display = 'none';
+                }, { once: true });
+
                 var promessa = player.play();
                 if (promessa && promessa.catch) promessa.catch(function () { player.muted = true; player.play().catch(function () {}); });
 
@@ -567,11 +602,24 @@
             function mostrarFotoSobreVideo(duracaoSeg) {
                 var fotoOverlay = document.getElementById('video-cidade-foto-interrupt');
                 var imgs = document.querySelectorAll('#carrossel-track img');
-                var fotoUrl = imgs.length > 1 ? imgs[1].src : (imgs.length > 0 ? imgs[0].src : '');
+                var fotoUrl = imgs.length > 1 ? imgs[1].src : (imgs.length > 0 ? imgs[0].src : ''); // sempre a foto DOIS, não a capa
                 if (!fotoUrl) return;
                 document.getElementById('video-cidade-foto-img').src = fotoUrl;
                 fotoOverlay.classList.add('visivel');
-                setTimeout(function () { fotoOverlay.classList.remove('visivel'); }, duracaoSeg * 1000);
+                setTimeout(function () {
+                    // ⚡ Sai deslizando pro mesmo lado que entrou (continua o movimento, em vez de
+                    // voltar por onde veio) — só depois que a animação de saída termina é que
+                    // volta pra posição inicial (sem transição nenhuma, instantâneo), já pronta
+                    // pra uma próxima interrupção, se um dia tiver mais de uma.
+                    fotoOverlay.classList.remove('visivel');
+                    fotoOverlay.classList.add('saindo');
+                    setTimeout(function () {
+                        fotoOverlay.style.transition = 'none';
+                        fotoOverlay.classList.remove('saindo');
+                        void fotoOverlay.offsetWidth;
+                        fotoOverlay.style.transition = '';
+                    }, 550);
+                }, duracaoSeg * 1000);
             }
         })();
 

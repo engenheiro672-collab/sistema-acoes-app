@@ -1865,9 +1865,16 @@ app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, re
     if (!telefone) return fail(res, 'Telefone é obrigatório', 400);
     const { data: usuario } = await supabase.from('usuarios').select('id, nome_completo, email, cpf, endereco, cidade, prevenda_id, fbclid').eq('telefone', telefone).maybeSingle();
     if (!usuario) {
-      // ⚡ Telefone nunca visto antes = lead genuinamente novo (não confundir com "usuário
-      // recorrente conferindo o telefone de novo", que não é um lead novo).
-      registrarEventoLead({ telefone, sorteio_id, tipo_evento: 'lead', cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao, metadata: fbclidDaSessao ? { fbclid: fbclidDaSessao } : null });
+      // ⚡ Telefone nunca visto antes = lead genuinamente novo. Cria o cadastro JÁ AQUI (não
+      // espera a compra) — assim, mesmo quem só verifica o telefone e nunca chega a comprar
+      // fica salvo, com a cidade já grudada, pronto pra puxar numa lista depois (ex: disparo de
+      // WhatsApp por cidade). O nome ainda não é conhecido nesse momento — fica em branco até a
+      // pessoa preencher no formulário de compra, mais adiante.
+      const { data: novoUsuario, error: erroNovoUsuario } = await supabase.from('usuarios').insert({
+        telefone, cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao || null, fbclid: fbclidDaSessao || null
+      }).select('id').single();
+      if (erroNovoUsuario) console.error('[usuarios/verificar] erro ao pré-cadastrar lead', erroNovoUsuario.message);
+      registrarEventoLead({ usuario_id: novoUsuario?.id || null, telefone, sorteio_id, tipo_evento: 'lead', cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao, metadata: fbclidDaSessao ? { fbclid: fbclidDaSessao } : null });
       return ok(res, { existe: false, ja_comprou_este_sorteio: false, cidade: cidadeDaSessao || null });
     }
 
@@ -2459,6 +2466,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     } else {
       // Atualiza dados novos (ex: CPF/email/endereço/cidade) se o comprador já existia mas não tinha isso salvo ainda
       const atualizacao = {};
+      if (nome_completo && !usuario.nome_completo) atualizacao.nome_completo = nome_completo; // preenche o nome se o cadastro foi criado antes só com telefone (na verificação, sem nome ainda)
       if (email && !usuario.email) atualizacao.email = email;
       if (cpfLimpo && !usuario.cpf) atualizacao.cpf = cpfLimpo;
       if (endereco && !usuario.endereco) atualizacao.endereco = endereco;
