@@ -4307,14 +4307,45 @@ function verificarAssinaturaWebhookMP(req, dataId) {
   return { valido: calculada === v1 };
 }
 
+// ⚡ Estorna um pedido que já tinha sido processado (marcado como pago) — devolve as cotas pro
+// "estoque" de verdade (apaga da tabela, liberando aqueles números pra serem vendidos de novo) e
+// corrige o contador de cotas vendidas. Só mexe em cotas se o pedido realmente tinha alguma.
+async function estornarPedido(pedido, motivo) {
+  console.warn(`🔴 [Estorno] Pedido ${pedido.id} está sendo estornado (motivo: ${motivo}). Status anterior: ${pedido.status}.`);
+  await supabase.from('pedidos').update({ status: 'estornado', estornado_em: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pedido.id);
+
+  if (pedido.status === 'pago' && pedido.cotas_array && pedido.cotas_array.length > 0) {
+    const { error: erroExcluir } = await supabase.from('cotas').delete().eq('pedido_id', pedido.id);
+    if (erroExcluir) { console.error(`[Estorno] Erro ao apagar cotas do pedido ${pedido.id}`, erroExcluir.message); return; }
+    await supabase.rpc('decrementar_cotas_vendidas', { p_sorteio_id: pedido.sorteio_id, p_quantidade: pedido.cotas_array.length })
+      .then(({ error }) => { if (error) console.error('[Estorno] Erro ao decrementar cotas_vendidas', error.message); });
+    console.warn(`🔴 [Estorno] ${pedido.cotas_array.length} cota(s) do pedido ${pedido.id} foram removidas e liberadas pra venda de novo.`);
+  }
+}
+
 app.post('/api/webhook/pagamento', async (req, res) => {
   try {
     let payload = req.body;
     if (Buffer.isBuffer(payload)) {
       try { payload = JSON.parse(payload.toString('utf8')); } catch { payload = {}; }
     }
+    const tipoNotificacao = payload.type || payload.topic || '';
+
+    // ⚡ Chargeback (o comprador contestou a cobrança com o banco dele) — o Mercado Pago manda
+    // isso num formato PRÓPRIO, separado do aviso normal de pagamento (precisa estar habilitado
+    // em Configurações > Webhooks > evento "Chargebacks" no painel do Mercado Pago).
+    if (tipoNotificacao === 'chargebacks') {
+      const paymentIdDoChargeback = payload.data?.payment_id || null;
+      console.log(`📩 [Webhook MP] Chargeback recebido — paymentId associado: ${paymentIdDoChargeback}`);
+      if (!paymentIdDoChargeback) return res.json({ ok: true });
+      const { data: pedidoChargeback } = await supabase.from('pedidos').select('*').eq('gateway_payment_id', String(paymentIdDoChargeback)).maybeSingle();
+      if (!pedidoChargeback) { console.warn(`⚠️ [Webhook MP] Chargeback recebido mas nenhum pedido encontrado com paymentId ${paymentIdDoChargeback}`); return res.json({ ok: true }); }
+      await estornarPedido(pedidoChargeback, 'chargeback (contestação com o banco)');
+      return res.json({ ok: true });
+    }
+
     const paymentId = payload.id || payload.data?.id || payload['collection_id'] || null;
-    console.log(`📩 [Webhook MP] Recebido — type: ${payload.type || payload.topic || '?'}, paymentId: ${paymentId}`);
+    console.log(`📩 [Webhook MP] Recebido — type: ${tipoNotificacao || '?'}, paymentId: ${paymentId}`);
     if (!paymentId) return res.status(400).json({ error: 'no id found' });
 
     const { valido } = verificarAssinaturaWebhookMP(req, String(paymentId));
@@ -4330,6 +4361,28 @@ app.post('/api/webhook/pagamento', async (req, res) => {
 
     if (!pedido) {
       console.warn(`⚠️ [Webhook MP] Nenhum pedido encontrado com gateway_payment_id = "${paymentId}" — o pagamento pode ter chegado antes do pedido salvar esse ID, ou o ID não bate. Esse pagamento vai ser pego depois pela rede de segurança automática.`);
+      return res.json({ ok: true });
+    }
+
+    // ⚡ Confere o status REAL direto na API do Mercado Pago — antes, esse webhook marcava
+    // "pago" só por ter recebido qualquer aviso, sem checar se era mesmo aprovação. Isso não
+    // detectava estorno/chargeback/cancelamento chegando por esse mesmo tipo de notificação.
+    const cfgWebhook = await fetchConfigFromDB();
+    const tokenMP = ((MP_ACCESS_TOKEN_FIXO && MP_ACCESS_TOKEN_FIXO.length > 20) ? MP_ACCESS_TOKEN_FIXO : (cfgWebhook.MERCADOPAGO_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN) || '').trim();
+    let statusReal = 'approved'; // se não tiver token configurado pra checar, assume o comportamento antigo (compatibilidade)
+    if (tokenMP) {
+      try {
+        const respStatus = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, { headers: { Authorization: `Bearer ${tokenMP}` } });
+        if (respStatus.ok) { const infoStatus = await respStatus.json(); statusReal = infoStatus.status; }
+      } catch (errStatus) { console.error('[Webhook MP] Erro ao checar status real do pagamento', errStatus.message); }
+    }
+
+    if (['refunded', 'charged_back', 'cancelled'].includes(statusReal)) {
+      await estornarPedido(pedido, `status real "${statusReal}" segundo o Mercado Pago`);
+      return res.json({ ok: true });
+    }
+    if (statusReal !== 'approved') {
+      console.log(`ℹ️ [Webhook MP] Pedido ${pedido.id}: status real é "${statusReal}" (não é aprovação nem estorno) — não muda nada por enquanto.`);
       return res.json({ ok: true });
     }
 
