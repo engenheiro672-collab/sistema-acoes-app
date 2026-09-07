@@ -335,13 +335,16 @@ app.use((req, _res, next) => {
 // 🔒 Trava o subdomínio do painel (panthers.premiosderrets.com.br) pra só responder o que é
 // realmente do painel — nada de site público, nada de arquivo estático solto. Se alguém acessar
 // qualquer outro caminho por esse endereço (ex: /inicio, /sorteio/algo), recebe 404, como se
-// aquele caminho nem existisse ali. O painel não depende de nenhum arquivo local pra funcionar
-// (CSS/JS vêm de CDN externo, a logo vem do Supabase), então dá pra travar sem quebrar nada.
+// aquele caminho nem existisse ali.
+// ⚡ Duas exceções específicas precisaram ser abertas depois que a notificação push interna (do
+// admin) foi criada: o painel PRECISA conseguir carregar /sw.js e perguntar a chave pública de
+// push por esse mesmo subdomínio — sem isso, o navegador nunca consegue ativar a notificação
+// nesse aparelho (erro "Script .../sw.js load failed").
 app.use((req, res, next) => {
   const ehSubdominioDoPainel = (req.hostname || '').toLowerCase() === 'panthers.premiosderrets.com.br';
   if (!ehSubdominioDoPainel) return next();
 
-  const caminhosPermitidos = ['/', '/login', '/logout'];
+  const caminhosPermitidos = ['/', '/login', '/logout', '/sw.js', '/api/public/push/vapid-public-key'];
   const ehPermitido = caminhosPermitidos.includes(req.path) || req.path.startsWith('/api/admin');
   if (!ehPermitido) return res.status(404).send('Not found');
   return next();
@@ -4632,7 +4635,7 @@ async function enviarPushAdmin(tipoEvento, dados) {
     const { data: inscricoes } = await supabase.from('admin_push_inscricoes').select('*').eq('ativo', true);
     if (!inscricoes || inscricoes.length === 0) return;
 
-    const payload = JSON.stringify({ title: titulo, body: corpo, icon: icone, image: icone, url: '/dashboard.html' });
+    const payload = JSON.stringify({ title: titulo, body: corpo, icon: icone, image: icone, url: '/' });
     await Promise.all(inscricoes.map(async (insc) => {
       try {
         await webPush.sendNotification({ endpoint: insc.endpoint, keys: { p256dh: insc.chave_p256dh, auth: insc.chave_auth } }, payload);
