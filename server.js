@@ -3316,18 +3316,25 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
       if (end_date) q = q.lte('updated_at', end_date);
       return q;
     };
-    let qf = supabase.from('pedidos').select('valor_total, user_id').eq('status', 'pago');
+    let qf = supabase.from('pedidos').select('valor_total, user_id').eq('status', 'pago').limit(200000);
     qf = baseFilter(qf);
     const { data: paid } = await qf;
 
     const nowISOCards = new Date().toISOString();
-    let vp = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').gte('expira_em', nowISOCards);
+    let vp = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').gte('expira_em', nowISOCards).limit(200000);
     vp = baseFilter(vp);
     const { data: pend } = await vp;
 
-    let qt = supabase.from('pedidos').select('id').eq('status', 'pago');
+    let qt = supabase.from('pedidos').select('id').eq('status', 'pago').limit(200000);
     qt = baseFilter(qt);
     const { data: all } = await qt;
+
+    // ⚡ Pedidos expirados no período (quem não pagou a tempo) — pra saber quanto "ficou na mesa"
+    let qe = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').lt('expira_em', nowISOCards).limit(200000);
+    qe = baseFilter(qe);
+    const { data: expirados } = await qe;
+    const valor_expirado = (expirados || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
+    const total_expirados = (expirados || []).length;
 
     const faturamento = (paid || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const pendente = (pend || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
@@ -3341,7 +3348,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     if (end_date) qa = qa.lte('created_at', end_date);
     const { count: acessos } = await qa;
 
-    return ok(res, { faturamento, pendente, total_pedidos, total_clientes, ticket_medio, acessos: acessos || 0 });
+    return ok(res, { faturamento, pendente, total_pedidos, total_clientes, ticket_medio, acessos: acessos || 0, valor_expirado, total_expirados });
   } catch (err) { return fail(res); }
 });
 
@@ -3779,7 +3786,7 @@ app.get('/api/admin/pedidos', ensureAdminAuth, async (req, res) => {
   try {
     const { filter, start_date, end_date } = req.query;
     const nowISO = new Date().toISOString();
-    let q = supabase.from('pedidos').select('*, usuarios(nome_completo, telefone, cpf), sorteios(nome, slug), cotas(numero_cota), funis(nome, slug)');
+    let q = supabase.from('pedidos').select('*, usuarios(nome_completo, telefone, cpf), sorteios(nome, slug), cotas(numero_cota), funis(nome, slug)').limit(200000);
     if (filter === 'pagos') q = q.eq('status', 'pago');
     else if (filter === 'pendentes') q = q.eq('status', 'aguardando').gte('expira_em', nowISO);
     else if (filter === 'expirados') q = q.eq('status', 'aguardando').lt('expira_em', nowISO);
@@ -3819,7 +3826,7 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
   try {
     const from = req.query.from ? new Date(`${req.query.from}T00:00:00`) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const to = req.query.to ? new Date(`${req.query.to}T23:59:59`) : new Date();
-    const { data: paid } = await supabase.from('pedidos').select('updated_at, valor_total, user_id').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString());
+    const { data: paid } = await supabase.from('pedidos').select('updated_at, valor_total, user_id').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString()).limit(200000);
     const map = {};
     (paid || []).forEach(p => {
       const k = dataBrasil(p.updated_at);
@@ -3831,7 +3838,7 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
     const total_faturado = series.reduce((acc, r) => acc + r.faturamento, 0);
     const total_clientes = new Set((paid || []).map(p => p.user_id).filter(Boolean)).size;
 
-    const { data: despesas } = await supabase.from('despesas').select('*').gte('data', from.toISOString()).lte('data', to.toISOString());
+    const { data: despesas } = await supabase.from('despesas').select('*').gte('data', from.toISOString()).lte('data', to.toISOString()).limit(200000);
     const total_despesas = (despesas || []).reduce((s, d) => s + Number(d.valor || 0), 0);
     const lucro_liquido = total_faturado - total_despesas;
     const roi = total_despesas > 0 ? (lucro_liquido / total_despesas) * 100 : null;
@@ -3876,8 +3883,8 @@ app.delete('/api/admin/despesas/:id', ensureAdminAuth, async (req, res) => {
 });
 
 app.get('/api/admin/clientes', ensureAdminAuth, async (_req, res) => {
-  const { data: u } = await supabase.from('usuarios').select('*').order('created_at', { ascending: false }).limit(1000);
-  const { data: p } = await supabase.from('pedidos').select('user_id, valor_total, status, created_at, sorteio_id').eq('status', 'pago');
+  const { data: u } = await supabase.from('usuarios').select('*').order('created_at', { ascending: false }).limit(200000);
+  const { data: p } = await supabase.from('pedidos').select('user_id, valor_total, status, created_at, sorteio_id').eq('status', 'pago').limit(200000);
 
   // Descobre o sorteio "mais recente" (o último criado) pra saber se o cliente comprou nele (ativo no último sorteio)
   const { data: ultimoSorteio } = await supabase.from('sorteios').select('id').order('created_at', { ascending: false }).limit(1).maybeSingle();

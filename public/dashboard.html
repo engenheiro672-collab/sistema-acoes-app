@@ -291,6 +291,7 @@
             <div id="cards-metricas" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <div class="metric-card"><i class="bi bi-cash-coin metric-icon text-green-400"></i><p class="text-sm opacity-60">Faturamento</p><p class="text-2xl font-bold text-green-400" id="card-faturamento">R$ 0,00</p></div>
                 <div class="metric-card"><i class="bi bi-hourglass-split metric-icon text-yellow-400"></i><p class="text-sm opacity-60">Pendente</p><p class="text-2xl font-bold text-yellow-400" id="card-pendente">R$ 0,00</p></div>
+                <div class="metric-card"><i class="bi bi-x-octagon metric-icon text-red-400"></i><p class="text-sm opacity-60">Expirado <span id="card-expirado-qtd" class="opacity-60">(0)</span></p><p class="text-2xl font-bold text-red-400" id="card-expirado">R$ 0,00</p></div>
                 <div class="metric-card"><i class="bi bi-cart-check metric-icon text-blue-400"></i><p class="text-sm opacity-60">Pedidos</p><p class="text-2xl font-bold text-blue-400" id="card-pedidos">0</p></div>
                 <div class="metric-card"><i class="bi bi-people-fill metric-icon text-cyan-400"></i><p class="text-sm opacity-60">Total de Clientes</p><p class="text-2xl font-bold text-cyan-400" id="card-clientes">0</p></div>
                 <div class="metric-card"><i class="bi bi-graph-up-arrow metric-icon text-purple-400"></i><p class="text-sm opacity-60">Ticket Médio</p><p class="text-2xl font-bold text-purple-400" id="card-ticket">R$ 0,00</p></div>
@@ -966,8 +967,14 @@
                 <h2 class="text-2xl font-bold text-white">Pedidos</h2>
                 <div class="flex gap-2 items-center flex-wrap">
                     <input id="pedidos-busca" class="input-dark text-sm" style="width:220px" placeholder="Buscar por nome, telefone ou CPF...">
-                    <input type="date" id="pedidos-data-de" class="input-dark text-xs" style="width:140px">
-                    <input type="date" id="pedidos-data-ate" class="input-dark text-xs" style="width:140px">
+                    <div class="flex gap-1 bg-darkCard border border-gray-800 rounded-lg p-1">
+                        <button class="periodo-btn text-xs px-2 py-1 rounded" data-preset="hoje" onclick="aplicarPeriodoPresetPedidos('hoje', this)">Hoje</button>
+                        <button class="periodo-btn text-xs px-2 py-1 rounded" data-preset="7dias" onclick="aplicarPeriodoPresetPedidos('7dias', this)">7 dias</button>
+                        <button class="periodo-btn text-xs px-2 py-1 rounded" data-preset="30dias" onclick="aplicarPeriodoPresetPedidos('30dias', this)">30 dias</button>
+                        <button class="periodo-btn text-xs px-2 py-1 rounded" data-preset="mes" onclick="aplicarPeriodoPresetPedidos('mes', this)">Este mês</button>
+                    </div>
+                    <input type="date" id="pedidos-data-de" class="input-dark text-xs" style="width:140px" onchange="desmarcarPresetPedidos()">
+                    <input type="date" id="pedidos-data-ate" class="input-dark text-xs" style="width:140px" onchange="desmarcarPresetPedidos()">
                     <button class="btn-primary text-sm" onclick="carregarPedidos(PEDIDOS_FILTRO_ATUAL)"><i class="bi bi-funnel"></i> Filtrar</button>
                     <button class="bg-green-700 hover:bg-green-800 text-white text-sm px-4 py-2 rounded-lg" onclick="abrirModalCriarPedido()"><i class="bi bi-plus-circle"></i> Criar Novo Pedido</button>
                 </div>
@@ -1754,7 +1761,7 @@ function navTo(page, el) {
 
     if (page === 'dashboard') { carregarDashboard(); }
     if (page === 'sorteios') { carregarSorteios(); }
-    if (page === 'pedidos') { carregarPedidos('todos'); }
+    if (page === 'pedidos') { aplicarPeriodoPresetPedidos('hoje', document.querySelector('.page-section#page-pedidos .periodo-btn[data-preset="hoje"]')); }
     if (page === 'clientes') { carregarClientes(); }
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
@@ -1809,6 +1816,12 @@ function abrirCalendario(prefixo, btnEl) {
     renderCalendarioPopover(prefixo);
     $pop.removeClass('hidden');
 }
+// ⚡ Qualquer clique DENTRO do calendário (dia, preset, seta de mês) nunca deve "vazar" pro
+// clique de fechar-se-clicar-fora abaixo — sem isso, o calendário fechava sozinho a cada clique
+// certo dentro dele, sem deixar terminar de escolher o período. Precisa vir ANTES do outro
+// listener, e usar stopImmediatePropagation (não só stopPropagation), porque os dois estão
+// registrados no mesmo elemento (document) — só assim um realmente impede o outro de rodar.
+$(document).on('click', '.calendario-popover', function (e) { e.stopImmediatePropagation(); });
 $(document).on('click', function(e) {
     if (!$(e.target).closest('.date-range-wrapper').length) $('.calendario-popover').addClass('hidden');
 });
@@ -1894,6 +1907,8 @@ function carregarDashboard() {
     fetch(`/api/admin/dashboard/cards?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
         $('#card-faturamento').text(formatBR(d.faturamento));
         $('#card-pendente').text(formatBR(d.pendente));
+        $('#card-expirado').text(formatBR(d.valor_expirado || 0));
+        $('#card-expirado-qtd').text(`(${d.total_expirados || 0})`);
         $('#card-pedidos').text(d.total_pedidos);
         $('#card-ticket').text(formatBR(d.ticket_medio));
         $('#card-acessos').text(d.acessos || 0);
@@ -3783,6 +3798,24 @@ function salvarPedidoManual() {
     });
 }
 
+function aplicarPeriodoPresetPedidos(tipo, btn) {
+    $('#pedidos-status-tabs').data('preset-ativo', tipo); // não usado hoje, só documentando a intenção
+    $('.page-section#page-pedidos .periodo-btn[data-preset]').removeClass('active');
+    $(btn).addClass('active');
+    const hoje = new Date();
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    let de, ate = fmt(hoje);
+    if (tipo === 'hoje') { de = fmt(hoje); }
+    else if (tipo === '7dias') { const d = new Date(hoje); d.setDate(d.getDate() - 6); de = fmt(d); }
+    else if (tipo === '30dias') { const d = new Date(hoje); d.setDate(d.getDate() - 29); de = fmt(d); }
+    else if (tipo === 'mes') { de = fmt(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); }
+    $('#pedidos-data-de').val(de);
+    $('#pedidos-data-ate').val(ate);
+    carregarPedidos(PEDIDOS_FILTRO_ATUAL || 'todos');
+}
+function desmarcarPresetPedidos() {
+    $('.page-section#page-pedidos .periodo-btn[data-preset]').removeClass('active');
+}
 function carregarPedidos(filter) {
     PEDIDOS_FILTRO_ATUAL = filter;
     PEDIDOS_PAGINA = 1;
@@ -3863,11 +3896,23 @@ function renderPedidosPagina() {
 function renderPaginacaoPedidos() {
     const totalPaginas = Math.ceil(PEDIDOS_FILTRADOS.length / PEDIDOS_POR_PAGINA);
     if (totalPaginas <= 1) { $('#paginacao-pedidos').empty(); return; }
+    $('#paginacao-pedidos').html(gerarBotoesPaginacao(PEDIDOS_PAGINA, totalPaginas, 'PEDIDOS_PAGINA', 'renderPedidosPagina'));
+}
+// ⚡ Paginação "em janelas" — mostra só 5 números de página por vez, com setas pra andar entre os
+// grupos (ex: 1-5, depois 6-10...). Sem isso, sorteios com muitos pedidos criavam um botão pra
+// CADA página (às vezes centenas), empilhando tudo de forma ilegível.
+function gerarBotoesPaginacao(paginaAtual, totalPaginas, nomeVariavel, nomeFuncaoRender) {
+    const TAMANHO_JANELA = 5;
+    const janelaAtual = Math.ceil(paginaAtual / TAMANHO_JANELA);
+    const inicio = (janelaAtual - 1) * TAMANHO_JANELA + 1;
+    const fim = Math.min(inicio + TAMANHO_JANELA - 1, totalPaginas);
     let botoes = '';
-    for (let i = 1; i <= totalPaginas; i++) {
-        botoes += `<button class="px-3 py-1 rounded text-xs ${i === PEDIDOS_PAGINA ? 'btn-primary' : 'border border-gray-700 text-gray-300'}" onclick="PEDIDOS_PAGINA=${i}; renderPedidosPagina();">${i}</button>`;
+    if (inicio > 1) botoes += `<button class="px-3 py-1 rounded text-xs border border-gray-700 text-gray-300" onclick="${nomeVariavel}=${inicio - 1}; ${nomeFuncaoRender}();">‹ Anterior</button>`;
+    for (let i = inicio; i <= fim; i++) {
+        botoes += `<button class="px-3 py-1 rounded text-xs ${i === paginaAtual ? 'btn-primary' : 'border border-gray-700 text-gray-300'}" onclick="${nomeVariavel}=${i}; ${nomeFuncaoRender}();">${i}</button>`;
     }
-    $('#paginacao-pedidos').html(`<div class="flex gap-2 justify-center mt-4 flex-wrap">${botoes}</div>`);
+    if (fim < totalPaginas) botoes += `<button class="px-3 py-1 rounded text-xs border border-gray-700 text-gray-300" onclick="${nomeVariavel}=${fim + 1}; ${nomeFuncaoRender}();">Próximo ›</button>`;
+    return `<div class="flex gap-2 justify-center mt-4 flex-wrap items-center">${botoes}<span class="text-xs text-gray-500 ml-2">Página ${paginaAtual} de ${totalPaginas}</span></div>`;
 }
 
 let COTAS_MODAL_VISIVEIS = 5;
@@ -3974,11 +4019,7 @@ function renderClientesPagina() {
 function renderPaginacaoClientes() {
     const totalPaginas = Math.ceil(CLIENTES_FILTRADOS.length / CLIENTES_POR_PAGINA);
     if (totalPaginas <= 1) { $('#paginacao-clientes').empty(); return; }
-    let botoes = '';
-    for (let i = 1; i <= totalPaginas; i++) {
-        botoes += `<button class="px-3 py-1 rounded text-xs ${i === CLIENTES_PAGINA ? 'btn-primary' : 'border border-gray-700 text-gray-300'}" onclick="CLIENTES_PAGINA=${i}; renderClientesPagina();">${i}</button>`;
-    }
-    $('#paginacao-clientes').html(`<div class="flex gap-2 justify-center mt-4 flex-wrap">${botoes}</div>`);
+    $('#paginacao-clientes').html(gerarBotoesPaginacao(CLIENTES_PAGINA, totalPaginas, 'CLIENTES_PAGINA', 'renderClientesPagina'));
 }
 
 function carregarClientes() {
