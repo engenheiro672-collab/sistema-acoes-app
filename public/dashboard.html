@@ -704,6 +704,38 @@
                     <h4 class="font-semibold text-white mb-3">Últimos disparos</h4>
                     <div id="lista-push-disparos" class="space-y-2"></div>
                 </div>
+
+                <div class="border-t-2 border-yellow-700/50 pt-6 mt-2">
+                    <h3 class="text-lg font-bold text-yellow-400 mb-1">🔒 Notificações internas (só pra você, admin)</h3>
+                    <p class="text-xs text-gray-500 mb-4">Completamente separado do que está acima — isso aqui NUNCA é enviado pra comprador nenhum. É um aviso que só chega no(s) aparelho(s) em que VOCÊ ativar, avisando de venda aprovada ou reserva feita.</p>
+
+                    <div class="bg-darkCard border border-yellow-700/40 rounded-xl p-4 mb-4">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <p class="text-white font-semibold" id="push-admin-status-texto">Verificando status...</p>
+                                <p class="text-xs text-gray-500" id="push-admin-status-detalhe"></p>
+                            </div>
+                            <button type="button" class="btn-primary" onclick="ativarPushAdminNesteAparelho()"><i class="bi bi-bell"></i> Ativar neste aparelho</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
+                        <h4 class="font-semibold text-white mb-2">📝 Mensagem de "Reserva feita" (pedido criado, aguardando pagamento)</h4>
+                        <input id="push-admin-reserva-titulo" class="input-dark mb-2" placeholder="Título (ex: 📝 Nova reserva!)">
+                        <input id="push-admin-reserva-corpo" class="input-dark" placeholder="Corpo (ex: {cliente} reservou {quantidade} títulos — {valor})">
+                    </div>
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
+                        <h4 class="font-semibold text-white mb-2">💰 Mensagem de "Venda aprovada" (pagamento confirmado)</h4>
+                        <input id="push-admin-venda-titulo" class="input-dark mb-2" placeholder="Título (ex: 💰 Venda aprovada!)">
+                        <input id="push-admin-venda-corpo" class="input-dark" placeholder="Corpo (ex: {cliente} comprou {quantidade} títulos — {valor})">
+                    </div>
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
+                        <h4 class="font-semibold text-white mb-2">🖼️ Ícone/foto da notificação (opcional)</h4>
+                        <input id="push-admin-icone-url" class="input-dark" placeholder="URL de uma imagem (ex: sua logo)">
+                        <p class="text-xs text-gray-500 mt-1">Placeholders disponíveis nas mensagens acima: <code class="bg-black/30 px-1 rounded">{cliente}</code> <code class="bg-black/30 px-1 rounded">{valor}</code> <code class="bg-black/30 px-1 rounded">{quantidade}</code> <code class="bg-black/30 px-1 rounded">{sorteio}</code></p>
+                    </div>
+                    <button type="button" class="btn-primary w-full" onclick="salvarConfigPushAdmin()"><i class="bi bi-save"></i> Salvar mensagens</button>
+                </div>
             </div>
         </div>
 
@@ -3107,6 +3139,8 @@ function carregarPagePush() {
             </div>
         `).join('') || '<p class="opacity-60 text-sm">Nenhum disparo ainda.</p>');
     });
+    carregarStatusPushAdmin();
+    carregarConfigPushAdmin();
 }
 function salvarPushAtivo() {
     const ativo = $('#inp-push-ativo').is(':checked');
@@ -3130,6 +3164,69 @@ function dispararPush() {
             carregarPagePush();
         }).catch(err => notificar(err.error || 'Erro ao disparar notificação.', 'erro'));
     });
+}
+
+// ═══════════════ NOTIFICAÇÃO PUSH INTERNA (admin) — SEMPRE separada dos compradores ═══════════
+function urlBase64ParaUint8ArrayAdmin(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+async function ativarPushAdminNesteAparelho() {
+    try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            return notificar('Esse navegador não suporta notificações push.', 'erro');
+        }
+        const permissao = await Notification.requestPermission();
+        if (permissao !== 'granted') return notificar('Você precisa permitir as notificações pra ativar.', 'aviso');
+
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        const resp = await fetch('/api/public/push/vapid-public-key');
+        if (!resp.ok) throw new Error('Push não configurado no servidor');
+        const { publicKey } = await resp.json();
+
+        const subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ParaUint8ArrayAdmin(publicKey)
+        });
+
+        await api('POST', '/api/admin/push-admin/subscribe', { subscription });
+        notificar('Notificações internas ativadas neste aparelho! 🔔', 'sucesso');
+        carregarStatusPushAdmin();
+    } catch (e) {
+        console.error(e);
+        notificar('Erro ao ativar notificações: ' + (e.message || ''), 'erro');
+    }
+}
+function carregarStatusPushAdmin() {
+    api('GET', '/api/admin/push-admin/status').then(d => {
+        if (!d.configurado) {
+            $('#push-admin-status-texto').text('⚠️ Chaves VAPID não configuradas no servidor.');
+            $('#push-admin-status-detalhe').text('Rode scripts/gerar-chaves-push.js e configure as variáveis de ambiente.');
+            return;
+        }
+        $('#push-admin-status-texto').text(`${d.aparelhos_inscritos} aparelho(s) recebendo essas notificações agora.`);
+        $('#push-admin-status-detalhe').text('Clique em "Ativar neste aparelho" em cada celular/computador que deve receber os avisos.');
+    });
+}
+function carregarConfigPushAdmin() {
+    api('GET', '/api/admin/configuracoes').then(cfg => {
+        $('#push-admin-reserva-titulo').val(cfg.PUSH_ADMIN_RESERVA_TITULO || '📝 Nova reserva!');
+        $('#push-admin-reserva-corpo').val(cfg.PUSH_ADMIN_RESERVA_CORPO || '{cliente} reservou {quantidade} títulos — {valor}');
+        $('#push-admin-venda-titulo').val(cfg.PUSH_ADMIN_VENDA_TITULO || '💰 Venda aprovada!');
+        $('#push-admin-venda-corpo').val(cfg.PUSH_ADMIN_VENDA_CORPO || '{cliente} comprou {quantidade} títulos — {valor}');
+        $('#push-admin-icone-url').val(cfg.PUSH_ADMIN_ICONE_URL || '');
+    });
+}
+function salvarConfigPushAdmin() {
+    api('POST', '/api/admin/configuracoes', {
+        PUSH_ADMIN_RESERVA_TITULO: $('#push-admin-reserva-titulo').val(),
+        PUSH_ADMIN_RESERVA_CORPO: $('#push-admin-reserva-corpo').val(),
+        PUSH_ADMIN_VENDA_TITULO: $('#push-admin-venda-titulo').val(),
+        PUSH_ADMIN_VENDA_CORPO: $('#push-admin-venda-corpo').val(),
+        PUSH_ADMIN_ICONE_URL: $('#push-admin-icone-url').val()
+    }).then(() => notificar('Mensagens salvas!', 'sucesso')).catch(() => notificar('Erro ao salvar.', 'erro'));
 }
 
 // ---- FUNIS (nova funcionalidade) ----

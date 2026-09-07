@@ -2587,6 +2587,10 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       updated_at: new Date().toISOString()
     }).eq('id', pedido.id);
 
+    // ⚡ Notifica o admin (se tiver ativado) — roda em segundo plano, nunca atrasa a resposta pro
+    // comprador nem quebra a compra se der algum erro no envio.
+    enviarPushAdmin('reserva', { valor: valor_total, cliente: usuario.nome_completo || nome_completo || 'Cliente', quantidade, sorteio: sorteio.nome });
+
     return ok(res, {
       token,
       redirect: `/checkout/${token}`,
@@ -4402,6 +4406,18 @@ app.post('/api/webhook/pagamento', async (req, res) => {
       console.log(`ℹ️ [Webhook MP] Pedido ${pedido.id} já tinha cotas geradas — não gerou de novo (evita duplicar).`);
     }
 
+    // ⚡ Notifica o admin (se tiver ativado) — roda em segundo plano, sem atrasar a resposta pro
+    // Mercado Pago (que espera confirmação rápida).
+    (async () => {
+      try {
+        const [{ data: userInfo }, { data: sorteioInfo }] = await Promise.all([
+          supabase.from('usuarios').select('nome_completo').eq('id', pedido.user_id).maybeSingle(),
+          supabase.from('sorteios').select('nome').eq('id', pedido.sorteio_id).maybeSingle()
+        ]);
+        await enviarPushAdmin('venda', { valor: pedido.valor_total, quantidade: pedido.quantidade_cotas, cliente: userInfo?.nome_completo || 'Cliente', sorteio: sorteioInfo?.nome });
+      } catch (e) { console.error('[Webhook MP] erro ao notificar admin', e.message); }
+    })();
+
     return res.json({ ok: true });
   } catch (e) {
     console.error('webhook processing error', e);
@@ -4522,6 +4538,78 @@ app.post('/api/admin/push/disparar', ensureAdminAuth, async (req, res) => {
     return ok(res, { disparo_id: disparo.id, enviados, total_inscritos: (inscricoes || []).length });
   } catch (e) { console.error('push/disparar', e); return fail(res); }
 });
+
+// ═══════════════ NOTIFICAÇÃO PUSH PRO ADMIN (venda/reserva) — SEMPRE separada dos compradores ═══════════════
+// ⚡ Usa uma tabela PRÓPRIA (admin_push_inscricoes), nunca "push_inscricoes" (essa é dos
+// compradores). Isso garante, estruturalmente, que esses avisos internos nunca vão parar sendo
+// mandados pra um comprador por engano.
+app.post('/api/admin/push-admin/subscribe', ensureAdminAuth, async (req, res) => {
+  try {
+    const { subscription } = req.body || {};
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) return fail(res, 'Inscrição inválida', 400);
+    const { data: existente } = await supabase.from('admin_push_inscricoes').select('id').eq('endpoint', subscription.endpoint).maybeSingle();
+    if (existente) {
+      await supabase.from('admin_push_inscricoes').update({ ativo: true, desativado_em: null }).eq('id', existente.id);
+    } else {
+      await supabase.from('admin_push_inscricoes').insert({ endpoint: subscription.endpoint, chave_p256dh: subscription.keys.p256dh, chave_auth: subscription.keys.auth, ativo: true });
+    }
+    return ok(res);
+  } catch (e) { console.error('push-admin/subscribe', e); return fail(res); }
+});
+app.post('/api/admin/push-admin/unsubscribe', ensureAdminAuth, async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    if (!endpoint) return fail(res, 'Endpoint é obrigatório', 400);
+    await supabase.from('admin_push_inscricoes').update({ ativo: false, desativado_em: new Date().toISOString() }).eq('endpoint', endpoint);
+    return ok(res);
+  } catch (e) { return fail(res); }
+});
+app.get('/api/admin/push-admin/status', ensureAdminAuth, async (_req, res) => {
+  const { count } = await supabase.from('admin_push_inscricoes').select('*', { head: true, count: 'exact' }).eq('ativo', true);
+  return ok(res, { configurado: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY), aparelhos_inscritos: count || 0 });
+});
+
+// ⚡ Substitui {valor}, {cliente}, {quantidade}, {sorteio} pelos dados reais do evento, dentro do
+// texto que o admin configurou. Se algum placeholder não tiver dado disponível, vira "—".
+function preencherPlaceholdersPush(texto, dados) {
+  return String(texto || '')
+    .replace(/\{valor\}/g, dados.valor !== undefined ? formatarMoedaBR(dados.valor) : '—')
+    .replace(/\{cliente\}/g, dados.cliente || '—')
+    .replace(/\{quantidade\}/g, dados.quantidade !== undefined ? String(dados.quantidade) : '—')
+    .replace(/\{sorteio\}/g, dados.sorteio || '—');
+}
+function formatarMoedaBR(valor) {
+  return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// tipoEvento: 'venda' | 'reserva'
+async function enviarPushAdmin(tipoEvento, dados) {
+  try {
+    if (!configurarPush()) return; // sem chaves VAPID configuradas, não tem como enviar nada
+    const cfg = await fetchConfigFromDB();
+    const prefixo = tipoEvento === 'venda' ? 'PUSH_ADMIN_VENDA' : 'PUSH_ADMIN_RESERVA';
+    const tituloBruto = cfg[`${prefixo}_TITULO`] || (tipoEvento === 'venda' ? '💰 Nova venda aprovada!' : '📝 Nova reserva feita');
+    const corpoBruto = cfg[`${prefixo}_CORPO`] || 'Valor: {valor} — Cliente: {cliente}';
+    const icone = cfg['PUSH_ADMIN_ICONE_URL'] || undefined;
+
+    const titulo = preencherPlaceholdersPush(tituloBruto, dados);
+    const corpo = preencherPlaceholdersPush(corpoBruto, dados);
+
+    const { data: inscricoes } = await supabase.from('admin_push_inscricoes').select('*').eq('ativo', true);
+    if (!inscricoes || inscricoes.length === 0) return;
+
+    const payload = JSON.stringify({ title: titulo, body: corpo, icon: icone, image: icone, url: '/dashboard.html' });
+    await Promise.all(inscricoes.map(async (insc) => {
+      try {
+        await webPush.sendNotification({ endpoint: insc.endpoint, keys: { p256dh: insc.chave_p256dh, auth: insc.chave_auth } }, payload);
+      } catch (err) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await supabase.from('admin_push_inscricoes').update({ ativo: false, desativado_em: new Date().toISOString() }).eq('id', insc.id);
+        }
+      }
+    }));
+  } catch (e) { console.error('[enviarPushAdmin] erro', e.message); }
+}
 
 // Trata erros de upload (tipo de arquivo errado, arquivo grande demais) com uma mensagem clara,
 // em vez de estourar um erro genérico de servidor.
