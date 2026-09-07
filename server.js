@@ -519,6 +519,38 @@ function dataBrasil(isoOuData) {
   return comFusoBrasil.toISOString().slice(0, 10);
 }
 
+// ⚡ Os filtros de data do painel chegam como "AAAA-MM-DDTHH:mm:ss", sem fuso escrito — isso é
+// "meia-noite de Brasília" na cabeça de quem preencheu o filtro, mas se usarmos direto, o banco
+// (que guarda tudo em UTC) entende como meia-noite em UTC, que já é 21h do dia anterior aqui.
+// É exatamente esse descompasso que fazia parecer que compras de hoje à noite apareciam como
+// "amanhã" nos filtros (diferente do bug de EXIBIÇÃO que já corrigimos — esse aqui é no FILTRO).
+function comoInstanteBrasil(dataOuDataHora) {
+  if (!dataOuDataHora) return null;
+  const temHora = String(dataOuDataHora).includes('T');
+  const base = temHora ? dataOuDataHora : `${dataOuDataHora}T00:00:00`;
+  const d = new Date(`${base}-03:00`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+// ⚡ Busca TODAS as linhas de uma consulta, em lotes — sem isso, o Supabase (por configuração do
+// próprio projeto, não só por causa do nosso código) pode limitar qualquer resposta a um teto
+// fixo de linhas, mesmo pedindo um .limit() bem mais alto no código. Rodando em lotes com
+// .range(), a busca continua pedindo o próximo pedaço até não sobrar mais nada, então nunca perde
+// dado nenhum, não importa quantos milhares de pedidos existam.
+async function buscarTodasLinhas(construirQuery, tamanhoLote = 1000) {
+  let todasLinhas = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await construirQuery().range(offset, offset + tamanhoLote - 1);
+    if (error) { console.error('[buscarTodasLinhas] erro', error.message); break; }
+    if (!data || data.length === 0) break;
+    todasLinhas = todasLinhas.concat(data);
+    if (data.length < tamanhoLote) break; // chegou no fim — o último lote veio incompleto
+    offset += tamanhoLote;
+  }
+  return todasLinhas;
+}
+
 function registrarEventoLead({ usuario_id = null, telefone = null, sorteio_id = null, pedido_id = null, tipo_evento, valor = null, cidade = null, prevenda_id = null, metadata = null }) {
   if (!tipo_evento) return;
   supabase.from('eventos_lead').insert({
@@ -3314,29 +3346,23 @@ app.get('/api/admin/notificacoes/recentes', ensureAdminAuth, async (req, res) =>
 app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
   try {
     const { sorteio_id, start_date, end_date } = req.query;
+    const inicioBrasil = comoInstanteBrasil(start_date);
+    const fimBrasil = comoInstanteBrasil(end_date);
     const baseFilter = (q) => {
       if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
-      if (start_date) q = q.gte('updated_at', start_date);
-      if (end_date) q = q.lte('updated_at', end_date);
+      if (inicioBrasil) q = q.gte('updated_at', inicioBrasil);
+      if (fimBrasil) q = q.lte('updated_at', fimBrasil);
       return q;
     };
-    let qf = supabase.from('pedidos').select('valor_total, user_id').eq('status', 'pago').limit(200000);
-    qf = baseFilter(qf);
-    const { data: paid } = await qf;
+    const paid = await buscarTodasLinhas(() => baseFilter(supabase.from('pedidos').select('valor_total, user_id').eq('status', 'pago')));
 
     const nowISOCards = new Date().toISOString();
-    let vp = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').gte('expira_em', nowISOCards).limit(200000);
-    vp = baseFilter(vp);
-    const { data: pend } = await vp;
+    const pend = await buscarTodasLinhas(() => baseFilter(supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').gte('expira_em', nowISOCards)));
 
-    let qt = supabase.from('pedidos').select('id').eq('status', 'pago').limit(200000);
-    qt = baseFilter(qt);
-    const { data: all } = await qt;
+    const all = await buscarTodasLinhas(() => baseFilter(supabase.from('pedidos').select('id').eq('status', 'pago')));
 
     // ⚡ Pedidos expirados no período (quem não pagou a tempo) — pra saber quanto "ficou na mesa"
-    let qe = supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').lt('expira_em', nowISOCards).limit(200000);
-    qe = baseFilter(qe);
-    const { data: expirados } = await qe;
+    const expirados = await buscarTodasLinhas(() => baseFilter(supabase.from('pedidos').select('valor_total').eq('status', 'aguardando').lt('expira_em', nowISOCards)));
     const valor_expirado = (expirados || []).reduce((s, p) => s + Number(p.valor_total || 0), 0);
     const total_expirados = (expirados || []).length;
 
@@ -3346,13 +3372,7 @@ app.get('/api/admin/dashboard/cards', ensureAdminAuth, async (req, res) => {
     const total_clientes = new Set((paid || []).map(p => p.user_id).filter(Boolean)).size;
     const ticket_medio = total_clientes > 0 ? (faturamento / total_clientes) : 0;
 
-    let qa = supabase.from('acessos_log').select('*', { head: true, count: 'exact' });
-    if (sorteio_id && sorteio_id !== 'todos') qa = qa.eq('sorteio_id', sorteio_id);
-    if (start_date) qa = qa.gte('created_at', start_date);
-    if (end_date) qa = qa.lte('created_at', end_date);
-    const { count: acessos } = await qa;
-
-    return ok(res, { faturamento, pendente, total_pedidos, total_clientes, ticket_medio, acessos: acessos || 0, valor_expirado, total_expirados });
+    return ok(res, { faturamento, pendente, total_pedidos, total_clientes, ticket_medio, valor_expirado, total_expirados });
   } catch (err) { return fail(res); }
 });
 
@@ -3391,11 +3411,13 @@ app.get('/api/admin/dashboard/por-sorteio', ensureAdminAuth, async (req, res) =>
 app.get('/api/admin/dashboard/vendas-diarias', ensureAdminAuth, async (req, res) => {
   try {
     const { start_date, end_date, sorteio_id } = req.query;
-    const from = start_date ? new Date(start_date) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const to = end_date ? new Date(end_date) : new Date();
-    let q = supabase.from('pedidos').select('updated_at, valor_total').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString());
-    if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
-    const { data: paid } = await q;
+    const fromISO = comoInstanteBrasil(start_date) || (() => { const h = new Date(); return comoInstanteBrasil(`${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-01`); })();
+    const toISO = comoInstanteBrasil(end_date) || new Date().toISOString();
+    const paid = await buscarTodasLinhas(() => {
+      let q = supabase.from('pedidos').select('updated_at, valor_total').eq('status', 'pago').gte('updated_at', fromISO).lte('updated_at', toISO);
+      if (sorteio_id && sorteio_id !== 'todos') q = q.eq('sorteio_id', sorteio_id);
+      return q;
+    });
     const map = {};
     (paid || []).forEach(p => {
       const k = dataBrasil(p.updated_at);
@@ -3790,13 +3812,17 @@ app.get('/api/admin/pedidos', ensureAdminAuth, async (req, res) => {
   try {
     const { filter, start_date, end_date } = req.query;
     const nowISO = new Date().toISOString();
-    let q = supabase.from('pedidos').select('*, usuarios(nome_completo, telefone, cpf), sorteios(nome, slug), cotas(numero_cota), funis(nome, slug)').limit(200000);
-    if (filter === 'pagos') q = q.eq('status', 'pago');
-    else if (filter === 'pendentes') q = q.eq('status', 'aguardando').gte('expira_em', nowISO);
-    else if (filter === 'expirados') q = q.eq('status', 'aguardando').lt('expira_em', nowISO);
-    if (start_date) q = q.gte('created_at', start_date);
-    if (end_date) q = q.lte('created_at', end_date);
-    const { data } = await q.order('created_at', { ascending: false });
+    const inicioBrasil = comoInstanteBrasil(start_date);
+    const fimBrasil = comoInstanteBrasil(end_date);
+    const data = await buscarTodasLinhas(() => {
+      let q = supabase.from('pedidos').select('*, usuarios(nome_completo, telefone, cpf), sorteios(nome, slug), cotas(numero_cota), funis(nome, slug)').order('created_at', { ascending: false });
+      if (filter === 'pagos') q = q.eq('status', 'pago');
+      else if (filter === 'pendentes') q = q.eq('status', 'aguardando').gte('expira_em', nowISO);
+      else if (filter === 'expirados') q = q.eq('status', 'aguardando').lt('expira_em', nowISO);
+      if (inicioBrasil) q = q.gte('created_at', inicioBrasil);
+      if (fimBrasil) q = q.lte('created_at', fimBrasil);
+      return q;
+    });
     return res.json(data || []);
   } catch { return fail(res); }
 });
@@ -3828,9 +3854,17 @@ app.delete('/api/admin/pedidos/:id', ensureAdminAuth, async (req, res) => {
 
 app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
   try {
-    const from = req.query.from ? new Date(`${req.query.from}T00:00:00`) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const to = req.query.to ? new Date(`${req.query.to}T23:59:59`) : new Date();
-    const { data: paid } = await supabase.from('pedidos').select('updated_at, valor_total, user_id').eq('status', 'pago').gte('updated_at', from.toISOString()).lte('updated_at', to.toISOString()).limit(200000);
+    let fromISO, toISO;
+    if (req.query.from) {
+      fromISO = comoInstanteBrasil(req.query.from);
+    } else {
+      const hoje = new Date();
+      const primeiroDiaMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
+      fromISO = comoInstanteBrasil(primeiroDiaMes);
+    }
+    toISO = req.query.to ? comoInstanteBrasil(`${req.query.to}T23:59:59`) : new Date().toISOString();
+
+    const paid = await buscarTodasLinhas(() => supabase.from('pedidos').select('updated_at, valor_total, user_id').eq('status', 'pago').gte('updated_at', fromISO).lte('updated_at', toISO));
     const map = {};
     (paid || []).forEach(p => {
       const k = dataBrasil(p.updated_at);
@@ -3842,7 +3876,7 @@ app.get('/api/admin/relatorios', ensureAdminAuth, async (req, res) => {
     const total_faturado = series.reduce((acc, r) => acc + r.faturamento, 0);
     const total_clientes = new Set((paid || []).map(p => p.user_id).filter(Boolean)).size;
 
-    const { data: despesas } = await supabase.from('despesas').select('*').gte('data', from.toISOString()).lte('data', to.toISOString()).limit(200000);
+    const despesas = await buscarTodasLinhas(() => supabase.from('despesas').select('*').gte('data', fromISO).lte('data', toISO));
     const total_despesas = (despesas || []).reduce((s, d) => s + Number(d.valor || 0), 0);
     const lucro_liquido = total_faturado - total_despesas;
     const roi = total_despesas > 0 ? (lucro_liquido / total_despesas) * 100 : null;
@@ -3887,8 +3921,8 @@ app.delete('/api/admin/despesas/:id', ensureAdminAuth, async (req, res) => {
 });
 
 app.get('/api/admin/clientes', ensureAdminAuth, async (_req, res) => {
-  const { data: u } = await supabase.from('usuarios').select('*').order('created_at', { ascending: false }).limit(200000);
-  const { data: p } = await supabase.from('pedidos').select('user_id, valor_total, status, created_at, sorteio_id').eq('status', 'pago').limit(200000);
+  const u = await buscarTodasLinhas(() => supabase.from('usuarios').select('*').order('created_at', { ascending: false }));
+  const p = await buscarTodasLinhas(() => supabase.from('pedidos').select('user_id, valor_total, status, created_at, sorteio_id').eq('status', 'pago'));
 
   // Descobre o sorteio "mais recente" (o último criado) pra saber se o cliente comprou nele (ativo no último sorteio)
   const { data: ultimoSorteio } = await supabase.from('sorteios').select('id').order('created_at', { ascending: false }).limit(1).maybeSingle();

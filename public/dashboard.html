@@ -295,7 +295,6 @@
                 <div class="metric-card"><i class="bi bi-cart-check metric-icon text-blue-400"></i><p class="text-sm opacity-60">Pedidos</p><p class="text-2xl font-bold text-blue-400" id="card-pedidos">0</p></div>
                 <div class="metric-card"><i class="bi bi-people-fill metric-icon text-cyan-400"></i><p class="text-sm opacity-60">Total de Clientes</p><p class="text-2xl font-bold text-cyan-400" id="card-clientes">0</p></div>
                 <div class="metric-card"><i class="bi bi-graph-up-arrow metric-icon text-purple-400"></i><p class="text-sm opacity-60">Ticket Médio</p><p class="text-2xl font-bold text-purple-400" id="card-ticket">R$ 0,00</p></div>
-                <div class="metric-card"><i class="bi bi-cursor metric-icon text-pink-400"></i><p class="text-sm opacity-60">Acessos</p><p class="text-2xl font-bold text-pink-400" id="card-acessos">0</p></div>
             </div>
 
             <div class="bg-darkCard p-4 rounded-xl border border-gray-800 mb-8">
@@ -1943,7 +1942,6 @@ function carregarDashboard() {
         $('#card-expirado-qtd').text(`(${d.total_expirados || 0})`);
         $('#card-pedidos').text(d.total_pedidos);
         $('#card-ticket').text(formatBR(d.ticket_medio));
-        $('#card-acessos').text(d.acessos || 0);
         $('#card-clientes').text(d.total_clientes || 0);
     });
     fetch(`/api/admin/dashboard/vendas-diarias?1=1${qs}`, { credentials: 'include' }).then(r => r.json()).then(d => {
