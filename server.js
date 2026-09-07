@@ -895,7 +895,14 @@ async function getInicioPublicData() {
     getPublicMeta()
   ]);
   const pixels = { facebook_pixel_id: meta.pixel_id, facebook_pixel_ids_extras: meta.pixel_ids_extras || [], google_ads_id: meta.pixel_google, tiktok_pixel_id: meta.pixel_tiktok, gtm_id: meta.pixel_gtm };
-  return { sorteios: sorteios || [], ganhadores: ganhadores || [], ...meta, pixels };
+  const sorteioDestaque = (sorteios && sorteios[0]) || null; // já vem ordenado com o destaque (is_featured) primeiro
+  return {
+    sorteios: sorteios || [], ganhadores: ganhadores || [], ...meta,
+    // ⚡ Como a página inicial lista vários sorteios (não um só), o ícone do cabeçalho é o do
+    // sorteio em destaque — nunca a logo do painel admin.
+    logo_url: sorteioDestaque?.icone_tela_inicio_url || sorteioDestaque?.foto_url || meta.logo_url,
+    pixels
+  };
 }
 
 app.get('/', (_req, res) => res.redirect('/inicio'));
@@ -1684,7 +1691,12 @@ async function getSorteioPublicData(slug, funilSlug) {
   const aviso_urgencia_ativo = (avisosTodos || []).find(a => a.data_inicio <= nowISO2 && a.data_fim >= nowISO2) || null;
 
   return {
-    sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta, pixels, chance_dobro_ativa, aviso_urgencia_ativo, promocoes: promocoesAtivas || [],
+    sorteio, bilhetes_premiados: bilhetesComNome, roleta_tiers: roleta_tiers || [], roleta_resultados, cotas_vendidas: vendidas || 0, restantes, funil, ...meta,
+    // ⚡ Nas páginas de UM sorteio específico, o logo do cabeçalho é o ícone próprio DESSE
+    // sorteio (o mesmo configurado como "ícone de tela de início" na aba Fotos) — nunca a logo
+    // geral do painel admin, que fica reservada só pro painel, sem aparecer pro comprador.
+    logo_url: sorteio.icone_tela_inicio_url || sorteio.foto_url || meta.logo_url,
+    pixels, chance_dobro_ativa, aviso_urgencia_ativo, promocoes: promocoesAtivas || [],
     // ⚡ Roleta de desconto (teste) — só o essencial pro navegador desenhar a roleta e animar o
     // giro; o "sempre_cai_em" pode ser visto pelo navegador sem problema (é só o resultado visual),
     // o que garante segurança de verdade é o código único gerado no momento do giro, não isso aqui.
@@ -1747,7 +1759,13 @@ async function getCheckoutPublicData(token) {
   const modo_teste_pagamento = cfg.MODO_TESTE_PAGAMENTO === 'true' || cfg.MODO_TESTE_PAGAMENTO === 'on';
   const roleta_tiers = roletaTiersData || [];
 
-  return { pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta, pixels, modo_teste_pagamento, roleta_tiers };
+  return {
+    pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta,
+    // ⚡ Mesma regra da página do sorteio — o ícone do checkout é o do sorteio específico dessa
+    // compra, nunca a logo geral do painel admin.
+    logo_url: sorteioDoPedido.icone_tela_inicio_url || sorteioDoPedido.foto_url || meta.logo_url,
+    pixels, modo_teste_pagamento, roleta_tiers
+  };
 }
 
 app.get('/api/public/checkout/:token', async (req, res) => {

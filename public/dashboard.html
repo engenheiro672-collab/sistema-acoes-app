@@ -709,6 +709,15 @@
                     <h3 class="text-lg font-bold text-yellow-400 mb-1">🔒 Notificações internas (só pra você, admin)</h3>
                     <p class="text-xs text-gray-500 mb-4">Completamente separado do que está acima — isso aqui NUNCA é enviado pra comprador nenhum. É um aviso que só chega no(s) aparelho(s) em que VOCÊ ativar, avisando de venda aprovada ou reserva feita.</p>
 
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-4">
+                        <h4 class="font-semibold text-white mb-1">🖼️ Logo do app admin</h4>
+                        <p class="text-xs text-gray-500 mb-3">É essa imagem que vira o ícone quando você adiciona o painel à tela de início do celular — e, no iPhone, é ela também que aparece do lado de toda notificação (o iOS não permite uma foto diferente só pra notificação).</p>
+                        <div class="flex items-center gap-3">
+                            <div id="logo-preview-notif" class="w-14 h-14 rounded-lg border border-gray-700 bg-cover bg-center flex-shrink-0"></div>
+                            <input type="file" id="input-logo-notif" accept="image/*" class="input-dark" onchange="uploadLogo(this)">
+                        </div>
+                    </div>
+
                     <div class="bg-darkCard border border-yellow-700/40 rounded-xl p-4 mb-4">
                         <div class="flex items-center justify-between flex-wrap gap-3">
                             <div>
@@ -3250,6 +3259,7 @@ function carregarStatusPushAdmin() {
 }
 function carregarConfigPushAdmin() {
     api('GET', '/api/admin/configuracoes').then(cfg => {
+        if (cfg.LOGO_URL) $('#logo-preview-notif').css('background-image', `url(${cfg.LOGO_URL})`);
         $('#push-admin-reserva-ativo').prop('checked', cfg.PUSH_ADMIN_RESERVA_ATIVO !== 'false');
         $('#push-admin-reserva-titulo').val(cfg.PUSH_ADMIN_RESERVA_TITULO || '📝 Nova reserva!');
         $('#push-admin-reserva-corpo').val(cfg.PUSH_ADMIN_RESERVA_CORPO || '{cliente} reservou {quantidade} títulos — {valor}');
@@ -4723,7 +4733,13 @@ function uploadLogo(input) {
     if (!input.files || !input.files[0]) return;
     const fd = new FormData(); fd.append('logo', input.files[0]);
     fetch('/api/admin/upload-logo', { method: 'POST', body: fd, credentials: 'include' })
-        .then(r => r.json()).then(d => { if (d.url) $('#logo-preview').css('background-image', `url(${d.url})`); });
+        .then(r => r.json()).then(d => {
+            if (d.url) {
+                $('#logo-preview').css('background-image', `url(${d.url})`);
+                $('#logo-preview-notif').css('background-image', `url(${d.url})`);
+                notificar('Logo atualizada!', 'sucesso');
+            }
+        });
 }
 
 // ---------------- INIT ----------------
