@@ -3578,6 +3578,24 @@ app.post('/api/admin/upload-icone-push-admin', ensureAdminAuth, upload.single('i
   } catch (e) { return fail(res); }
 });
 
+// ⚡ Ícone de "Adicionar à Tela de Início" do COMPRADOR, específico por sorteio — quadrado, feito
+// sob medida (diferente da foto principal do sorteio, que pode ser retangular).
+app.post('/api/admin/sorteios/:id/upload-icone-tela-inicio', ensureAdminAuth, upload.single('icone'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return fail(res, 'Arquivo não enviado', 400);
+    const { buffer: bufferComprimido, mimetype: mimeComprimido, extensao } = await comprimirImagem(file.buffer, file.mimetype, 512);
+    const dest = `icones-sorteio/${req.params.id}-${Date.now()}.${extensao || 'png'}`;
+    const { error } = await supabase.storage.from('logos').upload(dest, bufferComprimido, { contentType: mimeComprimido, upsert: true });
+    if (error) return fail(res, error.message);
+    const { data: pub } = supabase.storage.from('logos').getPublicUrl(dest);
+    const publicURL = pub?.publicUrl;
+
+    await supabase.from('sorteios').update({ icone_tela_inicio_url: publicURL }).eq('id', req.params.id);
+    return ok(res, { url: publicURL });
+  } catch (e) { return fail(res); }
+});
+
 app.post('/api/admin/conta', ensureAdminAuth, async (req, res) => {
   try {
     const { email, new_password, confirm_password } = req.body || {};

@@ -736,12 +736,13 @@
                         <input id="push-admin-venda-corpo" class="input-dark" placeholder="Corpo (ex: {cliente} comprou {quantidade} títulos — {valor})">
                     </div>
                     <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
-                        <h4 class="font-semibold text-white mb-2">🖼️ Ícone/foto da notificação (opcional)</h4>
+                        <h4 class="font-semibold text-white mb-2">🖼️ Ícone/foto da notificação (só funciona no Android)</h4>
                         <div class="flex items-center gap-3">
                             <img id="preview-icone-push-admin" src="" class="hidden" style="width:48px; height:48px; border-radius:8px; object-fit:cover;">
                             <input type="file" id="input-icone-push-admin" accept="image/*" class="input-dark" onchange="uploadIconePushAdmin(this)">
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">Qualquer tamanho serve — o ideal é uma imagem quadrada (o navegador ajusta sozinho). Placeholders disponíveis nas mensagens acima: <code class="bg-black/30 px-1 rounded">{cliente}</code> <code class="bg-black/30 px-1 rounded">{valor}</code> <code class="bg-black/30 px-1 rounded">{quantidade}</code> <code class="bg-black/30 px-1 rounded">{sorteio}</code></p>
+                        <p class="text-xs text-yellow-400 mt-2">⚠️ No iPhone, essa foto é ignorada — o iOS sempre usa a "Logo do painel" (que fica na aba Conta) como ícone de toda notificação, sem exceção. Isso aqui só faz diferença pra quem receber num Android.</p>
+                        <p class="text-xs text-gray-500 mt-1">Qualquer tamanho serve — o ideal é uma imagem quadrada (o navegador ajusta sozinho). Placeholders disponíveis nas mensagens acima: <code class="bg-black/30 px-1 rounded">{cliente}</code> <code class="bg-black/30 px-1 rounded">{valor}</code> <code class="bg-black/30 px-1 rounded">{quantidade}</code> <code class="bg-black/30 px-1 rounded">{sorteio}</code></p>
                     </div>
                     <button type="button" class="btn-primary w-full" onclick="salvarConfigPushAdmin()"><i class="bi bi-save"></i> Salvar mensagens</button>
                 </div>
@@ -969,6 +970,15 @@
                     <input id="foto-input" name="foto_principal" type="file" class="hidden" accept="image/*" multiple onchange="adicionarNovasFotos(this)">
                     <input type="hidden" name="foto_url" id="inp-foto-url-atual">
                     <input type="hidden" name="fotos_galeria" id="inp-fotos-galeria-atual">
+
+                    <div class="border-t border-gray-800 pt-3 mt-2">
+                        <label class="text-sm text-gray-400">🏠 Ícone de "Adicionar à Tela de Início" pro comprador <span class="text-gray-600">(opcional — se não enviar, usa a foto principal acima)</span></label>
+                        <p class="text-xs text-gray-500 mb-2">Use uma imagem quadrada aqui — a foto principal costuma ser retangular e não fica boa cortada em ícone.</p>
+                        <div class="flex items-center gap-3">
+                            <img id="preview-icone-tela-inicio-sorteio" src="" class="hidden" style="width:56px; height:56px; border-radius:12px; object-fit:cover; border:1px solid #374151;">
+                            <input type="file" id="input-icone-tela-inicio-sorteio" accept="image/*" class="input-dark" onchange="uploadIconeTelaInicioSorteio(this)">
+                        </div>
+                    </div>
                 </div>
 
                 <div id="tab-config" class="tab-content space-y-6">
@@ -1540,6 +1550,8 @@
                 </form>
             </div>
             <div class="bg-darkCard p-6 rounded-xl border border-gray-800 max-w-md text-center">
+                <h4 class="font-semibold text-white mb-1">🖼️ Logo / Ícone do painel</h4>
+                <p class="text-xs text-gray-500 mb-3">Essa é a imagem que aparece quando você adiciona o painel à tela de início do seu celular — no iPhone, é também a mesma imagem que aparece do lado de QUALQUER notificação que o painel te mandar (não dá pra ter uma foto diferente só pra notificação, o iOS sempre usa essa aqui).</p>
                 <div id="logo-preview" class="w-32 h-32 rounded-full border-2 border-dashed border-gray-600 mx-auto flex items-center justify-center cursor-pointer mb-4 bg-cover bg-center" onclick="document.getElementById('input-logo').click()"><span class="text-xs text-gray-500">Alterar logo</span></div>
                 <input type="file" id="input-logo" class="hidden" accept="image/*" onchange="uploadLogo(this)">
 
@@ -2240,11 +2252,28 @@ function excluirSorteio(id) {
     });
 }
 
+function uploadIconeTelaInicioSorteio(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!SORTEIO_ATUAL_ID) { notificar('Salve o sorteio primeiro (aba Geral) antes de enviar esse ícone.', 'aviso'); input.value = ''; return; }
+    const fd = new FormData();
+    fd.append('icone', file);
+    fetch(`/api/admin/sorteios/${SORTEIO_ATUAL_ID}/upload-icone-tela-inicio`, { method: 'POST', credentials: 'include', body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.url) {
+                $('#preview-icone-tela-inicio-sorteio').attr('src', d.url).removeClass('hidden');
+                notificar('Ícone salvo!', 'sucesso');
+            } else {
+                notificar(d.error || 'Erro ao enviar imagem.', 'erro');
+            }
+        }).catch(() => notificar('Erro ao enviar imagem.', 'erro'));
+}
 function limparFormSorteio() {
     $('#form-criar-sorteio')[0].reset();
     $('#input-sorteio-id').val('');
     IMAGENS_SORTEIO = [];
     renderGridImagens();
+    $('#preview-icone-tela-inicio-sorteio').addClass('hidden').attr('src', '');
     setMascaraMoedaValor(0);
     setTotalCotasValor('1000000');
     setBotoesRapidos('');
@@ -2299,6 +2328,7 @@ function abrirFormSorteio(id) {
         $('#inp-pixel-tiktok').val(s.pixel_tiktok_override);
         $('#inp-pixel-gtm').val(s.pixel_gtm_override);
         IMAGENS_SORTEIO = [s.foto_url, ...(s.fotos_galeria || [])].filter(Boolean).map(url => ({ url, isNova: false }));
+        if (s.icone_tela_inicio_url) { $('#preview-icone-tela-inicio-sorteio').attr('src', s.icone_tela_inicio_url).removeClass('hidden'); } else { $('#preview-icone-tela-inicio-sorteio').addClass('hidden'); }
         renderGridImagens();
     });
 }
