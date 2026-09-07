@@ -980,6 +980,14 @@
         function renderPagina(data) {
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
+            // ⚡ Ícone de "Adicionar à Tela de Início" pro COMPRADOR — usa a foto do próprio
+            // sorteio, diferente da logo/ícone do painel administrativo (que é outra imagem,
+            // configurada separadamente). Cada sorteio mostra sua própria foto como ícone.
+            if (sorteio?.foto_url) {
+                let linkIconeComprador = document.querySelector('link[rel="apple-touch-icon"]');
+                if (!linkIconeComprador) { linkIconeComprador = document.createElement('link'); linkIconeComprador.rel = 'apple-touch-icon'; document.head.appendChild(linkIconeComprador); }
+                linkIconeComprador.href = sorteio.foto_url;
+            }
             // ⚡ Assim que sabemos de onde vem a foto, já avisa o navegador pra abrir a conexão com
             // esse domínio em paralelo — economiza tempo na hora de baixar a imagem de verdade.
             try {

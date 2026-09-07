@@ -344,7 +344,7 @@ app.use((req, res, next) => {
   const ehSubdominioDoPainel = (req.hostname || '').toLowerCase() === 'panthers.premiosderrets.com.br';
   if (!ehSubdominioDoPainel) return next();
 
-  const caminhosPermitidos = ['/', '/login', '/logout', '/sw.js', '/api/public/push/vapid-public-key'];
+  const caminhosPermitidos = ['/', '/login', '/logout', '/sw.js', '/manifest.json', '/api/public/push/vapid-public-key'];
   const ehPermitido = caminhosPermitidos.includes(req.path) || req.path.startsWith('/api/admin');
   if (!ehPermitido) return res.status(404).send('Not found');
   return next();
@@ -2657,9 +2657,24 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
           if (resp.ok) {
             const info = await resp.json();
             if (info.status === 'approved' && (info.status_detail === 'accredited' || info.status_detail === 'approved')) {
+              // ⚡ Marca como pago de forma atômica (só se AINDA estivesse "aguardando" nesse
+              // instante) — protege contra notificar duas vezes se o webhook ou a rede de
+              // segurança processarem esse mesmo pedido quase ao mesmo tempo.
+              const { data: linhaAtualizadaStatus } = await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', pedido.id).eq('status', 'aguardando').select('id');
+              const foiEssaChamadaQueMarcouPago = (linhaAtualizadaStatus || []).length > 0;
               await gerarCotasUnicas(pedido);
               const { data: updated } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(*)').eq('id', pedido.id).single();
               pedido = updated;
+
+              // ⚡ Mesma notificação de "venda aprovada" das outras duas rotas — essa aqui é a mais
+              // rápida de todas (o comprador está com a tela de pagamento aberta, o site confere
+              // sozinho a cada poucos segundos), então é bem provável que a maioria das aprovações
+              // passe primeiro por aqui.
+              if (foiEssaChamadaQueMarcouPago) (async () => {
+                try {
+                  await enviarPushAdmin('venda', { valor: pedido.valor_total, quantidade: pedido.quantidade_cotas, cliente: pedido.usuarios?.nome_completo || 'Cliente', sorteio: pedido.sorteios?.nome });
+                } catch (e) { console.error('[pedidos/status] erro ao notificar admin', e.message); }
+              })();
             }
           }
         } catch (e) { console.error('Erro verificando MP:', e); }
@@ -3539,6 +3554,25 @@ app.post('/api/admin/upload-logo', ensureAdminAuth, upload.single('logo'), async
     const publicURL = pub?.publicUrl;
 
     await supabase.from('configuracoes').upsert({ chave: 'LOGO_URL', valor: publicURL }, { onConflict: 'chave' });
+    invalidarCacheConfig();
+    return ok(res, { url: publicURL });
+  } catch (e) { return fail(res); }
+});
+
+// Ícone da notificação push interna (admin) — uma imagem só, reaproveitada em toda notificação
+// (não cria arquivo novo a cada venda/reserva).
+app.post('/api/admin/upload-icone-push-admin', ensureAdminAuth, upload.single('icone'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return fail(res, 'Arquivo não enviado', 400);
+    const { buffer: bufferComprimido, mimetype: mimeComprimido, extensao } = await comprimirImagem(file.buffer, file.mimetype, 400);
+    const dest = `icones-push/admin-${Date.now()}.${extensao || 'png'}`;
+    const { error } = await supabase.storage.from('logos').upload(dest, bufferComprimido, { contentType: mimeComprimido, upsert: true });
+    if (error) return fail(res, error.message);
+    const { data: pub } = supabase.storage.from('logos').getPublicUrl(dest);
+    const publicURL = pub?.publicUrl;
+
+    await supabase.from('configuracoes').upsert({ chave: 'PUSH_ADMIN_ICONE_URL', valor: publicURL }, { onConflict: 'chave' });
     invalidarCacheConfig();
     return ok(res, { url: publicURL });
   } catch (e) { return fail(res); }
@@ -4435,7 +4469,13 @@ app.post('/api/webhook/pagamento', async (req, res) => {
     }
 
     console.log(`✅ [Webhook MP] Pedido ${pedido.id} encontrado e marcado como pago (status anterior: ${pedido.status}).`);
-    await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', pedido.id);
+    // ⚡ Só marca como pago (e só notifica) se AINDA estivesse "aguardando" no banco NESSE EXATO
+    // instante — protege contra notificação duplicada mesmo numa corrida rara entre esse webhook,
+    // a rede de segurança, e a checagem automática da tela de pagamento, todos disputando o mesmo
+    // pedido quase ao mesmo tempo (por isso conferimos o resultado do update, não um valor já lido
+    // antes, que poderia estar desatualizado bem nesse intervalo).
+    const { data: linhaAtualizada } = await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', pedido.id).eq('status', 'aguardando').select('id');
+    const foiEssaChamadaQueMarcouPago = (linhaAtualizada || []).length > 0;
 
     if (!pedido.cotas_array || pedido.cotas_array.length === 0) {
       await gerarCotasUnicas(pedido);
@@ -4444,8 +4484,9 @@ app.post('/api/webhook/pagamento', async (req, res) => {
     }
 
     // ⚡ Notifica o admin (se tiver ativado) — roda em segundo plano, sem atrasar a resposta pro
-    // Mercado Pago (que espera confirmação rápida).
-    (async () => {
+    // Mercado Pago (que espera confirmação rápida). Só notifica se realmente foi ESSA chamada que
+    // mudou o status agora (não uma segunda confirmação de um pedido que já estava pago).
+    if (foiEssaChamadaQueMarcouPago) (async () => {
       try {
         const [{ data: userInfo }, { data: sorteioInfo }] = await Promise.all([
           supabase.from('usuarios').select('nome_completo').eq('id', pedido.user_id).maybeSingle(),
@@ -4467,6 +4508,24 @@ app.post('/api/webhook/pagamento', async (req, res) => {
 // ==================================================================
 
 // Chave pública — o site precisa dela pra pedir permissão de notificação
+// ⚡ Manifesto do painel — sem isso, o navegador usa o <title> da página como "nome do app" nas
+// notificações (por isso aparecia "Painel Admin - Sorteios" do lado da mensagem). É gerado na
+// hora (não é um arquivo fixo) pra sempre usar a logo mais atual configurada.
+app.get('/manifest.json', async (req, res) => {
+  const cfg = await fetchConfigFromDB();
+  const icone = cfg.LOGO_URL || '/favicon.ico';
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.json({
+    name: 'Painel',
+    short_name: 'Painel',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0f1115',
+    theme_color: '#0f1115',
+    icons: [{ src: icone, sizes: '512x512', type: 'image/png' }]
+  });
+});
+
 app.get('/api/public/push/vapid-public-key', (_req, res) => {
   if (!process.env.VAPID_PUBLIC_KEY) return res.status(503).json({ error: 'Push não configurado' });
   return res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
@@ -4625,6 +4684,13 @@ async function enviarPushAdmin(tipoEvento, dados) {
     if (!configurarPush()) return; // sem chaves VAPID configuradas, não tem como enviar nada
     const cfg = await fetchConfigFromDB();
     const prefixo = tipoEvento === 'venda' ? 'PUSH_ADMIN_VENDA' : 'PUSH_ADMIN_RESERVA';
+
+    // ⚡ Cada tipo de aviso (reserva / venda aprovada) tem sua própria chavinha — desligada por
+    // padrão só se explicitamente marcada como 'false' (então quem já usava antes dessa opção
+    // existir continua recebendo os dois, sem precisar reconfigurar nada).
+    const ativoParaEsseTipo = cfg[`${prefixo}_ATIVO`] !== 'false';
+    if (!ativoParaEsseTipo) return;
+
     const tituloBruto = cfg[`${prefixo}_TITULO`] || (tipoEvento === 'venda' ? '💰 Nova venda aprovada!' : '📝 Nova reserva feita');
     const corpoBruto = cfg[`${prefixo}_CORPO`] || 'Valor: {valor} — Cliente: {cliente}';
     const icone = cfg['PUSH_ADMIN_ICONE_URL'] || undefined;
@@ -4686,9 +4752,24 @@ async function conferirPagamentosPendentesComMercadoPago() {
         if (!resp.ok) continue;
         const info = await resp.json();
         if (info.status === 'approved' && (info.status_detail === 'accredited' || info.status_detail === 'approved')) {
-          await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', p.id);
+          const { data: linhaAtualizadaSeguranca } = await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', p.id).eq('status', 'aguardando').select('id');
+          const foiEssaChamadaQueMarcouPago = (linhaAtualizadaSeguranca || []).length > 0;
           if (!p.cotas_array || p.cotas_array.length === 0) await gerarCotasUnicas(p);
           console.log(`🛡️ [Rede de segurança] Pedido ${p.id} estava pago no Mercado Pago mas não tinha sido processado — corrigido agora.`);
+
+          // ⚡ Mesma notificação de "venda aprovada" do webhook — sem isso aqui, toda vez que a
+          // rede de segurança (não o webhook) é quem detecta o pagamento primeiro, o admin nunca
+          // ficava sabendo. Só notifica se foi ESSA chamada que realmente mudou o status (evita
+          // duplicar se o webhook processar o mesmo pedido quase ao mesmo tempo).
+          if (foiEssaChamadaQueMarcouPago) (async () => {
+            try {
+              const [{ data: userInfo }, { data: sorteioInfo }] = await Promise.all([
+                supabase.from('usuarios').select('nome_completo').eq('id', p.user_id).maybeSingle(),
+                supabase.from('sorteios').select('nome').eq('id', p.sorteio_id).maybeSingle()
+              ]);
+              await enviarPushAdmin('venda', { valor: p.valor_total, quantidade: p.quantidade_cotas, cliente: userInfo?.nome_completo || 'Cliente', sorteio: sorteioInfo?.nome });
+            } catch (e) { console.error('[Rede de segurança] erro ao notificar admin', e.message); }
+          })();
         }
       } catch (errUm) { console.error(`🛡️ [Rede de segurança] Erro conferindo pedido ${p.id}:`, errUm.message); }
     }

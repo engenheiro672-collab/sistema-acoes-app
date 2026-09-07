@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Admin - Sorteios</title>
+<link rel="manifest" href="/manifest.json">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -719,19 +720,28 @@
                     </div>
 
                     <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
-                        <h4 class="font-semibold text-white mb-2">📝 Mensagem de "Reserva feita" (pedido criado, aguardando pagamento)</h4>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-semibold text-white">📝 Mensagem de "Reserva feita" (pedido criado, aguardando pagamento)</h4>
+                            <label class="toggle-switch"><input type="checkbox" id="push-admin-reserva-ativo" checked><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                        </div>
                         <input id="push-admin-reserva-titulo" class="input-dark mb-2" placeholder="Título (ex: 📝 Nova reserva!)">
                         <input id="push-admin-reserva-corpo" class="input-dark" placeholder="Corpo (ex: {cliente} reservou {quantidade} títulos — {valor})">
                     </div>
                     <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
-                        <h4 class="font-semibold text-white mb-2">💰 Mensagem de "Venda aprovada" (pagamento confirmado)</h4>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-semibold text-white">💰 Mensagem de "Venda aprovada" (pagamento confirmado)</h4>
+                            <label class="toggle-switch"><input type="checkbox" id="push-admin-venda-ativo" checked><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                        </div>
                         <input id="push-admin-venda-titulo" class="input-dark mb-2" placeholder="Título (ex: 💰 Venda aprovada!)">
                         <input id="push-admin-venda-corpo" class="input-dark" placeholder="Corpo (ex: {cliente} comprou {quantidade} títulos — {valor})">
                     </div>
                     <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-3">
                         <h4 class="font-semibold text-white mb-2">🖼️ Ícone/foto da notificação (opcional)</h4>
-                        <input id="push-admin-icone-url" class="input-dark" placeholder="URL de uma imagem (ex: sua logo)">
-                        <p class="text-xs text-gray-500 mt-1">Placeholders disponíveis nas mensagens acima: <code class="bg-black/30 px-1 rounded">{cliente}</code> <code class="bg-black/30 px-1 rounded">{valor}</code> <code class="bg-black/30 px-1 rounded">{quantidade}</code> <code class="bg-black/30 px-1 rounded">{sorteio}</code></p>
+                        <div class="flex items-center gap-3">
+                            <img id="preview-icone-push-admin" src="" class="hidden" style="width:48px; height:48px; border-radius:8px; object-fit:cover;">
+                            <input type="file" id="input-icone-push-admin" accept="image/*" class="input-dark" onchange="uploadIconePushAdmin(this)">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Qualquer tamanho serve — o ideal é uma imagem quadrada (o navegador ajusta sozinho). Placeholders disponíveis nas mensagens acima: <code class="bg-black/30 px-1 rounded">{cliente}</code> <code class="bg-black/30 px-1 rounded">{valor}</code> <code class="bg-black/30 px-1 rounded">{quantidade}</code> <code class="bg-black/30 px-1 rounded">{sorteio}</code></p>
                     </div>
                     <button type="button" class="btn-primary w-full" onclick="salvarConfigPushAdmin()"><i class="bi bi-save"></i> Salvar mensagens</button>
                 </div>
@@ -3210,20 +3220,38 @@ function carregarStatusPushAdmin() {
 }
 function carregarConfigPushAdmin() {
     api('GET', '/api/admin/configuracoes').then(cfg => {
+        $('#push-admin-reserva-ativo').prop('checked', cfg.PUSH_ADMIN_RESERVA_ATIVO !== 'false');
         $('#push-admin-reserva-titulo').val(cfg.PUSH_ADMIN_RESERVA_TITULO || '📝 Nova reserva!');
         $('#push-admin-reserva-corpo').val(cfg.PUSH_ADMIN_RESERVA_CORPO || '{cliente} reservou {quantidade} títulos — {valor}');
+        $('#push-admin-venda-ativo').prop('checked', cfg.PUSH_ADMIN_VENDA_ATIVO !== 'false');
         $('#push-admin-venda-titulo').val(cfg.PUSH_ADMIN_VENDA_TITULO || '💰 Venda aprovada!');
         $('#push-admin-venda-corpo').val(cfg.PUSH_ADMIN_VENDA_CORPO || '{cliente} comprou {quantidade} títulos — {valor}');
-        $('#push-admin-icone-url').val(cfg.PUSH_ADMIN_ICONE_URL || '');
+        if (cfg.PUSH_ADMIN_ICONE_URL) $('#preview-icone-push-admin').attr('src', cfg.PUSH_ADMIN_ICONE_URL).removeClass('hidden');
     });
+}
+function uploadIconePushAdmin(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('icone', file);
+    fetch('/api/admin/upload-icone-push-admin', { method: 'POST', credentials: 'include', body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.url) {
+                $('#preview-icone-push-admin').attr('src', d.url).removeClass('hidden');
+                notificar('Ícone salvo!', 'sucesso');
+            } else {
+                notificar(d.error || 'Erro ao enviar imagem.', 'erro');
+            }
+        }).catch(() => notificar('Erro ao enviar imagem.', 'erro'));
 }
 function salvarConfigPushAdmin() {
     api('POST', '/api/admin/configuracoes', {
+        PUSH_ADMIN_RESERVA_ATIVO: $('#push-admin-reserva-ativo').is(':checked') ? 'true' : 'false',
         PUSH_ADMIN_RESERVA_TITULO: $('#push-admin-reserva-titulo').val(),
         PUSH_ADMIN_RESERVA_CORPO: $('#push-admin-reserva-corpo').val(),
+        PUSH_ADMIN_VENDA_ATIVO: $('#push-admin-venda-ativo').is(':checked') ? 'true' : 'false',
         PUSH_ADMIN_VENDA_TITULO: $('#push-admin-venda-titulo').val(),
-        PUSH_ADMIN_VENDA_CORPO: $('#push-admin-venda-corpo').val(),
-        PUSH_ADMIN_ICONE_URL: $('#push-admin-icone-url').val()
+        PUSH_ADMIN_VENDA_CORPO: $('#push-admin-venda-corpo').val()
     }).then(() => notificar('Mensagens salvas!', 'sucesso')).catch(() => notificar('Erro ao salvar.', 'erro'));
 }
 
@@ -4412,6 +4440,13 @@ $('#form-identidade').on('submit', function(e) {
 });
 function aplicarIdentidade(nome, sub, logoUrl) {
     const texto = nome || 'Meu Painel';
+    // ⚡ Ícone de "Adicionar à Tela de Início" do painel (diferente do ícone que aparece pro
+    // comprador em cada sorteio) — usa a mesma logo que você já sobe em Configurações.
+    if (logoUrl) {
+        let linkIcone = document.querySelector('link[rel="apple-touch-icon"]');
+        if (!linkIcone) { linkIcone = document.createElement('link'); linkIcone.rel = 'apple-touch-icon'; document.head.appendChild(linkIcone); }
+        linkIcone.href = logoUrl;
+    }
     if (logoUrl) {
         $('#sidebar-brand-logo').attr('src', logoUrl).removeClass('hidden');
         $('#sidebar-brand-name').addClass('hidden');

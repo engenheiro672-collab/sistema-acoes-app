@@ -1143,6 +1143,12 @@
         function renderPagina(data) {
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
+            // Ícone de "Adicionar à Tela de Início" pro comprador — usa a foto do próprio sorteio.
+            if (sorteio?.foto_url) {
+                let linkIconeComprador = document.querySelector('link[rel="apple-touch-icon"]');
+                if (!linkIconeComprador) { linkIconeComprador = document.createElement('link'); linkIconeComprador.rel = 'apple-touch-icon'; document.head.appendChild(linkIconeComprador); }
+                linkIconeComprador.href = sorteio.foto_url;
+            }
             try {
                 const origemFoto = new URL(sorteio.foto_url).origin;
                 const link = document.createElement('link');
