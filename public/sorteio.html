@@ -43,18 +43,25 @@
         .cota-badge { font-size: 0.875em; font-weight: 400; background-color: #1a8754; color: #ffffff; padding: 0 7px; border-radius: 5px; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
         .cota-num { font-size: 2.25rem; font-weight: 500; color: #fff; }
         .cota-label { font-size: 0.85rem; font-weight: 300; color: rgba(160,174,192,0.75); }
-        .purchase-grid { display: grid; grid-template-columns: 2fr 3fr; gap: 0.6rem; padding: 0 1rem 1rem 1rem; align-items: stretch; }
-        .manual-selector { display: flex; justify-content: space-between; align-items: center; background-color: #2a303c; border-radius: 8px; padding: 0.4rem; }
-        .manual-selector button { font-size: 1.4rem; font-weight: 300; color: #a0aec0; width: 36px; height: 36px; flex-shrink: 0; }
-        .manual-selector input { width: 100%; text-align: center; font-size: 1.1rem; font-weight: 600; color: #fff; background: none; border: none; outline: none; min-width: 0; }
+
+        /* ═══════════════ BARRA DE COMPRA FIXA (rodapé flutuante) ═══════════════ */
+        .purchase-fixed-bar { position: fixed; left: 0; right: 0; bottom: 10px; z-index: 500; padding: 0 12px; pointer-events: none; }
+        .purchase-fixed-inner { pointer-events: auto; max-width: 480px; margin: 0 auto; background: linear-gradient(160deg, #232935, #1a1f29); border-radius: 16px; padding: 0.9rem 1rem 0.8rem; box-shadow: 0 0 0 1.5px rgba(34,168,102,0.55), 0 10px 34px rgba(0,0,0,0.55); }
+        .purchase-fixed-top { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 0.7rem; }
+        .purchase-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .purchase-qtd-label { font-size: 0.8rem; font-weight: 600; color: rgba(226,232,240,0.75); white-space: nowrap; }
+        .purchase-preco-linha { font-size: 1.4rem; font-weight: 800; color: #fff; white-space: nowrap; }
+        .purchase-preco-linha .riscado { text-decoration: line-through; opacity: 0.55; font-size: 0.7em; font-weight: 600; margin-right: 6px; }
+        .manual-selector { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+        .manual-selector .btn-control { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.18); background: #171b23; color: #e2e8f0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .manual-selector input { width: 56px; text-align: center; font-size: 1.15rem; font-weight: 700; color: #fff; background: #171b23; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); padding: 0.6rem 0.2rem; outline: none; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        .btn-participar { background-color: #1a8754; color: #fff; width: 100%; height: 100%; border-radius: 8px; padding: 3px 12px; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; }
-        .btn-participar i { font-size: 1.4rem; flex-shrink: 0; }
-        .btn-participar-price { font-size: 1.15rem; font-weight: 700; display: block; }
-        .btn-participar i { font-size: 1.2rem; margin-right: 0.25rem; }
-        .btn-participar span:nth-child(2) { flex: 1; text-align: left; }
-        .btn-participar-price { font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
+        .btn-participar { width: 100%; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; border-radius: 12px; padding: 0.95rem; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; box-shadow: 0 8px 22px rgba(26,135,84,0.4); text-align: center; }
+        .purchase-fixed-subtext { text-align: center; font-size: 0.72rem; color: rgba(160,174,192,0.65); margin: 0.55rem 0 0; }
+        /* Espaço reservado no fim da página pra essa barra fixa nunca cobrir nada por cima */
+        body { padding-bottom: 165px; }
+
         .titulos-premiados { padding: 1.5rem 1rem; }
         .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; margin-bottom: 6px; border-radius: 8px; background-color: #1a8754; box-shadow: rgba(0,0,0,0.2) 0px 0px 2px 0px, rgba(0,0,0,0.12) 0px 12px 24px -4px; }
         .premio-item.disponivel { background-color: #161c24; }
@@ -209,20 +216,25 @@
 
             <div class="cota-grid" id="cota-grid"></div>
 
-            <div class="purchase-grid">
-                <div class="manual-selector">
-                    <button id="btn-remove-cota" class="btn-control"><i class="bi bi-dash-circle"></i></button>
-                    <input id="input-qtd" type="number" value="30">
-                    <button id="btn-add-cota" class="btn-control"><i class="bi bi-plus-circle"></i></button>
+            <!-- ⚡ Barra de compra fixa no rodapé — fica sempre visível, mesmo rolando a página -->
+            <div class="purchase-fixed-bar" id="purchase-fixed-bar">
+                <div class="purchase-fixed-inner">
+                    <div class="purchase-fixed-top">
+                        <div class="purchase-info">
+                            <span class="purchase-qtd-label" id="purchase-qtd-label">30 números</span>
+                            <span class="purchase-preco-linha" id="cta-preco-total">R$ 0,00</span>
+                        </div>
+                        <div class="manual-selector">
+                            <button id="btn-remove-cota" class="btn-control"><i class="bi bi-dash-circle"></i></button>
+                            <input id="input-qtd" type="number" value="30">
+                            <button id="btn-add-cota" class="btn-control"><i class="bi bi-plus-circle"></i></button>
+                        </div>
+                    </div>
+                    <button id="btn-participar" class="btn-participar">
+                        <span id="btn-participar-label">Comprar</span>
+                    </button>
+                    <p class="purchase-fixed-subtext">Pagamento instantâneo e 100% seguro via Pix.</p>
                 </div>
-
-                <button id="btn-participar" class="btn-participar">
-                    <i class="bi bi-check-circle"></i>
-                    <span style="text-align:left;">
-                        <span id="btn-participar-label" style="display:block;">Quero participar</span>
-                        <span class="btn-participar-price" id="cta-preco-total">R$ 0,00</span>
-                    </span>
-                </button>
             </div>
             <p id="erro-limite" class="text-center text-red-400 text-sm mt-2 hidden">
                 A compra mínima é de <strong id="erro-min">1</strong> cota e a máxima é de <strong id="erro-max">1000000</strong> cotas.
@@ -788,11 +800,12 @@
 
         function atualizarPreco() {
             $('#input-qtd').val(quantidadeCotas);
+            $('#purchase-qtd-label').text(`${quantidadeCotas} número${quantidadeCotas === 1 ? '' : 's'}`);
 
             const promoAtiva = (PROMOCOES_ATIVAS || []).find(p => p.quantidade_cotas === quantidadeCotas);
             if (promoAtiva) {
                 const precoNormal = quantidadeCotas * PRECO;
-                $('#cta-preco-total').html(`<span style="text-decoration:line-through; opacity:0.6; font-size:0.85em; margin-right:6px;">${formatarMoeda(precoNormal)}</span>${formatarMoeda(promoAtiva.preco_promocional)}`);
+                $('#cta-preco-total').html(`<span class="riscado">${formatarMoeda(precoNormal)}</span>${formatarMoeda(promoAtiva.preco_promocional)}`);
             } else {
                 const total = quantidadeCotas * PRECO;
                 $('#cta-preco-total').text(formatarMoeda(total));
