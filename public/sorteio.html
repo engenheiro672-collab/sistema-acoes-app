@@ -53,7 +53,7 @@
         .purchase-preco-linha { font-size: 1.4rem; font-weight: 800; color: #fff; white-space: nowrap; }
         .purchase-preco-linha .riscado { text-decoration: line-through; opacity: 0.55; font-size: 0.7em; font-weight: 600; margin-right: 6px; }
         .manual-selector { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-        .manual-selector .btn-control { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.18); background: #171b23; color: #e2e8f0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .manual-selector .btn-control { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.18); background: #171b23; color: #e2e8f0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
         .manual-selector input { width: 56px; text-align: center; font-size: 1.15rem; font-weight: 700; color: #fff; background: #171b23; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.1); padding: 0.6rem 0.2rem; outline: none; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -212,9 +212,12 @@
         </div>
 
         <section class="mt-4">
+            <!-- ⚡ TESTE: escondido temporariamente (não apagado) — pra restaurar, só tirar o comentário
+                 ao redor desse bloco (frase + grade de seletores +100/+500/+1000/+2000).
             <p class="text-center text-gray-300 mb-4" style="font-weight:400; font-size:clamp(0.68rem, 3.4vw, 0.9rem); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 8px;">Quanto mais títulos, mais chances de ganhar!</p>
 
             <div class="cota-grid" id="cota-grid"></div>
+            -->
 
             <!-- ⚡ Barra de compra fixa no rodapé — fica sempre visível, mesmo rolando a página -->
             <div class="purchase-fixed-bar" id="purchase-fixed-bar">
