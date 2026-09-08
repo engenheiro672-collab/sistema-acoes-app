@@ -808,8 +808,13 @@
             }
         }
 
+        // ⚡ Passa pelo nosso próprio cache de imagens (em vez de ir direto no Supabase) — sem
+        // isso, CADA visitante buscava a foto direto no Supabase, o que é a causa principal do
+        // consumo alto de "saída" da conta (Supabase cobra/limita por isso). Em escopo global —
+        // usada tanto aqui quanto na logo do cabeçalho, lá embaixo em renderPagina.
+        function paraUrlCache(url) { return url ? '/imagem-cache?url=' + encodeURIComponent(url) : url; }
         function renderCarrossel(sorteio) {
-            const imagens = [sorteio.foto_url, ...(sorteio.fotos_galeria || [])].filter(Boolean);
+            const imagens = [sorteio.foto_url, ...(sorteio.fotos_galeria || [])].filter(Boolean).map(paraUrlCache);
             const $track = $('#carrossel-track');
             if (imagens.length <= 1) {
                 $('#sorteio-img').attr('src', imagens[0] || '');
@@ -986,7 +991,7 @@
             if (sorteio?.icone_tela_inicio_url || sorteio?.foto_url) {
                 let linkIconeComprador = document.querySelector('link[rel="apple-touch-icon"]');
                 if (!linkIconeComprador) { linkIconeComprador = document.createElement('link'); linkIconeComprador.rel = 'apple-touch-icon'; document.head.appendChild(linkIconeComprador); }
-                linkIconeComprador.href = sorteio.icone_tela_inicio_url || sorteio.foto_url;
+                linkIconeComprador.href = paraUrlCache(sorteio.icone_tela_inicio_url || sorteio.foto_url);
             }
             // ⚡ Assim que sabemos de onde vem a foto, já avisa o navegador pra abrir a conexão com
             // esse domínio em paralelo — economiza tempo na hora de baixar a imagem de verdade.
@@ -1033,7 +1038,7 @@
                 }, 300);
             }
 
-            if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(logo_url)}" alt="Logo" class="h-8 inline-block">`);
+            if (logo_url) $('#logo-box').html(`<img src="${escapeHtml(paraUrlCache(logo_url))}" alt="Logo" class="h-8 inline-block">`);
 
             $('#page-title').text(sorteio.nome || 'Sorteio');
             renderCarrossel(sorteio);

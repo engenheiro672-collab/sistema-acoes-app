@@ -1123,12 +1123,18 @@ async function servirPaginaSorteio(req, res, slug, funilSlug) {
     const customPath = path.join(PUBLIC_DIR, 'funis', arquivo);
     if (fs.existsSync(customPath)) {
       const dados = await getSorteioPublicData(slug, funilSlug);
+      // ⚡ Essa checagem estava faltando aqui (só existia na outra rota) — sem ela, se o sorteio
+      // sumisse bem entre as duas consultas acima e essa (janela rara, mas possível), o código
+      // tentava usar "dados.codigo_rastreamento_resolvido" com "dados" sendo null, quebrando a
+      // página inteira pra quem clicasse nesse link nesse instante.
+      if (!dados) return res.status(404).send('Sorteio não encontrado');
       dados.codigo_rastreamento_resolvido = codigoResolvido;
       return enviarSorteioComOg(res, dados, req, path.join('funis', arquivo));
     }
     console.warn(`[funil] Funil "${funilSlug}" aponta pro arquivo "${arquivo}", mas ele NÃO existe em public/funis/ — caindo pro padrão.`);
   }
   const dados = await getSorteioPublicData(slug, funilSlug);
+  if (!dados) return res.status(404).send('Sorteio não encontrado');
   dados.codigo_rastreamento_resolvido = codigoResolvido;
   return enviarSorteioComOg(res, dados, req);
 }
@@ -2122,6 +2128,20 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
   try {
     const { sorteio_id } = pedido;
     let user_id = pedido.user_id;
+
+    // 🔒 TRAVA CRÍTICA — sem isso, se essa função for chamada duas vezes pro MESMO pedido (o que
+    // acontece na prática: o comprador fica consultando o status de pagamento a cada poucos
+    // segundos enquanto espera, e mais de uma dessas consultas pode "pegar" o pagamento já
+    // aprovado antes de qualquer uma delas terminar de processar), cada chamada gerava um NOVO
+    // lote de números pra esse mesmo pedido — inflando tanto o contador de "cotas vendidas"
+    // quanto a própria tabela de cotas, sem nenhuma venda real por trás disso. Aqui, ANTES de
+    // gerar qualquer coisa, confere se esse pedido já tem cotas — se tiver, devolve elas
+    // (idempotente) e não gera nada a mais.
+    const { data: cotasJaExistentes } = await supabase.from('cotas').select('id, numero_cota').eq('pedido_id', pedido.id);
+    if (cotasJaExistentes && cotasJaExistentes.length > 0) {
+      console.warn(`ℹ️ [gerarCotasUnicas] Pedido ${pedido.id} já tinha ${cotasJaExistentes.length} cota(s) geradas — não gerou de novo (protegido contra chamada duplicada).`);
+      return cotasJaExistentes;
+    }
 
     if (!user_id) {
       const { data: pedFull } = await supabase.from('pedidos').select('user_id').eq('id', pedido.id).maybeSingle();
@@ -4727,8 +4747,12 @@ async function enviarPushAdmin(tipoEvento, dados) {
     const ativoParaEsseTipo = cfg[`${prefixo}_ATIVO`] !== 'false';
     if (!ativoParaEsseTipo) return;
 
-    const tituloBruto = cfg[`${prefixo}_TITULO`] || (tipoEvento === 'venda' ? '💰 Nova venda aprovada!' : '📝 Nova reserva feita');
-    const corpoBruto = cfg[`${prefixo}_CORPO`] || 'Valor: {valor} — Cliente: {cliente}';
+    // ⚡ Distingue "nunca configurou" (undefined — usa um texto padrão de exemplo) de "apagou de
+    // propósito pra deixar em branco" (string vazia — respeita e manda mesmo vazio). Antes, os
+    // dois casos eram tratados igual, e sempre voltava pro texto padrão mesmo quando a pessoa
+    // queria deixar sem título nenhum (só "from Painel" + a descrição).
+    const tituloBruto = cfg[`${prefixo}_TITULO`] !== undefined ? cfg[`${prefixo}_TITULO`] : (tipoEvento === 'venda' ? '💰 Nova venda aprovada!' : '📝 Nova reserva feita');
+    const corpoBruto = cfg[`${prefixo}_CORPO`] !== undefined ? cfg[`${prefixo}_CORPO`] : 'Valor: {valor} — Cliente: {cliente}';
     const icone = cfg['PUSH_ADMIN_ICONE_URL'] || undefined;
 
     const titulo = preencherPlaceholdersPush(tituloBruto, dados);

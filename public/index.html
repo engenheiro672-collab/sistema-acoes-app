@@ -157,9 +157,13 @@
 
         function renderPagina(data) {
             const { sorteios = [], ganhadores = [], logo_url, pixels } = data;
+            // ⚡ Passa pelo nosso próprio cache de imagens (em vez de ir direto no Supabase) — sem
+            // isso, CADA visitante buscava as fotos direto no Supabase, a causa principal do
+            // consumo alto de "saída" da conta.
+            function paraUrlCache(url) { return url ? '/imagem-cache?url=' + encodeURIComponent(url) : url; }
 
             if (logo_url) {
-                $('#logo-box').html(`<img src="${logo_url}" alt="Logo" class="h-8 inline-block">`);
+                $('#logo-box').html(`<img src="${paraUrlCache(logo_url)}" alt="Logo" class="h-8 inline-block">`);
             }
             injetarPixels(pixels);
 
@@ -171,7 +175,7 @@
                 $destaque.html(`
                     <a href="/sorteio/${principal.slug}" class="block card-destaque">
                         <div class="relative">
-                            <img src="${principal.foto_url || ''}" alt="${principal.nome}" class="w-full h-auto md:h-[450px] object-cover" fetchpriority="high" loading="eager">
+                            <img src="${paraUrlCache(principal.foto_url) || ''}" alt="${principal.nome}" class="w-full h-auto md:h-[450px] object-cover" fetchpriority="high" loading="eager">
                             <div class="card-destaque-overlay">
                                 <h3 class="card-destaque-title">${principal.nome}</h3>
                                 <p class="card-destaque-desc">Participe e concorra!</p>
@@ -197,7 +201,7 @@
                         : `<span class="card-small-desc">Cota por R$ ${Number(sorteio.preco_cota || 0).toFixed(2).replace('.', ',')}</span>`;
                     return `
                         <a href="/sorteio/${sorteio.slug}" class="card-small">
-                            <img src="${sorteio.foto_url || ''}" alt="${sorteio.nome}">
+                            <img src="${paraUrlCache(sorteio.foto_url) || ''}" alt="${sorteio.nome}">
                             <div class="card-small-info">
                                 <h4 class="card-small-title">${sorteio.nome}</h4>
                                 ${statusBadge}
