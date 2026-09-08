@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#20242e">
     <title id="page-title">__OG_TITLE__</title>
     <meta property="og:type" content="website">
     <meta property="og:title" content="__OG_TITLE__">
@@ -137,11 +137,12 @@
     </style>
 </head>
 <body class="pb-8">
-    <!-- ⚡ Listra preta bem fininha, encostada no topo — alguns navegadores "dentro de app" (tipo o
-         do Instagram) pegam a cor de um pedacinho do topo da página pra colorir a barra deles
-         mesmos. Sem isso, eles pegavam uma cor feia direto da foto do prêmio — com essa listra
-         preta ali, sempre pegam preto, praticamente imperceptível pra quem está navegando. -->
-    <div style="background:#000; height:3px; width:100%;"></div>
+    <!-- ⚡ Listra na cor de fundo do site, sempre GRUDADA no topo (não rola com a página) — alguns
+         navegadores "dentro de app" (tipo o do Instagram) ficam acompanhando o que está visível
+         bem no topo da tela ENQUANTO a pessoa rola, pra colorir a barra deles mesmos — por isso
+         precisa ficar fixa ali, senão, assim que a foto do prêmio sobe até o topo, ele pega a cor
+         da foto em vez da cor do site. -->
+    <div style="position:fixed; top:0; left:0; right:0; height:4px; background:#20242e; z-index:9999; pointer-events:none;"></div>
 
     <!-- ⚡ Banner "Entrega grátis em [cidade]" — só aparece quando a pessoa vem de uma prévenda de
          cidade (parâmetro ?cidade= na URL). Pra qualquer acesso normal (sem esse parâmetro), esse
