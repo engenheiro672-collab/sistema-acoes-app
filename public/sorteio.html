@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
     <title id="page-title">__OG_TITLE__</title>
     <meta property="og:type" content="website">
     <meta property="og:title" content="__OG_TITLE__">
@@ -45,7 +46,7 @@
         .cota-label { font-size: 0.85rem; font-weight: 300; color: rgba(160,174,192,0.75); }
 
         /* ═══════════════ BARRA DE COMPRA FIXA (rodapé flutuante) ═══════════════ */
-        .purchase-fixed-bar { position: fixed; left: 0; right: 0; bottom: 10px; z-index: 500; padding: 0 12px; pointer-events: none; }
+        .purchase-fixed-bar { position: fixed; left: 0; right: 0; bottom: 30px; z-index: 500; padding: 0 12px; pointer-events: none; }
         .purchase-fixed-inner { pointer-events: auto; max-width: 480px; margin: 0 auto; background: linear-gradient(160deg, #232935, #1a1f29); border-radius: 16px; padding: 0.9rem 1rem 0.8rem; box-shadow: 0 0 0 1.5px rgba(34,168,102,0.55), 0 10px 34px rgba(0,0,0,0.55); }
         .purchase-fixed-top { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 0.7rem; }
         .purchase-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -60,7 +61,7 @@
         .btn-participar { width: 100%; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; border-radius: 12px; padding: 0.95rem; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; box-shadow: 0 8px 22px rgba(26,135,84,0.4); text-align: center; }
         .purchase-fixed-subtext { text-align: center; font-size: 0.72rem; color: rgba(160,174,192,0.65); margin: 0.55rem 0 0; }
         /* Espaço reservado no fim da página pra essa barra fixa nunca cobrir nada por cima */
-        body { padding-bottom: 165px; }
+        body { padding-bottom: 185px; }
 
         .titulos-premiados { padding: 1.5rem 1rem; }
         .premio-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; margin-bottom: 6px; border-radius: 8px; background-color: #1a8754; box-shadow: rgba(0,0,0,0.2) 0px 0px 2px 0px, rgba(0,0,0,0.12) 0px 12px 24px -4px; }
@@ -136,6 +137,12 @@
     </style>
 </head>
 <body class="pb-8">
+    <!-- ⚡ Listra preta bem fininha, encostada no topo — alguns navegadores "dentro de app" (tipo o
+         do Instagram) pegam a cor de um pedacinho do topo da página pra colorir a barra deles
+         mesmos. Sem isso, eles pegavam uma cor feia direto da foto do prêmio — com essa listra
+         preta ali, sempre pegam preto, praticamente imperceptível pra quem está navegando. -->
+    <div style="background:#000; height:3px; width:100%;"></div>
+
     <!-- ⚡ Banner "Entrega grátis em [cidade]" — só aparece quando a pessoa vem de uma prévenda de
          cidade (parâmetro ?cidade= na URL). Pra qualquer acesso normal (sem esse parâmetro), esse
          banner nunca é criado nem mostrado — 100% seguro pro tráfego que já está no ar. -->
@@ -1239,10 +1246,15 @@
                     $(this).addClass('selecionado');
                 }
             });
-            $('#btn-add-cota').on('click', function() {
+            // ⚡ Usa "pointerdown" em vez de "click" — dispara no instante exato do toque, sem
+            // nenhum atraso de processamento do navegador (o "click" tradicional, em alguns
+            // navegadores/celulares, espera confirmar que não é um duplo-toque antes de disparar).
+            $('#btn-add-cota').on('pointerdown', function(e) {
+                e.preventDefault();
                 if (quantidadeCotas < MAX_QTY) { quantidadeCotas++; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
             });
-            $('#btn-remove-cota').on('click', function() {
+            $('#btn-remove-cota').on('pointerdown', function(e) {
+                e.preventDefault();
                 if (quantidadeCotas > MIN_QTY) { quantidadeCotas--; VEIO_DE_COMBO_ROLETA = false; GIROS_DO_COMBO_ATUAL = null; atualizarPreco(); $('.btn-add-cota').removeClass('selecionado'); }
             });
             $('#input-qtd').on('change', function() {
