@@ -1904,7 +1904,7 @@ app.post('/api/public/meus-bilhetes', async (req, res) => {
     const { data: usuario } = await supabase.from('usuarios').select('id').eq('telefone', telefone).maybeSingle();
     if (!usuario) return res.json([]);
     const { data: pedidos } = await supabase.from('pedidos')
-      .select('*, sorteios(nome, slug), cotas(numero_cota)')
+      .select('*, sorteios(nome, slug, foto_url, preco_cota), cotas(numero_cota)')
       .eq('user_id', usuario.id)
       .eq('status', 'pago')
       .order('created_at', { ascending: false });
