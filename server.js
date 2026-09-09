@@ -2144,18 +2144,38 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
     const { sorteio_id } = pedido;
     let user_id = pedido.user_id;
 
-    // 🔒 TRAVA CRÍTICA — sem isso, se essa função for chamada duas vezes pro MESMO pedido (o que
-    // acontece na prática: o comprador fica consultando o status de pagamento a cada poucos
-    // segundos enquanto espera, e mais de uma dessas consultas pode "pegar" o pagamento já
-    // aprovado antes de qualquer uma delas terminar de processar), cada chamada gerava um NOVO
-    // lote de números pra esse mesmo pedido — inflando tanto o contador de "cotas vendidas"
-    // quanto a própria tabela de cotas, sem nenhuma venda real por trás disso. Aqui, ANTES de
-    // gerar qualquer coisa, confere se esse pedido já tem cotas — se tiver, devolve elas
-    // (idempotente) e não gera nada a mais.
+    // 🔒 TRAVA ATÔMICA DE VERDADE — a checagem antiga ("já tem cota? não? então gera") tinha uma
+    // brecha rara: se DUAS chamadas chegassem quase no mesmo instante (ex: o aviso do Mercado Pago
+    // e a própria tela do comprador conferindo status ao mesmo tempo), as duas podiam "ouvir" que
+    // ainda não tinha nada, e as duas seguiam em frente — cada uma calculando o resultado da
+    // roleta na cabeça dela, e por azar de tempo, a versão SEM prêmio podia ser a que ficava
+    // gravada por último, apagando a certa. Aqui, uma ATUALIZAÇÃO CONDICIONAL no próprio banco de
+    // dados serve de cadeado de verdade — o banco garante, sozinho, que só UMA chamada por vez
+    // "ganha o direito" de processar esse pedido, não importa quantas cheguem ao mesmo segundo.
+    const { data: reivindicouProcessamento } = await supabase.from('pedidos')
+      .update({ processando_cotas_em: new Date().toISOString() })
+      .eq('id', pedido.id)
+      .is('processando_cotas_em', null)
+      .select('id');
+
     const { data: cotasJaExistentes } = await supabase.from('cotas').select('id, numero_cota').eq('pedido_id', pedido.id);
     if (cotasJaExistentes && cotasJaExistentes.length > 0) {
       console.warn(`ℹ️ [gerarCotasUnicas] Pedido ${pedido.id} já tinha ${cotasJaExistentes.length} cota(s) geradas — não gerou de novo (protegido contra chamada duplicada).`);
       return cotasJaExistentes;
+    }
+
+    if (!reivindicouProcessamento || reivindicouProcessamento.length === 0) {
+      // ⚡ Outra chamada concorrente já está processando ESSE MESMO pedido agora mesmo — espera
+      // ela terminar (ela é quem tem o "cadeado" nesse momento) e devolve o resultado dela, em vez
+      // de gerar tudo de novo por cima (o que causaria exatamente a corrida que estamos evitando).
+      console.warn(`⏳ [gerarCotasUnicas] Pedido ${pedido.id} já está sendo processado por outra chamada concorrente agora — aguardando o resultado dela em vez de gerar de novo.`);
+      for (let tentativa = 0; tentativa < 20; tentativa++) {
+        await new Promise(r => setTimeout(r, 500));
+        const { data: cotasAgora } = await supabase.from('cotas').select('id, numero_cota').eq('pedido_id', pedido.id);
+        if (cotasAgora && cotasAgora.length > 0) return cotasAgora;
+      }
+      console.error(`🚨 [gerarCotasUnicas] Pedido ${pedido.id} — esperou 10s e a outra chamada concorrente não terminou a tempo. Essa chamada aqui desiste (não gera nada, pra nunca duplicar).`);
+      return [];
     }
 
     if (!user_id) {
@@ -2405,7 +2425,15 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 
     // Roleta: se estiver ativada, calcula quantos giros esse pedido ganhou (pela faixa de cotas
     // compradas) e verifica se alguma das cotas reais geradas bate com um prêmio de roleta escondido.
-    try { await atribuirGirosRoleta(sorteio_id, pedido, user_id, numeros); } catch (err) { console.error('Erro ao atribuir giros de roleta', err); }
+    // ⚡ Alguns fluxos (como o pedido manual com "cota específica") precisam trocar um dos números
+    // DEPOIS de gerados, antes de conferir se bateu um prêmio de roleta — nesses casos, quem chamou
+    // essa função passa pularAtribuicaoRoleta:true e chama atribuirGirosRoleta manualmente depois,
+    // com os números já corrigidos. Sem essa opção, a checagem rodava aqui cedo demais (com os
+    // números ainda errados), e a tentativa de corrigir depois batia de frente com o giro que já
+    // tinha sido criado, falhando silenciosamente e deixando a pessoa sem o prêmio dela.
+    if (!opcoes.pularAtribuicaoRoleta) {
+      try { await atribuirGirosRoleta(sorteio_id, pedido, user_id, numeros); } catch (err) { console.error('Erro ao atribuir giros de roleta', err); }
+    }
 
     return inserted;
 
@@ -3907,7 +3935,7 @@ app.post('/api/admin/pedidos/criar-manual', ensureAdminAuth, async (req, res) =>
     }).select().single();
     if (pedErro || !pedido) return fail(res, 'Erro ao criar pedido');
 
-    const numerosGerados = await gerarCotasUnicas(pedido, { pularChanceDobroAutomatica: true });
+    const numerosGerados = await gerarCotasUnicas(pedido, { pularChanceDobroAutomatica: true, pularAtribuicaoRoleta: true });
 
     let numerosFinais = numerosGerados.map(c => c.numero_cota);
     let cotaEspecificaAplicada = null;
