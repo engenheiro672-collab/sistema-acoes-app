@@ -196,13 +196,38 @@
             </button>
         </div>
 
-        <div id="banner-grupo-vip-novo" class="hidden my-3 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:1.25rem 1.25rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
-            <div class="sino-balancando" style="font-size:2.1rem;">👥</div>
-            <h3 class="text-white font-black text-base mt-2">Entre para o nosso Grupo VIP</h3>
-            <p class="text-green-50 text-xs mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
-            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-3 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full text-sm" style="box-shadow:0 4px 12px rgba(0,0,0,0.25); white-space:nowrap;">
-                <i class="bi bi-whatsapp"></i> Entrar no Grupo
-            </a>
+        <!-- ⚡ Card de premiação — bilhete instantâneo OU roleta (só depois de girada por completo).
+             Fica escondido até o JS decidir, com dados reais, se e qual dos dois mostrar. -->
+        <div id="card-premiado" class="hidden my-3" style="border-radius:14px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+            <div style="background:linear-gradient(160deg,#1a8754,#22a866); padding:18px 16px; text-align:center; position:relative; overflow:hidden;">
+                <div style="position:absolute; top:10px; left:22px; width:6px; height:6px; border-radius:50%; background:#fde68a;"></div>
+                <div style="position:absolute; top:28px; left:44px; width:5px; height:9px; background:#fff; transform:rotate(20deg);"></div>
+                <div style="position:absolute; top:14px; right:30px; width:6px; height:6px; border-radius:50%; background:#fff;"></div>
+                <div style="position:absolute; top:34px; right:52px; width:5px; height:9px; background:#fde68a; transform:rotate(-15deg);"></div>
+                <div style="position:absolute; bottom:8px; left:60px; width:5px; height:5px; border-radius:50%; background:#fde68a;"></div>
+                <div style="position:absolute; bottom:14px; right:70px; width:5px; height:8px; background:#fff; transform:rotate(35deg);"></div>
+                <div style="width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center; margin:0 auto 8px; font-size:26px; color:#fff;"><i class="bi bi-trophy-fill"></i></div>
+                <div style="font-size:11px; letter-spacing:0.06em; color:#e6fbef; font-weight:700;" id="card-premiado-kicker">PREMIAÇÃO INSTANTÂNEA</div>
+                <div style="font-size:20px; font-weight:800; color:#fff; margin-top:4px;">Parabéns, você ganhou!</div>
+            </div>
+            <div style="padding:14px 16px 18px; background:#fff;">
+                <p style="font-size:13px; color:#475569; margin:0 0 12px;" id="card-premiado-subtitulo">Sua compra possui 1 título contemplado.</p>
+                <div style="background:linear-gradient(135deg, rgba(234,179,8,0.1), rgba(234,179,8,0.02)); border:1px solid rgba(234,179,8,0.35); border-radius:10px; padding:12px; display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                    <div style="width:38px; height:38px; border-radius:10px; background:rgba(234,179,8,0.15); display:flex; align-items:center; justify-content:center; color:#b45309; font-size:19px;"><i class="bi bi-gift-fill" id="card-premiado-icone"></i></div>
+                    <div>
+                        <div style="font-size:10px; color:#94a3b8; letter-spacing:0.04em;">SEU PRÊMIO</div>
+                        <div style="font-size:15px; font-weight:700; color:#1e293b;" id="card-premiado-valor">-</div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #e2e8f0; padding-top:10px; margin-bottom:12px;">
+                    <span style="font-size:11px; color:#94a3b8; letter-spacing:0.04em;" id="card-premiado-extra-label">TÍTULO CONTEMPLADO</span>
+                    <span style="font-size:15px; font-weight:700; color:#15803d;" id="card-premiado-extra-valor">-</span>
+                </div>
+                <div style="background:#f1f5f9; border-radius:10px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start; font-size:12px; color:#475569;">
+                    <i class="bi bi-telephone-fill" style="font-size:15px; margin-top:1px; color:#94a3b8;"></i>
+                    Em breve, nossa equipe entrará em contato com você.
+                </div>
+            </div>
         </div>
 
         <div id="card-detalhes-compra" class="card card-flush-top">
@@ -240,6 +265,15 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div id="banner-grupo-vip-novo" class="hidden my-3 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:1.25rem 1.25rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
+            <div class="sino-balancando" style="font-size:2.1rem;">👥</div>
+            <h3 class="text-white font-black text-base mt-2">Entre para o nosso Grupo VIP</h3>
+            <p class="text-green-50 text-xs mt-1" style="opacity:0.9;">Fique por dentro de tudo em primeira mão, direto no WhatsApp!</p>
+            <a id="btn-entrar-grupo-vip-novo" href="#" target="_blank" class="mt-3 inline-block bg-white text-green-700 font-bold px-8 py-3 rounded-full text-sm" style="box-shadow:0 4px 12px rgba(0,0,0,0.25); white-space:nowrap;">
+                <i class="bi bi-whatsapp"></i> Entrar no Grupo
+            </a>
         </div>
 
         <p class="text-center hidden" id="link-suporte-compra-box" style="margin-top:2rem; padding:1.1rem 1rem; background:#ffffff; border-radius:14px;">
@@ -558,6 +592,35 @@
             }
         }
 
+        // ⚡ Card de premiação — bilhete instantâneo tem prioridade (é sempre imediato); a roleta só
+        // aparece aqui depois de já ter sido girada por completo (ver getCheckoutPublicData no
+        // servidor, que já faz essa checagem antes de mandar o dado pra cá).
+        function mostrarCardPremiadoSeAplicavel(data) {
+            if (data.bilhete_premiado_instantaneo) {
+                const b = data.bilhete_premiado_instantaneo;
+                $('#card-premiado-kicker').text('PREMIAÇÃO INSTANTÂNEA');
+                $('#card-premiado-subtitulo').text('Sua compra possui 1 título contemplado.');
+                $('#card-premiado-icone').attr('class', 'bi bi-gift-fill');
+                $('#card-premiado-valor').text(b.premio_titulo || 'Bilhete premiado');
+                $('#card-premiado-extra-label').text('TÍTULO CONTEMPLADO');
+                $('#card-premiado-extra-valor').text(b.numero_cota || '-');
+                $('#card-premiado').removeClass('hidden');
+                return;
+            }
+            if (data.roleta_premiada) {
+                const g = data.roleta_premiada;
+                const nomesCor = { verde: 'Verde', vermelho: 'Vermelho', preto: 'Preto' };
+                const corCirculo = { verde: '#22c55e', vermelho: '#ef4444', preto: '#1e293b' }[g.cor_sorteada] || '#94a3b8';
+                $('#card-premiado-kicker').text('ROLETA INSTANTÂNEA');
+                $('#card-premiado-subtitulo').text('Você caiu num giro premiado da nossa roleta.');
+                $('#card-premiado-icone').attr('class', 'bi bi-coin');
+                $('#card-premiado-valor').html(`${g.valor_premio || g.premio_titulo || 'Prêmio!'}${g.pago_dobro ? ' <span style="font-size:11px; color:#15803d; font-weight:700;">(pago em dobro)</span>' : ''}`);
+                $('#card-premiado-extra-label').text('COR SORTEADA');
+                $('#card-premiado-extra-valor').html(`<span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:11px; height:11px; border-radius:50%; background:${corCirculo}; display:inline-block;"></span>${nomesCor[g.cor_sorteada] || g.cor_sorteada || '-'}</span>`);
+                $('#card-premiado').removeClass('hidden');
+            }
+        }
+
         function aprovarPagamentoFront(data) {
             isPago = true;
             $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-modo-teste').hide();
@@ -573,6 +636,8 @@
             renderCotas((data.cotas && data.cotas.length) ? data.cotas : COTAS_GERADAS_INICIAIS);
 
             LINK_GRUPO_VIP_ATUAL = data.link_grupo_vip || null;
+
+            mostrarCardPremiadoSeAplicavel(data);
 
             try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
 
@@ -1009,17 +1074,39 @@
                     montarSeletorCor(giro);
                     mostrarResultadoGiro(giro);
 
-                    if (giro.ganhou) { tocarSomGanhou(); dispararConfete(); return; }
+                    // ⚡ Confere aqui, ANTES de separar entre "ganhou"/"perdeu" — sem isso, o caminho
+                    // de vitória nunca chegava a checar se essa era a última roleta (ele já retorna
+                    // mais abaixo), e o card de premiado no checkout nunca aparecia depois de ganhar.
+                    const restantesAgora = GIROS.filter(g => !g.girado).length;
+                    const tudoGiradoAgora = restantesAgora === 0;
+                    const vencedorDoPedido = GIROS.find(g => g.girado && g.ganhou) || null;
+
+                    if (giro.ganhou) {
+                        tocarSomGanhou();
+                        dispararConfete();
+                        if (tudoGiradoAgora) {
+                            setTimeout(() => {
+                                $('#modal-roleta').addClass('hidden').css('display', '');
+                                mostrarCardPremiadoSeAplicavel({ roleta_premiada: vencedorDoPedido });
+                            }, 2200);
+                        }
+                        return;
+                    }
 
                     tocarSomPerdeu();
                     // Não avança sozinho pra próxima roleta — a pessoa decide, clicando em "Próxima".
                     // Só quando essa é mesmo a última roleta (não sobra nenhuma pra girar) é que o
-                    // popup de combos abre sozinho, porque nesse caso não tem mais nada pra fazer aqui.
-                    const restantesAgora = GIROS.filter(g => !g.girado).length;
-                    if (restantesAgora === 0) {
+                    // popup de combos abre sozinho (ou o card de premiado, se algum giro anterior
+                    // desse mesmo pedido já tinha ganhado) — porque nesse caso não tem mais nada
+                    // pendente pra fazer aqui.
+                    if (tudoGiradoAgora) {
                         setTimeout(() => {
                             $('#modal-roleta').addClass('hidden').css('display', '');
-                            if (TEM_COMBOS_ROLETA) abrirPopupCombosRoleta();
+                            if (vencedorDoPedido) {
+                                mostrarCardPremiadoSeAplicavel({ roleta_premiada: vencedorDoPedido });
+                            } else if (TEM_COMBOS_ROLETA) {
+                                abrirPopupCombosRoleta();
+                            }
                         }, 2200);
                     }
                 }, DURACAO_GIRO_MS);
@@ -1131,7 +1218,9 @@
                     cotas: COTAS_GERADAS_INICIAIS,
                     link_grupo_vip: pedido.sorteios?.link_grupo_vip || null,
                     pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome || '', event_id: `purchase_${pedido.id}` },
-                    funil: FUNIL_DATA
+                    funil: FUNIL_DATA,
+                    bilhete_premiado_instantaneo: data.bilhete_premiado_instantaneo || null,
+                    roleta_premiada: data.roleta_premiada || null
                 });
             } else {
                 try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/${derived_status || 'pendente'}`); } catch (e) {}

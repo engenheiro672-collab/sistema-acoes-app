@@ -1746,13 +1746,15 @@ async function getCheckoutPublicData(token) {
   // ⚡ Nenhuma dessas 4 consultas depende do resultado das outras — só do "pedido" que já veio
   // ali de cima. Antes rodavam uma atrás da outra (4 idas e voltas ao banco); agora rodam todas
   // ao mesmo tempo (1 ida e volta).
-  const [{ data: funilData }, meta, cfg, { data: roletaTiersData }] = await Promise.all([
+  const [{ data: funilData }, meta, cfg, { data: roletaTiersData }, { data: premiosDoPedido }, { data: girosDoPedido }] = await Promise.all([
     pedido.funil_id ? supabase.from('funis').select('*').eq('id', pedido.funil_id).maybeSingle() : Promise.resolve({ data: null }),
     getPublicMeta(),
     fetchConfigFromDB(),
     sorteioDoPedido.roleta_ativada
       ? supabase.from('roleta_tiers').select('*').eq('sorteio_id', sorteioDoPedido.id).order('minimo_cotas', { ascending: true })
-      : Promise.resolve({ data: [] })
+      : Promise.resolve({ data: [] }),
+    supabase.from('bilhetes_premiados').select('*').eq('pedido_id', pedido.id),
+    supabase.from('roleta_giros').select('*').eq('pedido_id', pedido.id)
   ]);
   const funil = funilData || null;
   const pixels = {
@@ -1765,12 +1767,25 @@ async function getCheckoutPublicData(token) {
   const modo_teste_pagamento = cfg.MODO_TESTE_PAGAMENTO === 'true' || cfg.MODO_TESTE_PAGAMENTO === 'on';
   const roleta_tiers = roletaTiersData || [];
 
+  // ⚡ Bilhete premiado "instantâneo" (não é o da roleta) — aparece assim que o pagamento é
+  // aprovado, sem depender de nenhuma ação a mais da pessoa.
+  const bilhete_premiado_instantaneo = (premiosDoPedido || []).find(p => p.tipo !== 'roleta') || null;
+
+  // ⚡ Roleta premiada — só conta como "pra mostrar" depois que a pessoa girou TODAS as roletas
+  // daquele pedido (1, 5, quantas forem) — nunca antes disso, mesmo que o prêmio já esteja
+  // decidido no banco desde a aprovação do pagamento. Sem essa checagem, apareceria "você ganhou"
+  // antes da pessoa sequer ter girado a roleta, o que não faz sentido pra ela.
+  const girosDessePedido = girosDoPedido || [];
+  const todasRoletasGiradas = girosDessePedido.length > 0 && girosDessePedido.every(g => g.girado);
+  const giroVencedor = girosDessePedido.find(g => g.girado && g.premio_titulo) || null;
+  const roleta_premiada = (todasRoletasGiradas && giroVencedor) ? giroVencedor : null;
+
   return {
     pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta,
     // ⚡ Mesma regra da página do sorteio — o ícone do checkout é o do sorteio específico dessa
     // compra, nunca a logo geral do painel admin.
     logo_url: sorteioDoPedido.icone_tela_inicio_url || sorteioDoPedido.foto_url || meta.logo_url,
-    pixels, modo_teste_pagamento, roleta_tiers
+    pixels, modo_teste_pagamento, roleta_tiers, bilhete_premiado_instantaneo, roleta_premiada
   };
 }
 
@@ -2731,12 +2746,24 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
       funil = f || null;
     }
 
+    // ⚡ Mesma lógica do getCheckoutPublicData — bilhete instantâneo aparece assim que aprovado;
+    // roleta só conta como "pra mostrar" depois de TODAS as roletas daquele pedido giradas.
+    const [{ data: premiosDoPedido }, { data: girosDoPedido }] = await Promise.all([
+      supabase.from('bilhetes_premiados').select('*').eq('pedido_id', pedido.id),
+      supabase.from('roleta_giros').select('*').eq('pedido_id', pedido.id)
+    ]);
+    const bilhete_premiado_instantaneo = (premiosDoPedido || []).find(p => p.tipo !== 'roleta') || null;
+    const girosDessePedido = girosDoPedido || [];
+    const todasRoletasGiradas = girosDessePedido.length > 0 && girosDessePedido.every(g => g.girado);
+    const giroVencedor = girosDessePedido.find(g => g.girado && g.premio_titulo) || null;
+    const roleta_premiada = (todasRoletasGiradas && giroVencedor) ? giroVencedor : null;
+
     return ok(res, {
       status: statusCode, derived_status, cotas: pedido.cotas_array || [],
       link_grupo_vip: pedido.sorteios?.link_grupo_vip,
       payment: { gateway_payment_id: pedido.gateway_payment_id, pix_copia_cola: pedido.pix_copia_cola, pix_qr_code_base64: pedido.pix_qr_code_base64, provider: pedido.payment_provider },
       pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome, event_id: `purchase_${pedido.id}` },
-      funil
+      funil, bilhete_premiado_instantaneo, roleta_premiada
     });
   } catch (err) { console.error(err); return fail(res); }
 });
