@@ -119,7 +119,7 @@
             </div>
         </div>
 
-        <div id="card-pago" class="card flex flex-col items-center text-center hidden">
+        <div id="card-pago" class="card card-flush-bottom flex flex-col items-center text-center hidden">
             <i class="bi bi-check-circle-fill" style="font-size:2.5rem; color:#22c55e;"></i>
             <div class="mt-2">
                 <h2 id="pos-pagamento-titulo" class="aguardando-title" style="color:#22c55e;">Pagamento identificado!</h2>
@@ -128,7 +128,8 @@
         </div>
 
         <!-- ⚡ "Participe novamente" — só aparece se o admin ativou essa opção pra esse sorteio -->
-        <div id="card-upsell-checkout" class="hidden card" style="padding:12px;">
+        <div id="card-upsell-checkout" class="hidden card card-flush-top" style="padding:12px; position:relative; overflow:hidden;">
+            <div id="upsell-selo-desconto" class="hidden" style="position:absolute; top:10px; right:-30px; background:linear-gradient(135deg,#eab308,#facc15); color:#422006; font-size:10px; font-weight:800; padding:4px 34px; transform:rotate(45deg); box-shadow:0 2px 6px rgba(0,0,0,0.15); z-index:2;">50% OFF</div>
             <div style="font-size:14px; font-weight:700; color:#1e293b;" id="upsell-nome-sorteio">-</div>
             <div style="font-size:11px; color:#64748b; margin-bottom:8px;">Participe novamente</div>
             <div style="display:flex; gap:8px; align-items:flex-start;">
@@ -195,13 +196,30 @@
                 </div>
         </div>
 
-        <div id="secao-roletas-checkout" class="card hidden text-left">
-            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-                <span class="flex items-center gap-2" style="font-weight:600; color:#212b36; font-size:0.95rem;"><span style="font-size:1.1rem;">🎯</span> <span id="texto-contador-roletas">Você tem 0 roleta(s) para girar!</span></span>
-                <button id="btn-girar-todas" class="btn-girar-todas-estilo">Girar Todas</button>
+        <div id="secao-roletas-checkout" class="card hidden text-center">
+            <div id="texto-contador-roletas" style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:2px;">Você tem 0 roleta(s) para girar!</div>
+            <div style="font-size:11px; color:#64748b; margin-bottom:14px;">Cada giro pode te dar um prêmio na hora</div>
+            <div style="position:relative; width:200px; height:200px; margin:0 auto;">
+                <div style="position:absolute; top:-6px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:14px solid #b45309; z-index:3;"></div>
+                <svg viewBox="0 0 100 100" style="width:100%; height:100%; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.25)); animation:roleta-balanco 3.5s ease-in-out infinite;">
+                    <circle cx="50" cy="50" r="48" fill="#1a1a1a"/>
+                    <path d="M50 50 L50 2 A48 48 0 0 1 91.6 26 Z" fill="#22c55e"/>
+                    <path d="M50 50 L91.6 26 A48 48 0 0 1 91.6 74 Z" fill="#0a0a0a"/>
+                    <path d="M50 50 L91.6 74 A48 48 0 0 1 50 98 Z" fill="#dc2626"/>
+                    <path d="M50 50 L50 98 A48 48 0 0 1 8.4 74 Z" fill="#0a0a0a"/>
+                    <path d="M50 50 L8.4 74 A48 48 0 0 1 8.4 26 Z" fill="#dc2626"/>
+                    <path d="M50 50 L8.4 26 A48 48 0 0 1 50 2 Z" fill="#0a0a0a"/>
+                    <circle cx="50" cy="50" r="2" fill="#facc15"/>
+                </svg>
+                <button id="btn-girar-todas" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:88px; height:88px; border-radius:50%; background:linear-gradient(135deg,#1a8754,#22a866); border:4px solid #fff; color:#fff; font-size:13px; font-weight:800; line-height:1.15; box-shadow:0 4px 14px rgba(0,0,0,0.3);">GIRAR<br>ROLETA</button>
+                <div id="badge-giros-restantes" style="position:absolute; top:-4px; right:-4px; width:26px; height:26px; border-radius:50%; background:#dc2626; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid #fff;">0</div>
             </div>
-            <div id="lista-giros-checkout" class="space-y-2"></div>
+            <div id="lista-giros-checkout" class="hidden"></div>
         </div>
+
+        <style>
+            @keyframes roleta-balanco { 0%,100% { transform:rotate(-4deg); } 50% { transform:rotate(4deg); } }
+        </style>
 
         <div id="banner-ativar-push" class="hidden my-3 banner-push-pulse" style="background:linear-gradient(135deg,#0f5c38,#1a8754,#5be584); background-size:200% 200%; border-radius:14px; padding:1.25rem 1.25rem; text-align:center; box-shadow:0 8px 24px rgba(26,135,84,0.35);">
             <div class="sino-balancando" style="font-size:2.1rem;">🔔</div>
@@ -673,7 +691,10 @@
         }
         function atualizarBotaoUpsell() {
             const { totalCheio, totalFinal, descontoAtivo } = calcularValorUpsell(upsellQtd);
+            $('#upsell-selo-desconto').toggleClass('hidden', !descontoAtivo);
             if (descontoAtivo) {
+                const pctExibido = Math.round(Number(UPSELL_DATA.desconto_percentual || 0));
+                $('#upsell-selo-desconto').text(`${pctExibido}% OFF`);
                 $('#upsell-btn-comprar-texto').html(`<span style="text-decoration:line-through; opacity:0.7; font-size:0.85em; margin-right:4px;">${formatarMoedaUpsell(totalCheio)}</span>Comprar (${formatarMoedaUpsell(totalFinal)})`);
             } else {
                 $('#upsell-btn-comprar-texto').text(`Comprar (${formatarMoedaUpsell(totalCheio)})`);
@@ -868,38 +889,20 @@
 
         function renderListaGiros() {
             const restantes = GIROS.filter(g => !g.girado).length;
+            $('#badge-giros-restantes').text(restantes);
             if (restantes > 0) {
                 $('#texto-contador-roletas').text(`Você tem ${restantes} roleta(s) para girar!`);
-                $('#btn-girar-todas').text('Girar Todas').show().off('click.girartodas').on('click.girartodas', acaoTentarNovamente);
+                $('#btn-girar-todas').html('GIRAR<br>ROLETA').show().off('click.girartodas').on('click.girartodas', acaoTentarNovamente);
+                $('#secao-roletas-checkout').removeClass('hidden');
             } else if (TEM_COMBOS_ROLETA) {
                 $('#texto-contador-roletas').text('Quer mais chances na roleta?');
-                $('#btn-girar-todas').text('Tentar novamente').show().off('click.girartodas').on('click.girartodas', acaoTentarNovamente);
+                $('#badge-giros-restantes').addClass('hidden');
+                $('#btn-girar-todas').html('TENTAR<br>NOVAMENTE').show().off('click.girartodas').on('click.girartodas', acaoTentarNovamente);
+                $('#secao-roletas-checkout').removeClass('hidden');
             } else {
-                $('#texto-contador-roletas').text('Você já girou todas as roletas!');
-                $('#btn-girar-todas').hide();
-            }
-            const visiveis = MOSTRAR_TODAS_ROLETAS ? GIROS : GIROS.slice(0, 4);
-            const podeTentarNovamente = restantes > 0 || TEM_COMBOS_ROLETA;
-            $('#lista-giros-checkout').html(visiveis.map((g) => {
-                const i = GIROS.indexOf(g);
-                if (g.girado && g.ganhou) {
-                    const texto = g.valor_premio || g.premio_titulo || 'Prêmio!';
-                    return `<div class="giro-linha giro-ganhou-linha"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span></div><b style="color:#fff;">${texto}</b></div>`;
-                }
-                if (g.girado && !g.ganhou) {
-                    if (podeTentarNovamente) {
-                        return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><button class="btn-tentar-novamente pill-tentar">Tentar novamente</button></div>`;
-                    }
-                    return `<div class="giro-linha giro-perdeu"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span><span class="giro-sub">Não foi dessa vez!</span></div><span class="pill-girou">GIROU</span></div>`;
-                }
-                return `<div class="giro-linha giro-pendente"><div class="giro-info"><span class="giro-titulo">🎯 Roleta Instantânea</span></div><button class="btn-girar-uma pill-girar" data-idx="${i}">GIRAR</button></div>`;
-            }).join(''));
-            if (!MOSTRAR_TODAS_ROLETAS && GIROS.length > 4) {
-                $('#lista-giros-checkout').append(`<button id="btn-ver-mais-roletas" class="text-center text-gray-500 font-semibold hover:text-gray-900 text-sm w-full mt-1"><i class="bi bi-chevron-down"></i> Ver mais ${GIROS.length - 4} roleta(s)</button>`);
+                $('#secao-roletas-checkout').addClass('hidden');
             }
         }
-        $('#lista-giros-checkout').on('click', '#btn-ver-mais-roletas', function() { MOSTRAR_TODAS_ROLETAS = true; renderListaGiros(); });
-
 
         // Roleta reduzida a 20 fatias por cor: 1 verde (paga em dobro) + vermelho/preto alternando.
         // A cor onde a bolinha cai é decidida no SERVIDOR (endpoint /girar) — o navegador só anima
@@ -1246,8 +1249,6 @@
             });
         }
 
-        $('#lista-giros-checkout').on('click', '.btn-girar-uma', function() { abrirModalRoleta(Number($(this).data('idx'))); });
-        $('#lista-giros-checkout').on('click', '.btn-tentar-novamente', function() { acaoTentarNovamente(); });
         $('#close-popup-combos-roleta').on('click', fecharPopupCombosRoleta);
         $('#popup-combos-roleta').on('click', function(e) { if (e.target === this) fecharPopupCombosRoleta(); });
         $('#close-modal-roleta').on('click', function() { $('#modal-roleta').addClass('hidden').css('display', ''); });
