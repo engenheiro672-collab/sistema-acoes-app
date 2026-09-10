@@ -764,7 +764,8 @@
                 quantidade: upsellQtd,
                 telefone: PEDIDO_TELEFONE,
                 nome_completo: PEDIDO_NOME,
-                origem: 'upsell_checkout'
+                origem: 'upsell_checkout',
+                funil_id: FUNIL_DATA?.id || null
             }).done(function(novoPedido) {
                 window.location.href = novoPedido.redirect || `/checkout/${novoPedido.token}`;
             }).fail(function(xhr) {

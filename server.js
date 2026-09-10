@@ -2636,19 +2636,24 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
 
     let promocao_aplicada = null;
     let giros_bonus_upsell = 0;
-    const { data: promoMatch } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).maybeSingle();
-    if (promoMatch) {
-      valor_total = Number(promoMatch.preco_promocional);
-      promocao_aplicada = promoMatch.titulo;
-    } else {
-      // Não bateu com nenhuma promoção "clássica" — confere se bate com uma oferta de Upsell
-      // (preço e giros de roleta bônus sempre decididos aqui no servidor, nunca confiando no
-      // que o navegador manda, por segurança).
-      const { data: upsellMatch } = await supabase.from('upsell_ofertas').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).order('preco_promocional', { ascending: true }).limit(1).maybeSingle();
-      if (upsellMatch) {
-        valor_total = Number(upsellMatch.preco_promocional);
-        giros_bonus_upsell = Number(upsellMatch.quantidade_giros_roleta || 0);
-        promocao_aplicada = 'Oferta especial';
+    // ⚡ Quando é uma compra do "Participe novamente" (upsell_checkout), o desconto dela já foi
+    // aplicado acima — não deixa nenhuma promoção "clássica" nem oferta antiga de upsell (mecanismos
+    // completamente separados, que combinam por coincidência de quantidade) sobrescrever esse valor.
+    if (origem !== 'upsell_checkout') {
+      const { data: promoMatch } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).maybeSingle();
+      if (promoMatch) {
+        valor_total = Number(promoMatch.preco_promocional);
+        promocao_aplicada = promoMatch.titulo;
+      } else {
+        // Não bateu com nenhuma promoção "clássica" — confere se bate com uma oferta de Upsell
+        // (preço e giros de roleta bônus sempre decididos aqui no servidor, nunca confiando no
+        // que o navegador manda, por segurança).
+        const { data: upsellMatch } = await supabase.from('upsell_ofertas').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).order('preco_promocional', { ascending: true }).limit(1).maybeSingle();
+        if (upsellMatch) {
+          valor_total = Number(upsellMatch.preco_promocional);
+          giros_bonus_upsell = Number(upsellMatch.quantidade_giros_roleta || 0);
+          promocao_aplicada = 'Oferta especial';
+        }
       }
     }
 
