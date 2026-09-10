@@ -671,6 +671,10 @@
         }
         function montarCardUpsellSeAplicavel(upsell) {
             if (!upsell) return;
+            // ⚡ O card antigo (foto + "Você está participando!" + quantidade) fica redundante
+            // depois que esse aqui aparece — os dois mostram basicamente a mesma coisa. Só o
+            // "Participe novamente" continua visível a partir daqui.
+            $('#card-sorteio').addClass('hidden');
             UPSELL_DATA = upsell;
             upsellQtd = Number(upsell.qtd_inicial) || 25;
             $('#upsell-nome-sorteio').text(upsell.nome || '');

@@ -697,6 +697,16 @@
                 </div>
 
                 <div class="bg-darkCard border border-gray-800 rounded-xl p-4">
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-semibold text-white">🔔 Pedir pro comprador ativar notificações</h4>
+                                <p class="text-xs text-gray-500 mt-1">Controla o convite "Ativar Notificações" que aparece no checkout e no menu da página do sorteio. Desligando aqui, some dos dois lugares de uma vez — e no lugar dele, sempre aparece o Grupo VIP (se tiver configurado).</p>
+                            </div>
+                            <label class="toggle-switch flex-shrink-0"><input type="checkbox" id="push-comprador-ativo"><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+                        </div>
+                    </div>
+
                     <h4 class="font-semibold text-white mb-3">Criar novo disparo</h4>
                     <select id="push-sorteio" class="select-sorteio-dash input-dark mb-2"><option value="">Sem sorteio específico (link livre)</option></select>
                     <input id="push-titulo" class="input-dark mb-2" placeholder="Título (ex: 🔥 Chance em Dobro ativa agora!)">
@@ -3287,6 +3297,7 @@ function carregarStatusPushAdmin() {
 function carregarConfigPushAdmin() {
     api('GET', '/api/admin/configuracoes').then(cfg => {
         if (cfg.LOGO_URL) $('#logo-preview-notif').css('background-image', `url(${cfg.LOGO_URL})`);
+        $('#push-comprador-ativo').prop('checked', cfg.PUSH_ATIVO === 'true');
         $('#push-admin-reserva-ativo').prop('checked', cfg.PUSH_ADMIN_RESERVA_ATIVO !== 'false');
         $('#push-admin-reserva-titulo').val(cfg.PUSH_ADMIN_RESERVA_TITULO || '📝 Nova reserva!');
         $('#push-admin-reserva-corpo').val(cfg.PUSH_ADMIN_RESERVA_CORPO || '{cliente} reservou {quantidade} títulos — {valor}');
@@ -3321,6 +3332,14 @@ function salvarConfigPushAdmin() {
         PUSH_ADMIN_VENDA_CORPO: $('#push-admin-venda-corpo').val()
     }).then(() => notificar('Mensagens salvas!', 'sucesso')).catch(() => notificar('Erro ao salvar.', 'erro'));
 }
+// ⚡ Essa aqui é independente das mensagens internas acima — salva sozinha assim que muda,
+// sem precisar de um botão "Salvar" separado.
+$(document).on('change', '#push-comprador-ativo', function() {
+    const ligado = $(this).is(':checked');
+    api('POST', '/api/admin/configuracoes', { PUSH_ATIVO: ligado ? 'true' : 'false' })
+        .then(() => notificar(ligado ? 'Convite de notificação ativado pros compradores.' : 'Convite de notificação desativado pros compradores.', 'sucesso'))
+        .catch(() => notificar('Erro ao salvar.', 'erro'));
+});
 
 // ---- FUNIS (nova funcionalidade) ----
 function badgeOrigem(origem) {

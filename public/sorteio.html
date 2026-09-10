@@ -1135,7 +1135,9 @@
             if (sorteio.link_grupo_vip) {
                 $('#menu-grupo-vip').attr('href', sorteio.link_grupo_vip).removeClass('hidden');
             }
-            $('#menu-ativar-push').removeClass('hidden');
+            // ⚡ Some junto com o convite de notificação do checkout — controlado pela mesma
+            // chavinha única no painel (aba Push), pra ligar/desligar os dois de uma vez.
+            if (data.push_ativo) $('#menu-ativar-push').removeClass('hidden');
 
             $('#campo-cpf').toggleClass('hidden', !sorteio.coletar_cpf);
             $('#checkout-cpf').prop('required', !!sorteio.coletar_cpf);

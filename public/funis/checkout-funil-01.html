@@ -671,6 +671,7 @@
         }
         function montarCardUpsellSeAplicavel(upsell) {
             if (!upsell) return;
+            $('#card-sorteio').addClass('hidden');
             UPSELL_DATA = upsell;
             upsellQtd = Number(upsell.qtd_inicial) || 25;
             $('#upsell-nome-sorteio').text(upsell.nome || '');
