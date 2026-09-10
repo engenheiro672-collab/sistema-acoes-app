@@ -664,9 +664,20 @@
         let UPSELL_DATA = null;
         let upsellQtd = 25;
         function formatarMoedaUpsell(v) { return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+        function calcularValorUpsell(qtd) {
+            const totalCheio = qtd * Number(UPSELL_DATA.preco_cota || 0);
+            const pct = Number(UPSELL_DATA.desconto_percentual || 0);
+            const minimo = Number(UPSELL_DATA.desconto_minimo || 0);
+            const descontoAtivo = pct > 0 && minimo > 0 && qtd >= minimo;
+            return { totalCheio, totalFinal: descontoAtivo ? totalCheio * (1 - pct / 100) : totalCheio, descontoAtivo };
+        }
         function atualizarBotaoUpsell() {
-            const total = upsellQtd * Number(UPSELL_DATA.preco_cota || 0);
-            $('#upsell-btn-comprar-texto').text(`Comprar (${formatarMoedaUpsell(total)})`);
+            const { totalCheio, totalFinal, descontoAtivo } = calcularValorUpsell(upsellQtd);
+            if (descontoAtivo) {
+                $('#upsell-btn-comprar-texto').html(`<span style="text-decoration:line-through; opacity:0.7; font-size:0.85em; margin-right:4px;">${formatarMoedaUpsell(totalCheio)}</span>Comprar (${formatarMoedaUpsell(totalFinal)})`);
+            } else {
+                $('#upsell-btn-comprar-texto').text(`Comprar (${formatarMoedaUpsell(totalCheio)})`);
+            }
             $('#upsell-qtd-numero').text(upsellQtd);
         }
         function montarCardUpsellSeAplicavel(upsell) {
@@ -710,10 +721,12 @@
 
         $('#upsell-btn-comprar').on('click', function() {
             if (!UPSELL_DATA) return;
-            const total = upsellQtd * Number(UPSELL_DATA.preco_cota || 0);
+            const { totalCheio, totalFinal, descontoAtivo } = calcularValorUpsell(upsellQtd);
             $('#upsell-confirmar-qtd').text(upsellQtd);
             $('#upsell-confirmar-nome').text(UPSELL_DATA.nome || '');
-            $('#upsell-confirmar-valor').text(formatarMoedaUpsell(total));
+            $('#upsell-confirmar-valor').html(descontoAtivo
+                ? `<span style="text-decoration:line-through; opacity:0.6; font-size:0.85em; margin-right:5px; color:#94a3b8;">${formatarMoedaUpsell(totalCheio)}</span>${formatarMoedaUpsell(totalFinal)}`
+                : formatarMoedaUpsell(totalCheio));
             $('#upsell-confirmar-comprador-nome').text(PEDIDO_NOME || '-');
             $('#upsell-confirmar-comprador-tel').text(PEDIDO_TELEFONE || '-');
             $('#modal-upsell-confirmar').removeClass('hidden');
@@ -729,7 +742,8 @@
                 sorteio_id: UPSELL_DATA.sorteio_id,
                 quantidade: upsellQtd,
                 telefone: PEDIDO_TELEFONE,
-                nome_completo: PEDIDO_NOME
+                nome_completo: PEDIDO_NOME,
+                origem: 'upsell_checkout'
             }).done(function(novoPedido) {
                 window.location.href = novoPedido.redirect || `/checkout/${novoPedido.token}`;
             }).fail(function(xhr) {

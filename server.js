@@ -1793,7 +1793,9 @@ async function getCheckoutPublicData(token) {
       foto_url: sorteioDoPedido.foto_url,
       preco_cota: sorteioDoPedido.preco_cota,
       qtd_inicial: sorteioDoPedido.upsell_checkout_qtd_inicial || 25,
-      botoes: (sorteioDoPedido.upsell_checkout_botoes || '25,50').split(',').map(n => Number(n.trim())).filter(Boolean)
+      botoes: (sorteioDoPedido.upsell_checkout_botoes || '25,50').split(',').map(n => Number(n.trim())).filter(Boolean),
+      desconto_percentual: Number(sorteioDoPedido.upsell_checkout_desconto_percentual || 0),
+      desconto_minimo: Number(sorteioDoPedido.upsell_checkout_desconto_minimo || 0)
     } : null
   };
 }
@@ -2573,7 +2575,7 @@ app.post('/api/public/roleta-desconto/girar', limitePublicoSensivel, async (req,
 
 app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) => {
   try {
-    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, codigo_desconto } = req.body || {};
+    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, codigo_desconto, origem } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
@@ -2609,13 +2611,29 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     const { data: sorteio } = await supabase.from('sorteios').select('*').eq('id', sorteio_id).maybeSingle();
     if (!sorteio) return res.status(404).json({ error: 'Sorteio não encontrado' });
 
-    if (sorteio.minimo_cotas_compra && quantidade < sorteio.minimo_cotas_compra) return res.status(400).json({ error: `Mínimo: ${sorteio.minimo_cotas_compra}` });
-    if (sorteio.maximo_cotas_compra && quantidade > sorteio.maximo_cotas_compra) return res.status(400).json({ error: `Máximo: ${sorteio.maximo_cotas_compra}` });
+    // ⚡ Pedido vindo do "Participe novamente" (pós-pagamento) tem regras próprias de
+    // mínimo/máximo — não faz sentido aplicar o mínimo de compra do sorteio principal aqui.
+    if (origem !== 'upsell_checkout') {
+      if (sorteio.minimo_cotas_compra && quantidade < sorteio.minimo_cotas_compra) return res.status(400).json({ error: `Mínimo: ${sorteio.minimo_cotas_compra}` });
+      if (sorteio.maximo_cotas_compra && quantidade > sorteio.maximo_cotas_compra) return res.status(400).json({ error: `Máximo: ${sorteio.maximo_cotas_compra}` });
+    }
     if (sorteio.coletar_cpf && !usuario.cpf) return res.status(400).json({ error: 'CPF é obrigatório para este sorteio' });
     if (sorteio.coletar_email && !usuario.email) return res.status(400).json({ error: 'Email é obrigatório para este sorteio' });
     if (sorteio.coletar_endereco && !usuario.endereco) return res.status(400).json({ error: 'Endereço é obrigatório para este sorteio' });
 
     let valor_total = Number(sorteio.preco_cota) * Number(quantidade);
+
+    // ⚡ Desconto do "Participe novamente" — SEMPRE recalculado aqui no servidor, com os dados
+    // reais do sorteio, nunca confiando em nenhum valor que o navegador tenha mandado. É a
+    // mesma regra mostrada na tela (desconto só entra a partir da quantidade mínima configurada).
+    if (origem === 'upsell_checkout') {
+      const pct = Number(sorteio.upsell_checkout_desconto_percentual || 0);
+      const minimo = Number(sorteio.upsell_checkout_desconto_minimo || 0);
+      if (pct > 0 && minimo > 0 && Number(quantidade) >= minimo) {
+        valor_total = valor_total * (1 - pct / 100);
+      }
+    }
+
     let promocao_aplicada = null;
     let giros_bonus_upsell = 0;
     const { data: promoMatch } = await supabase.from('promocoes').select('*').eq('sorteio_id', sorteio_id).eq('ativo', true).eq('quantidade_cotas', quantidade).maybeSingle();
@@ -2807,7 +2825,9 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
         foto_url: pedido.sorteios.foto_url,
         preco_cota: pedido.sorteios.preco_cota,
         qtd_inicial: pedido.sorteios.upsell_checkout_qtd_inicial || 25,
-        botoes: (pedido.sorteios.upsell_checkout_botoes || '25,50').split(',').map(n => Number(n.trim())).filter(Boolean)
+        botoes: (pedido.sorteios.upsell_checkout_botoes || '25,50').split(',').map(n => Number(n.trim())).filter(Boolean),
+        desconto_percentual: Number(pedido.sorteios.upsell_checkout_desconto_percentual || 0),
+        desconto_minimo: Number(pedido.sorteios.upsell_checkout_desconto_minimo || 0)
       } : null
     });
   } catch (err) { console.error(err); return fail(res); }
@@ -3795,6 +3815,8 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       upsell_checkout_ativo: body.upsell_checkout_ativo === 'true' || body.upsell_checkout_ativo === true,
       upsell_checkout_qtd_inicial: parseInt(normalizeNumber(body.upsell_checkout_qtd_inicial)) || 25,
       upsell_checkout_botoes: body.upsell_checkout_botoes || '25,50',
+      upsell_checkout_desconto_percentual: parseFloat(body.upsell_checkout_desconto_percentual) || 0,
+      upsell_checkout_desconto_minimo: parseInt(normalizeNumber(body.upsell_checkout_desconto_minimo)) || 0,
       foto_url: foto_url,
       fotos_galeria: fotos_galeria,
       status: body.status || 'rascunho',

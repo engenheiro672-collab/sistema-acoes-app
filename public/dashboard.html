@@ -1034,6 +1034,17 @@
                                 <input type="text" name="upsell_checkout_botoes" id="inp-upsell-checkout-botoes" class="input-dark" value="25,50" placeholder="25,50">
                             </div>
                         </div>
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label class="text-xs text-gray-500">🏷️ Desconto (%) — deixe 0 pra desativar</label>
+                                <input type="number" step="0.01" name="upsell_checkout_desconto_percentual" id="inp-upsell-checkout-desconto-pct" class="input-dark" value="0" placeholder="Ex: 10">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">A partir de quantos títulos o desconto começa</label>
+                                <input type="number" name="upsell_checkout_desconto_minimo" id="inp-upsell-checkout-desconto-min" class="input-dark" value="0" placeholder="Ex: 100">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">O desconto some sozinho se a pessoa diminuir a quantidade abaixo desse mínimo, e volta se ela aumentar de novo.</p>
                     </div>
 
                     <div class="border-t border-gray-800 pt-4">
@@ -2366,6 +2377,8 @@ function abrirFormSorteio(id) {
         $('#inp-upsell-checkout-ativo').prop('checked', !!s.upsell_checkout_ativo);
         $('#inp-upsell-checkout-qtd').val(s.upsell_checkout_qtd_inicial || 25);
         $('#inp-upsell-checkout-botoes').val(s.upsell_checkout_botoes || '25,50');
+        $('#inp-upsell-checkout-desconto-pct').val(s.upsell_checkout_desconto_percentual || 0);
+        $('#inp-upsell-checkout-desconto-min').val(s.upsell_checkout_desconto_minimo || 0);
         setMascaraTelefoneValor(s.suporte_whatsapp);
         $('#inp-ganhador-nome').val(s.ganhador_nome || '');
         $('#inp-ganhador-cota').val(s.ganhador_cota || '');
