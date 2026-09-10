@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Admin - Sorteios</title>
 <link rel="manifest" href="/manifest.json">
+<!-- ⚡ Essa é a tag que a Apple usa de verdade pra decidir o nome mostrado do lado das notificações
+     e no atalho da tela de início — sem ela, o iOS "inventa" um nome sozinho a partir do <title>,
+     que foi exatamente a causa do "Painel - Admin" aparecendo nas notificações. -->
+<meta name="apple-mobile-web-app-title" content="Painel">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -999,6 +1005,24 @@
                         <div class="flex gap-2">
                             <input id="novo-botao-input" type="number" class="input-dark" placeholder="Ex: 1000" style="max-width:160px">
                             <button type="button" class="btn-primary" onclick="adicionarChipBotao()">+ Adicionar botão</button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-4">
+                        <label class="flex items-center gap-2 text-sm text-gray-300">
+                            <input type="checkbox" name="upsell_checkout_ativo" id="inp-upsell-checkout-ativo" value="true" class="w-4 h-4">
+                            🔁 Mostrar "Participe novamente" no checkout, depois do pagamento aprovado
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 mb-2">Um cartão pequeno, com seletor de quantidade próprio, oferecendo comprar mais cotas desse mesmo sorteio.</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-500">Quantidade inicial</label>
+                                <input type="number" name="upsell_checkout_qtd_inicial" id="inp-upsell-checkout-qtd" class="input-dark" value="25">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Botões de atalho (separados por vírgula)</label>
+                                <input type="text" name="upsell_checkout_botoes" id="inp-upsell-checkout-botoes" class="input-dark" value="25,50" placeholder="25,50">
+                            </div>
                         </div>
                     </div>
 
@@ -2329,6 +2353,9 @@ function abrirFormSorteio(id) {
         $('#inp-coletar-email').prop('checked', !!s.coletar_email);
         $('#inp-coletar-endereco').prop('checked', !!s.coletar_endereco);
         setBotoesRapidos(s.botoes_rapidos);
+        $('#inp-upsell-checkout-ativo').prop('checked', !!s.upsell_checkout_ativo);
+        $('#inp-upsell-checkout-qtd').val(s.upsell_checkout_qtd_inicial || 25);
+        $('#inp-upsell-checkout-botoes').val(s.upsell_checkout_botoes || '25,50');
         setMascaraTelefoneValor(s.suporte_whatsapp);
         $('#inp-ganhador-nome').val(s.ganhador_nome || '');
         $('#inp-ganhador-cota').val(s.ganhador_cota || '');

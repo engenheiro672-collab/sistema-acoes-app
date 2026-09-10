@@ -1785,7 +1785,16 @@ async function getCheckoutPublicData(token) {
     // ⚡ Mesma regra da página do sorteio — o ícone do checkout é o do sorteio específico dessa
     // compra, nunca a logo geral do painel admin.
     logo_url: sorteioDoPedido.icone_tela_inicio_url || sorteioDoPedido.foto_url || meta.logo_url,
-    pixels, modo_teste_pagamento, roleta_tiers, bilhete_premiado_instantaneo, roleta_premiada
+    pixels, modo_teste_pagamento, roleta_tiers, bilhete_premiado_instantaneo, roleta_premiada,
+    // ⚡ Widget "Participe novamente" — só ativa se o admin ligou a chavinha pra esse sorteio.
+    upsell_checkout: sorteioDoPedido.upsell_checkout_ativo ? {
+      sorteio_id: sorteioDoPedido.id,
+      nome: sorteioDoPedido.nome,
+      foto_url: sorteioDoPedido.foto_url,
+      preco_cota: sorteioDoPedido.preco_cota,
+      qtd_inicial: sorteioDoPedido.upsell_checkout_qtd_inicial || 25,
+      botoes: (sorteioDoPedido.upsell_checkout_botoes || '25,50').split(',').map(n => Number(n.trim())).filter(Boolean)
+    } : null
   };
 }
 
@@ -2791,7 +2800,15 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
       link_grupo_vip: pedido.sorteios?.link_grupo_vip,
       payment: { gateway_payment_id: pedido.gateway_payment_id, pix_copia_cola: pedido.pix_copia_cola, pix_qr_code_base64: pedido.pix_qr_code_base64, provider: pedido.payment_provider },
       pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome, event_id: `purchase_${pedido.id}` },
-      funil, bilhete_premiado_instantaneo, roleta_premiada
+      funil, bilhete_premiado_instantaneo, roleta_premiada,
+      upsell_checkout: pedido.sorteios?.upsell_checkout_ativo ? {
+        sorteio_id: pedido.sorteios.id,
+        nome: pedido.sorteios.nome,
+        foto_url: pedido.sorteios.foto_url,
+        preco_cota: pedido.sorteios.preco_cota,
+        qtd_inicial: pedido.sorteios.upsell_checkout_qtd_inicial || 25,
+        botoes: (pedido.sorteios.upsell_checkout_botoes || '25,50').split(',').map(n => Number(n.trim())).filter(Boolean)
+      } : null
     });
   } catch (err) { console.error(err); return fail(res); }
 });
@@ -3774,6 +3791,10 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       maximo_cotas_compra: parseInt(normalizeNumber(body.maximo_cotas_compra)),
       minimo_visivel_seletor: parseInt(normalizeNumber(body.minimo_visivel_seletor)),
       botoes_rapidos: body.botoes_rapidos || null,
+      // ⚡ Widget "Participe novamente" no checkout pós-pagamento
+      upsell_checkout_ativo: body.upsell_checkout_ativo === 'true' || body.upsell_checkout_ativo === true,
+      upsell_checkout_qtd_inicial: parseInt(normalizeNumber(body.upsell_checkout_qtd_inicial)) || 25,
+      upsell_checkout_botoes: body.upsell_checkout_botoes || '25,50',
       foto_url: foto_url,
       fotos_galeria: fotos_galeria,
       status: body.status || 'rascunho',

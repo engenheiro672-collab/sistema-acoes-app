@@ -126,6 +126,22 @@
                 <p id="pos-pagamento-mensagem" class="text-gray-500">Seus números já foram gerados.</p>
             </div>
         </div>
+
+        <!-- ⚡ "Participe novamente" — só aparece se o admin ativou essa opção pra esse sorteio -->
+        <div id="card-upsell-checkout" class="hidden card" style="padding:12px;">
+            <div style="font-size:14px; font-weight:700; color:#1e293b;" id="upsell-nome-sorteio">-</div>
+            <div style="font-size:11px; color:#64748b; margin-bottom:8px;">Participe novamente</div>
+            <div style="display:flex; gap:8px; align-items:flex-start;">
+                <div id="upsell-foto" style="width:60px; height:60px; border-radius:9px; background:#f1f5f9; flex-shrink:0; background-size:cover; background-position:center;"></div>
+                <div style="flex:1; min-width:0;">
+                    <div id="upsell-botoes-rapidos" style="display:flex; gap:4px; align-items:center; margin-bottom:6px;"></div>
+                    <button id="upsell-btn-comprar" style="width:100%; background:linear-gradient(135deg,#1a8754,#22a866); color:#fff; font-weight:400; font-size:11px; border:none; border-radius:6px; padding:6px 0;">
+                        <i class="bi bi-check-circle" style="margin-right:3px; font-size:10px;"></i><span id="upsell-btn-comprar-texto">Comprar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="bonus-tag-box" class="text-center"></div>
 
         <p id="cronometro-box" class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
@@ -338,6 +354,27 @@
         </div>
     </div>
 
+    <!-- ⚡ Confirmação rápida pro "Participe novamente" — pré-preenchido, já que é a mesma pessoa -->
+    <div id="modal-upsell-confirmar" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden" style="z-index:600;">
+        <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-md mx-4" style="background:#fff; border:1px solid #e2e8f0;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Confirmar nova compra</h3>
+                <button id="close-modal-upsell-confirmar" class="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Você está adquirindo <b id="upsell-confirmar-qtd" class="text-gray-800">-</b> título(s) a mais de <b id="upsell-confirmar-nome" class="text-gray-800">-</b>, por <b id="upsell-confirmar-valor" style="color:#15803d;">-</b>.</p>
+            <div style="background:#f1f5f9; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px;">
+                <i class="bi bi-person-circle text-gray-400" style="font-size:1.5rem;"></i>
+                <div>
+                    <div id="upsell-confirmar-comprador-nome" class="text-gray-800 font-semibold text-sm">-</div>
+                    <div id="upsell-confirmar-comprador-tel" class="text-gray-500 text-xs">-</div>
+                </div>
+            </div>
+            <button id="btn-upsell-confirmar-pagar" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg">
+                <span id="btn-upsell-confirmar-texto">Confirmar e pagar com Pix</span>
+            </button>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>
         const TOKEN = window.location.pathname.split('/').filter(Boolean)[1] || '';
@@ -444,7 +481,7 @@
             }
         }
         $(document).on('click', '#btn-ativar-push', ativarNotificacaoPush);
-        let PEDIDO_TELEFONE = null, PEDIDO_SORTEIO_ID = null, SUPORTE_WHATSAPP_GLOBAL = null;
+        let PEDIDO_TELEFONE = null, PEDIDO_NOME = null, PEDIDO_SORTEIO_ID = null, SUPORTE_WHATSAPP_GLOBAL = null;
 
         function notificar(mensagem, tipo) {
             const cores = { erro: '#dc2626', sucesso: '#16a34a', aviso: '#f59e0b' };
@@ -621,6 +658,86 @@
             }
         }
 
+        // ⚡ Widget "Participe novamente" — quantidade e preço calculados no CLIENTE só pra
+        // mostrar (nunca confiamos nisso pra cobrar); o valor real é sempre recalculado no
+        // servidor, no momento de criar o novo pedido, igual qualquer outra compra do site.
+        let UPSELL_DATA = null;
+        let upsellQtd = 25;
+        function formatarMoedaUpsell(v) { return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+        function atualizarBotaoUpsell() {
+            const total = upsellQtd * Number(UPSELL_DATA.preco_cota || 0);
+            $('#upsell-btn-comprar-texto').text(`Comprar (${formatarMoedaUpsell(total)})`);
+            $('#upsell-qtd-numero').text(upsellQtd);
+        }
+        function montarCardUpsellSeAplicavel(upsell) {
+            if (!upsell) return;
+            UPSELL_DATA = upsell;
+            upsellQtd = Number(upsell.qtd_inicial) || 25;
+            $('#upsell-nome-sorteio').text(upsell.nome || '');
+            if (upsell.foto_url) $('#upsell-foto').css('background-image', `url('/imagem-cache?url=${encodeURIComponent(upsell.foto_url)}')`);
+
+            const botoesHtml = (upsell.botoes || [25, 50]).slice(0, 2).map((n, i) => `
+                <button class="upsell-btn-atalho" data-add="${n}" style="width:28px; flex-shrink:0; background:${i === 0 ? '#166534' : 'linear-gradient(135deg,#1a8754,#22a866)'}; color:#fff; font-size:9px; font-weight:400; border:none; border-radius:6px; padding:5px 0;">+${n}</button>
+            `).join('');
+            $('#upsell-botoes-rapidos').html(`
+                ${botoesHtml}
+                <button id="upsell-btn-menos" style="width:22px; height:22px; border-radius:50%; border:1.5px solid #e2e8f0; background:#fff; color:#1e293b; font-size:0.85rem; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;">−</button>
+                <div id="upsell-qtd-numero" style="flex:1; text-align:center; font-size:12px; font-weight:400; color:#1e293b; background:#fff; border-radius:6px; padding:5px 0; border:1px solid #e2e8f0; min-width:0;">${upsellQtd}</div>
+                <button id="upsell-btn-mais" style="width:22px; height:22px; border-radius:50%; border:none; background:#0a0a0a; color:#fff; font-size:0.85rem; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;">+</button>
+            `);
+            atualizarBotaoUpsell();
+            $('#card-upsell-checkout').removeClass('hidden');
+
+            // ⚡ pointerdown (não "click") — resposta instantânea mesmo clicando bem rápido,
+            // igual ajustamos no seletor principal do sorteio.
+            $(document).off('pointerdown', '.upsell-btn-atalho').on('pointerdown', '.upsell-btn-atalho', function(e) {
+                e.preventDefault();
+                upsellQtd += Number($(this).data('add'));
+                atualizarBotaoUpsell();
+            });
+            $(document).off('pointerdown', '#upsell-btn-mais').on('pointerdown', '#upsell-btn-mais', function(e) {
+                e.preventDefault();
+                upsellQtd++;
+                atualizarBotaoUpsell();
+            });
+            $(document).off('pointerdown', '#upsell-btn-menos').on('pointerdown', '#upsell-btn-menos', function(e) {
+                e.preventDefault();
+                if (upsellQtd > 1) upsellQtd--;
+                atualizarBotaoUpsell();
+            });
+        }
+
+        $('#upsell-btn-comprar').on('click', function() {
+            if (!UPSELL_DATA) return;
+            const total = upsellQtd * Number(UPSELL_DATA.preco_cota || 0);
+            $('#upsell-confirmar-qtd').text(upsellQtd);
+            $('#upsell-confirmar-nome').text(UPSELL_DATA.nome || '');
+            $('#upsell-confirmar-valor').text(formatarMoedaUpsell(total));
+            $('#upsell-confirmar-comprador-nome').text(PEDIDO_NOME || '-');
+            $('#upsell-confirmar-comprador-tel').text(PEDIDO_TELEFONE || '-');
+            $('#modal-upsell-confirmar').removeClass('hidden');
+        });
+        $('#close-modal-upsell-confirmar').on('click', function() { $('#modal-upsell-confirmar').addClass('hidden'); });
+
+        $('#btn-upsell-confirmar-pagar').on('click', function() {
+            if (!UPSELL_DATA) return;
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            $('#btn-upsell-confirmar-texto').text('Aguarde...');
+            $.post('/api/public/pedidos/iniciar', {
+                sorteio_id: UPSELL_DATA.sorteio_id,
+                quantidade: upsellQtd,
+                telefone: PEDIDO_TELEFONE,
+                nome_completo: PEDIDO_NOME
+            }).done(function(novoPedido) {
+                window.location.href = novoPedido.redirect || `/checkout/${novoPedido.token}`;
+            }).fail(function(xhr) {
+                notificar(xhr.responseJSON?.error || 'Erro ao criar novo pedido, tenta de novo', 'erro');
+                $btn.prop('disabled', false);
+                $('#btn-upsell-confirmar-texto').text('Confirmar e pagar com Pix');
+            });
+        });
+
         function aprovarPagamentoFront(data) {
             isPago = true;
             $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-modo-teste').hide();
@@ -638,6 +755,7 @@
             LINK_GRUPO_VIP_ATUAL = data.link_grupo_vip || null;
 
             mostrarCardPremiadoSeAplicavel(data);
+            montarCardUpsellSeAplicavel(data.upsell_checkout);
 
             try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
 
@@ -1157,6 +1275,7 @@
             MINUTOS_RESTANTES = Number(minutos_restantes || 0);
             PUSH_ATIVO_GLOBAL = data.push_ativo === true;
             PEDIDO_TELEFONE = pedido.usuarios?.telefone || null;
+            PEDIDO_NOME = pedido.usuarios?.nome_completo || null;
             PEDIDO_SORTEIO_ID = pedido.sorteio_id || null;
 
             // ⚡ Banner "Entrega grátis em [cidade]" — usa a cidade salva permanentemente no
@@ -1220,7 +1339,8 @@
                     pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome || '', event_id: `purchase_${pedido.id}` },
                     funil: FUNIL_DATA,
                     bilhete_premiado_instantaneo: data.bilhete_premiado_instantaneo || null,
-                    roleta_premiada: data.roleta_premiada || null
+                    roleta_premiada: data.roleta_premiada || null,
+                    upsell_checkout: data.upsell_checkout || null
                 });
             } else {
                 try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/${derived_status || 'pendente'}`); } catch (e) {}
