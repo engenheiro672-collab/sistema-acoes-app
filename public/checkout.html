@@ -1490,7 +1490,7 @@
             const textoRegulamentoCheckout = [pedido.sorteios?.descricao, pedido.sorteios?.regulamento].filter(t => t && t.trim()).join('\n\n');
             if (textoRegulamentoCheckout) {
                 $('#secao-regulamento-checkout').removeClass('hidden');
-                $('#corpo-regulamento-checkout').text(textoRegulamentoCheckout);
+                $('#corpo-regulamento-checkout').text(textoRegulamentoCheckout).removeClass('hidden').hide();
             }
 
             if (pagoInicial) {
