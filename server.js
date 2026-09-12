@@ -1738,9 +1738,16 @@ async function getCheckoutPublicData(token) {
   const { data: pedido } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(nome_completo, telefone, cpf, cidade)').eq('token', token).maybeSingle();
   if (!pedido) return null;
   const minutos_restantes = pedido.expira_em ? Math.max(0, (new Date(pedido.expira_em).getTime() - Date.now()) / 60000) : 0;
+  // ⚡ Manda só os primeiros títulos de cara — pra quem comprou uma quantidade grande (500, 1000,
+  // 10000...), mandar TODOS os números já dentro da própria página deixava o carregamento bem
+  // mais pesado à toa, já que a tela só mostra um punhado por vez de qualquer jeito. O resto só é
+  // buscado se a pessoa realmente clicar em "ver mais títulos".
+  const LIMITE_COTAS_INICIAL = 20;
   let cotas_geradas = [];
-  if (pedido.status === 'pago') {
-    cotas_geradas = Array.isArray(pedido.cotas_array) ? pedido.cotas_array.map(n => ({ numero_cota: n })) : [];
+  let total_cotas_geradas = 0;
+  if (pedido.status === 'pago' && Array.isArray(pedido.cotas_array)) {
+    total_cotas_geradas = pedido.cotas_array.length;
+    cotas_geradas = pedido.cotas_array.slice(0, LIMITE_COTAS_INICIAL).map(n => ({ numero_cota: n }));
   }
   const isPago = pedido.status === 'pago';
   const derived_status = (isPago ? 'aprovado' : (pedido.expira_em && new Date(pedido.expira_em).getTime() < Date.now() ? 'expirado' : 'pendente'));
@@ -1785,7 +1792,7 @@ async function getCheckoutPublicData(token) {
   const roleta_premiada = (todasRoletasGiradas && giroVencedor) ? giroVencedor : null;
 
   return {
-    pedido, minutos_restantes, cotas_geradas, isPago, derived_status, funil, ...meta,
+    pedido, minutos_restantes, cotas_geradas, total_cotas_geradas, isPago, derived_status, funil, ...meta,
     // ⚡ Mesma regra da página do sorteio — o ícone do checkout é o do sorteio específico dessa
     // compra, nunca a logo geral do painel admin.
     logo_url: sorteioDoPedido.icone_tela_inicio_url || sorteioDoPedido.foto_url || meta.logo_url,
@@ -2758,6 +2765,16 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
   } catch (err) { console.error('POST /api/public/pedidos/iniciar', err); return fail(res); }
 });
 
+// ⚡ Busca TODOS os títulos de um pedido pago — só chamado quando a pessoa realmente clica em
+// "ver mais títulos" no checkout, em vez de vir tudo já dentro da página desde o início.
+app.get('/api/public/pedidos/:token/todos-titulos', async (req, res) => {
+  try {
+    const { data: pedido } = await supabase.from('pedidos').select('cotas_array, status').eq('token', req.params.token).maybeSingle();
+    if (!pedido || pedido.status !== 'pago') return res.status(404).json({ error: 'Pedido não encontrado' });
+    return ok(res, { cotas: (pedido.cotas_array || []).map(n => ({ numero_cota: n })) });
+  } catch (err) { console.error('GET /api/public/pedidos/:token/todos-titulos', err); return fail(res); }
+});
+
 app.get('/api/public/pedidos/:token/status', async (req, res) => {
   try {
     const { token } = req.params;
@@ -2823,7 +2840,9 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
     const roleta_premiada = (todasRoletasGiradas && giroVencedor) ? giroVencedor : null;
 
     return ok(res, {
-      status: statusCode, derived_status, cotas: pedido.cotas_array || [],
+      status: statusCode, derived_status,
+      cotas: (pedido.cotas_array || []).slice(0, 20).map(n => ({ numero_cota: n })),
+      total_cotas: (pedido.cotas_array || []).length,
       link_grupo_vip: pedido.sorteios?.link_grupo_vip,
       payment: { gateway_payment_id: pedido.gateway_payment_id, pix_copia_cola: pedido.pix_copia_cola, pix_qr_code_base64: pedido.pix_qr_code_base64, provider: pedido.payment_provider },
       pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome, event_id: `purchase_${pedido.id}` },

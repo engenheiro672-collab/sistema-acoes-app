@@ -168,6 +168,18 @@
         </div>
     </div>
 
+    <!-- ⚡ Tela de espera enquanto gera o Pix de verdade (chamada externa ao banco, leva uns
+         segundos) — antes disso só tinha o texto "Processando..." no botão, o que passa menos
+         confiança nesse tempinho de espera. Aparece por cima de tudo, inclusive do modal. -->
+    <div id="overlay-gerando-pix" class="hidden" style="position:fixed; inset:0; background:rgba(10,14,20,0.75); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); z-index:10000; align-items:center; justify-content:center; padding:1rem;">
+        <div style="background:#20242e; border-radius:16px; padding:2rem 1.75rem; max-width:320px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+            <div style="width:52px; height:52px; border:4px solid rgba(255,255,255,0.15); border-top-color:#22c55e; border-radius:50%; margin:0 auto 1.1rem; animation:girar-loading 0.9s linear infinite;"></div>
+            <h3 style="color:#fff; font-size:1.05rem; font-weight:700; margin-bottom:0.4rem;">Gerando seu Pix com segurança...</h3>
+            <p style="color:#94a3b8; font-size:0.85rem; margin:0;">Isso leva só alguns segundos. Não feche nem atualize a página.</p>
+        </div>
+    </div>
+    <style>@keyframes girar-loading { to { transform: rotate(360deg); } } #overlay-gerando-pix:not(.hidden) { display:flex; }</style>
+
 
     <header class="header-bar shadow-lg sticky top-0 z-50 relative hidden">
         <nav class="container mx-auto max-w-2xl px-4 flex justify-between items-center">
@@ -455,6 +467,15 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        // ⚡ Corrige a página ficando "travada" quando volta pelo botão voltar do navegador — em
+        // vez de recarregar de verdade, o celular às vezes só "descongela" a página do jeito
+        // exato que ela estava quando a pessoa saiu (inclusive um botão preso em "Processando...").
+        // Isso força uma recarga de verdade só nesse caso específico, sem mexer em mais nada.
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) location.reload();
+        });
+    </script>
     <script>
         // --- Lê slug do sorteio e (opcionalmente) slug do funil pela URL ---
         // Suporta: /sorteio/:slug  e  /sorteio/:slug/:funilSlug
@@ -1475,6 +1496,7 @@
                 if (ENVIANDO_PEDIDO) return;
                 ENVIANDO_PEDIDO = true;
                 $(this).prop('disabled', true).text('Processando...');
+                $('#overlay-gerando-pix').removeClass('hidden');
                 finalizarCompra(TELEFONE_ATUAL, PENDENTE_NOME || (COMPRADOR_CONHECIDO?.nome_completo || ''), PENDENTE_CPF || '', PENDENTE_EMAIL || '', PENDENTE_ENDERECO || '');
             });
             $('#btn-usar-outra-conta').on('click', function() {
@@ -1570,6 +1592,7 @@
                     error: function(xhr) {
                         const errorMsg = xhr.responseJSON?.error || 'Erro ao iniciar o checkout. Tente novamente.';
                         notificar(errorMsg, 'erro');
+                        $('#overlay-gerando-pix').addClass('hidden');
                         $('#btn-participar').prop('disabled', false); $('#btn-participar-label').text('Quero participar');
                         $('#btn-add-cota').prop('disabled', false);
                         ENVIANDO_PEDIDO = false;
