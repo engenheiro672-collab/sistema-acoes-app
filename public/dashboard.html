@@ -707,12 +707,6 @@
                         </div>
                     </div>
 
-                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-4">
-                        <h4 class="font-semibold text-white mb-1">Nome exibido no cabeçalho do checkout</h4>
-                        <p class="text-xs text-gray-500 mb-2">Aparece junto com a foto do sorteio, antes da pessoa pagar (ex: "Prêmios Derrets").</p>
-                        <input type="text" id="inp-nome-marca-checkout" class="input-dark" placeholder="Prêmios Derrets">
-                    </div>
-
                     <h4 class="font-semibold text-white mb-3">Criar novo disparo</h4>
                     <select id="push-sorteio" class="select-sorteio-dash input-dark mb-2"><option value="">Sem sorteio específico (link livre)</option></select>
                     <input id="push-titulo" class="input-dark mb-2" placeholder="Título (ex: 🔥 Chance em Dobro ativa agora!)">
@@ -1009,6 +1003,17 @@
                             <img id="preview-icone-tela-inicio-sorteio" src="" class="hidden" style="width:56px; height:56px; border-radius:12px; object-fit:cover; border:1px solid #374151;">
                             <input type="file" id="input-icone-tela-inicio-sorteio" accept="image/*" class="input-dark" onchange="uploadIconeTelaInicioSorteio(this)">
                         </div>
+                    </div>
+
+                    <div class="border-t border-gray-800 pt-3 mt-2">
+                        <label class="text-sm text-gray-400">👤 Marca exibida no cabeçalho do checkout, antes de pagar</label>
+                        <p class="text-xs text-gray-500 mb-2">A fotinha redondinha, o nome e a frase que aparecem no topo do checkout — no lugar de qualquer notificação de "fulano comprou agora".</p>
+                        <div class="flex items-center gap-3 mb-3">
+                            <img id="preview-marca-checkout" src="" class="hidden" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:1px solid #374151;">
+                            <input type="file" id="input-marca-checkout" accept="image/*" class="input-dark" onchange="uploadMarcaCheckout(this)">
+                        </div>
+                        <input type="text" name="marca_checkout_nome" id="inp-marca-checkout-nome" class="input-dark mb-2" placeholder='Nome (ex: "Prêmios Derrets")'>
+                        <input type="text" name="marca_checkout_descricao" id="inp-marca-checkout-descricao" class="input-dark" placeholder='Descrição (ex: "Participe e concorra de verdade")'>
                     </div>
                 </div>
 
@@ -2328,12 +2333,31 @@ function uploadIconeTelaInicioSorteio(input) {
             }
         }).catch(() => notificar('Erro ao enviar imagem.', 'erro'));
 }
+function uploadMarcaCheckout(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!SORTEIO_ATUAL_ID) { notificar('Salve o sorteio primeiro (aba Geral) antes de enviar essa foto.', 'aviso'); input.value = ''; return; }
+    const fd = new FormData();
+    fd.append('foto', file);
+    fetch(`/api/admin/sorteios/${SORTEIO_ATUAL_ID}/upload-marca-checkout`, { method: 'POST', credentials: 'include', body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.url) {
+                $('#preview-marca-checkout').attr('src', d.url).removeClass('hidden');
+                notificar('Foto salva!', 'sucesso');
+            } else {
+                notificar(d.error || 'Erro ao enviar imagem.', 'erro');
+            }
+        }).catch(() => notificar('Erro ao enviar imagem.', 'erro'));
+}
 function limparFormSorteio() {
     $('#form-criar-sorteio')[0].reset();
     $('#input-sorteio-id').val('');
     IMAGENS_SORTEIO = [];
     renderGridImagens();
     $('#preview-icone-tela-inicio-sorteio').addClass('hidden').attr('src', '');
+    $('#preview-marca-checkout').addClass('hidden').attr('src', '');
+    $('#inp-marca-checkout-nome').val('');
+    $('#inp-marca-checkout-descricao').val('');
     setMascaraMoedaValor(0);
     setTotalCotasValor('1000000');
     setBotoesRapidos('');
@@ -2394,6 +2418,9 @@ function abrirFormSorteio(id) {
         $('#inp-pixel-gtm').val(s.pixel_gtm_override);
         IMAGENS_SORTEIO = [s.foto_url, ...(s.fotos_galeria || [])].filter(Boolean).map(url => ({ url, isNova: false }));
         if (s.icone_tela_inicio_url) { $('#preview-icone-tela-inicio-sorteio').attr('src', s.icone_tela_inicio_url).removeClass('hidden'); } else { $('#preview-icone-tela-inicio-sorteio').addClass('hidden'); }
+        $('#inp-marca-checkout-nome').val(s.marca_checkout_nome || '');
+        $('#inp-marca-checkout-descricao').val(s.marca_checkout_descricao || '');
+        if (s.marca_checkout_foto_url) { $('#preview-marca-checkout').attr('src', s.marca_checkout_foto_url).removeClass('hidden'); } else { $('#preview-marca-checkout').addClass('hidden'); }
         renderGridImagens();
     });
 }
@@ -3317,7 +3344,7 @@ function carregarConfigPushAdmin() {
     api('GET', '/api/admin/configuracoes').then(cfg => {
         if (cfg.LOGO_URL) $('#logo-preview-notif').css('background-image', `url(${cfg.LOGO_URL})`);
         $('#push-comprador-ativo').prop('checked', cfg.PUSH_ATIVO === 'true');
-        $('#inp-nome-marca-checkout').val(cfg.NOME_MARCA_CHECKOUT || '');
+        // (nome/foto/descrição da marca do checkout agora ficam na edição do sorteio)
         $('#push-admin-reserva-ativo').prop('checked', cfg.PUSH_ADMIN_RESERVA_ATIVO !== 'false');
         $('#push-admin-reserva-titulo').val(cfg.PUSH_ADMIN_RESERVA_TITULO || '📝 Nova reserva!');
         $('#push-admin-reserva-corpo').val(cfg.PUSH_ADMIN_RESERVA_CORPO || '{cliente} reservou {quantidade} títulos — {valor}');
@@ -3358,12 +3385,6 @@ $(document).on('change', '#push-comprador-ativo', function() {
     const ligado = $(this).is(':checked');
     api('POST', '/api/admin/configuracoes', { PUSH_ATIVO: ligado ? 'true' : 'false' })
         .then(() => notificar(ligado ? 'Convite de notificação ativado pros compradores.' : 'Convite de notificação desativado pros compradores.', 'sucesso'))
-        .catch(() => notificar('Erro ao salvar.', 'erro'));
-});
-$(document).on('blur', '#inp-nome-marca-checkout', function() {
-    const nome = $(this).val().trim();
-    api('POST', '/api/admin/configuracoes', { NOME_MARCA_CHECKOUT: nome })
-        .then(() => notificar('Nome do checkout salvo!', 'sucesso'))
         .catch(() => notificar('Erro ao salvar.', 'erro'));
 });
 

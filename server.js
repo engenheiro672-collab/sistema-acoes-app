@@ -644,10 +644,6 @@ async function getPublicMeta() {
       whatsapp_suporte: { ativo: cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true', numero: cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '' }
     },
     push_ativo: cfg.PUSH_ATIVO === 'true',
-    // ⚡ Nome exibido no cabeçalho do checkout, junto com a logo — reforça "quem está por trás"
-    // do sorteio, no lugar de qualquer notificação de "fulano comprou agora" (evitamos de
-    // propósito esse tipo de prova social).
-    nome_marca_checkout: cfg.NOME_MARCA_CHECKOUT || 'Prêmios Derrets',
     // ⚡ Roleta de desconto — só usada na página de teste (teste.html). Some por aqui MAS não
     // aparece em sorteio.html/funil-01.html porque só o teste.html tem o código que lê isso.
     roleta_desconto: {
@@ -3754,6 +3750,24 @@ app.post('/api/admin/sorteios/:id/upload-icone-tela-inicio', ensureAdminAuth, up
   } catch (e) { return fail(res); }
 });
 
+// ⚡ Foto da "marca" mostrada no cabeçalho do checkout, antes de pagar — separada da foto
+// principal do sorteio, pra dar liberdade de usar uma foto diferente ali (ex: do dono/logo).
+app.post('/api/admin/sorteios/:id/upload-marca-checkout', ensureAdminAuth, upload.single('foto'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return fail(res, 'Arquivo não enviado', 400);
+    const { buffer: bufferComprimido, mimetype: mimeComprimido, extensao } = await comprimirImagem(file.buffer, file.mimetype, 512);
+    const dest = `marca-checkout/${req.params.id}-${Date.now()}.${extensao || 'png'}`;
+    const { error } = await supabase.storage.from('logos').upload(dest, bufferComprimido, { contentType: mimeComprimido, upsert: true });
+    if (error) return fail(res, error.message);
+    const { data: pub } = supabase.storage.from('logos').getPublicUrl(dest);
+    const publicURL = pub?.publicUrl;
+
+    await supabase.from('sorteios').update({ marca_checkout_foto_url: publicURL }).eq('id', req.params.id);
+    return ok(res, { url: publicURL });
+  } catch (e) { return fail(res); }
+});
+
 app.post('/api/admin/conta', ensureAdminAuth, async (req, res) => {
   try {
     const { email, new_password, confirm_password } = req.body || {};
@@ -3845,6 +3859,9 @@ app.post('/api/admin/sorteios', ensureAdminAuth, upload.any(), async (req, res) 
       upsell_checkout_botoes: body.upsell_checkout_botoes || '25,50',
       upsell_checkout_desconto_percentual: parseFloat(body.upsell_checkout_desconto_percentual) || 0,
       upsell_checkout_desconto_minimo: parseInt(normalizeNumber(body.upsell_checkout_desconto_minimo)) || 0,
+      // ⚡ Marca exibida no cabeçalho do checkout (nome/descrição — a foto tem upload próprio)
+      marca_checkout_nome: body.marca_checkout_nome || null,
+      marca_checkout_descricao: body.marca_checkout_descricao || null,
       foto_url: foto_url,
       fotos_galeria: fotos_galeria,
       status: body.status || 'rascunho',

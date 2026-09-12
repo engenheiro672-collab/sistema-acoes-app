@@ -19,7 +19,7 @@
         @keyframes pulsar-gradiente-verde { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes pulse-opacity { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.035); } }
         .combo-roleta { background: linear-gradient(to right, #1a8754 45%, #5be584); border-radius: 12px; padding: 8px 10px; margin: 0 auto 0.5rem; box-sizing: border-box; max-width: 100%; overflow: visible; }
-        .btn-girar-todas-estilo { background: transparent; color: #4ade80; border: 2px solid #22c55e; font-weight: 800; padding: 8px 20px; border-radius: 999px; cursor: pointer; font-size: 0.85rem; animation: pulse-opacity 1.8s ease-in-out infinite; }
+        .btn-girar-todas-estilo { background: transparent; color: #22c55e; border: 2px solid #22c55e; font-weight: 800; padding: 8px 20px; border-radius: 999px; cursor: pointer; font-size: 0.85rem; animation: pulse-opacity 1.8s ease-in-out infinite; }
         .giro-linha { border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 10px; flex-wrap: wrap; }
         .giro-linha .giro-info { display: flex; flex-direction: column; gap: 2px; }
         .giro-titulo { color: #fff; font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; gap: 8px; }
@@ -41,13 +41,13 @@
         #card-aguardando .aguardando-icon { animation: flip-hourglass 2.4s ease-in-out infinite; }
         .aguardando-title { font-size: clamp(1.05rem, 5.6vw, 1.5rem); font-weight: 700; white-space: nowrap; }
         #card-aguardando .aguardando-title { color: rgba(255,255,255,0.85); }
-        .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; animation: pulse-opacity 2.2s ease-in-out infinite; }
+        .cronometro { font-size: 1.25rem; color: #94a3b8; margin-top: 1rem; animation: pulse-opacity 2.2s ease-in-out infinite; }
         .cronometro strong { color: #f7b731; font-weight: 700; }
         .instrucao-passo { display: flex; align-items: flex-start; margin-bottom: 1rem; }
         .instrucao-numero { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background-color: #12141b; color: #94a3b8; font-weight: 700; font-size: 0.72rem; text-align: center; line-height: 22px; margin-right: 10px; }
         .instrucao-texto { color: #94a3b8; font-size: 0.82rem; }
         .pix-code-box { background-color: #12141b; border: 1px solid #3f3f45; border-radius: 8px; padding: 0.65rem 0.75rem; overflow-x: auto; white-space: nowrap; }
-        .pix-code-text { color: #64748b; font-size: 0.7rem; margin: 0; font-family: monospace; line-height: 1.4; white-space: nowrap; }
+        .pix-code-text { color: #94a3b8; font-size: 0.7rem; margin: 0; font-family: monospace; line-height: 1.4; white-space: nowrap; }
         .copia-cola-btn-full { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: linear-gradient(135deg,#1a8754,#22a866); color: white; font-weight: 800; padding: 1rem; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; transition: filter 0.2s; box-shadow: 0 6px 16px rgba(26,135,84,0.35); }
         .copia-cola-btn-full:hover { filter: brightness(1.08); }
         .btn-mostrar-qr { background: none; border: none; color: #94a3b8; font-weight: 500; margin-top: 0.6rem; cursor: pointer; font-size: 0.82rem; text-decoration: underline; text-underline-offset: 2px; }
@@ -74,12 +74,12 @@
         #card-detalhes-compra h3 { font-size: 0.95rem; }
         .badge-desconto-mini { font-size: 0.62rem; padding: 2px 8px; margin: 0; }
         .cota-badge { display: inline-block; background-color: #1a8754; color: #eafff0; padding: 6px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; font-family: monospace; }
-        .detalhe-id { font-size: 0.72rem; color: #6b7280; word-break: break-all; }
+        .detalhe-id { font-size: 0.72rem; color: #94a3b8; word-break: break-all; }
         .card-small { display: flex; align-items: center; overflow: hidden; }
         .card-small img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
         .card-small-info { margin-left: 16px; overflow: hidden; }
         .card-small-title { color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-small-desc { color: #a0aec0; font-size: 0.875rem; }
+        .card-small-desc { color: #94a3b8; font-size: 0.875rem; }
         .card-small-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; display: inline-block; margin-top: 4px; background-color: #16A34A; color: #fff; }
         .pagamento-aprovado { display: none; text-align: center; }
         .pagamento-aprovado-icon { font-size: 5rem; color: #38a169; }
@@ -115,10 +115,10 @@
         body.tema-claro-pago #card-detalhes-compra h3 { color: #1f2937; }
         body.tema-claro-pago #card-detalhes-compra .text-white { color: #1f2937 !important; }
         body.tema-claro-pago #card-detalhes-compra .text-gray-400 { color: #6b7280 !important; }
-        body.tema-claro-pago #link-suporte-compra-box { background: #fff !important; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-        body.tema-claro-pago #link-suporte-compra-box a { color: rgba(0,0,0,0.6) !important; }
-        body.tema-claro-pago #link-suporte-compra-box a span { color: rgba(0,0,0,0.85) !important; }
         body.tema-claro-pago footer a { color: #1f2937 !important; }
+        body.tema-claro-pago #btn-toggle-regulamento-checkout { background: #f1f5f9 !important; }
+        body.tema-claro-pago #btn-toggle-regulamento-checkout span { color: #1f2937 !important; }
+        body.tema-claro-pago #corpo-regulamento-checkout { background: #fff !important; border-color: #e2e8f0 !important; color: #6b7280 !important; }
         body.tema-claro-pago #card-premiado > div:last-child { background: #fff !important; }
         body.tema-claro-pago #card-premiado-subtitulo { color: #475569 !important; }
         body.tema-claro-pago #card-premiado-valor { color: #1e293b !important; }
@@ -161,15 +161,15 @@
         <div id="header-marca-checkout" style="display:flex; align-items:center; gap:10px; margin-bottom:0.9rem;">
             <div id="marca-checkout-foto" style="width:40px; height:40px; border-radius:50%; background:#12141b; background-size:cover; background-position:center; border:2px solid #1a8754; flex-shrink:0;"></div>
             <div style="font-size:0.72rem; color:#e2e8f0; line-height:1.3;">
-                <b id="marca-checkout-nome" style="color:#fff; font-size:0.78rem;"></b> <i class="bi bi-patch-check-fill" style="color:#4ade80; font-size:0.7rem;"></i><br>
-                <span style="color:#94a3b8;">Participe e concorra de verdade</span>
+                <b id="marca-checkout-nome" style="color:#fff; font-size:0.78rem;"></b> <i class="bi bi-patch-check-fill" style="color:#22c55e; font-size:0.7rem;"></i><br>
+                <span id="marca-checkout-descricao" style="color:#94a3b8;">Participe e concorra de verdade</span>
             </div>
         </div>
 
         <div id="card-aguardando" class="card card-flush-bottom" style="padding:0.9rem 1.1rem; display:flex; align-items:center; justify-content:space-between;">
             <div>
-                <div style="font-size:0.62rem; color:#64748b; letter-spacing:0.03em;">VALOR TOTAL</div>
-                <div id="aguardando-valor-total" class="aguardando-title" style="color:#4ade80; font-size:1.3rem;">R$ 0,00</div>
+                <div style="font-size:0.62rem; color:#94a3b8; letter-spacing:0.03em;">VALOR TOTAL</div>
+                <div id="aguardando-valor-total" class="aguardando-title" style="color:#22c55e; font-size:1.3rem;">R$ 0,00</div>
             </div>
             <p id="cronometro-box" class="cronometro" style="margin:0; font-size:0.8rem; display:flex; align-items:center; gap:5px; color:#94a3b8;"><i class="bi bi-clock" style="font-size:0.78rem;"></i> expira em <strong id="cronometro" style="color:#e2e8f0;">--:--</strong></p>
         </div>
@@ -217,7 +217,7 @@
             <button id="btn-copiar-pix" class="copia-cola-btn-full">
                 <i class="bi bi-clipboard-fill"></i> Copiar Código PIX
             </button>
-            <p class="text-center" style="font-size:0.68rem; color:#64748b; margin:0.6rem 0 0.9rem;">Pagamento processado com segurança</p>
+            <p class="text-center" style="font-size:0.68rem; color:#94a3b8; margin:0.6rem 0 0.9rem;">Pagamento processado com segurança</p>
 
             <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:0.9rem;">
                 <div class="instrucao-passo">
@@ -252,7 +252,7 @@
             <img id="sorteio-img" src="__CHECKOUT_IMG__" alt="">
             <div class="card-small-info">
                 <h4 id="sorteio-nome" class="card-small-title"></h4>
-                <span class="sorteio-corre-tag blink">Corre que está acabando!</span>
+                <span class="sorteio-corre-tag blink">Adquira já!</span>
                 <p id="sorteio-qtd" class="card-small-desc">Cotas adquiridas: 0</p>
                 </div>
         </div>
@@ -316,7 +316,7 @@
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(255,255,255,0.1); padding-top:10px; margin-bottom:12px;" id="card-premiado-linha-extra">
                     <span style="font-size:11px; color:#94a3b8; letter-spacing:0.04em;" id="card-premiado-extra-label">TÍTULO CONTEMPLADO</span>
-                    <span style="font-size:15px; font-weight:700; color:#4ade80;" id="card-premiado-extra-valor">-</span>
+                    <span style="font-size:15px; font-weight:700; color:#22c55e;" id="card-premiado-extra-valor">-</span>
                 </div>
                 <div style="background:#1c2029; border-radius:10px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start; font-size:12px; color:#cbd5e1;">
                     <i class="bi bi-telephone-fill" style="font-size:15px; margin-top:1px; color:#94a3b8;"></i>
@@ -371,12 +371,18 @@
             </a>
         </div>
 
-        <p class="text-center hidden" id="link-suporte-compra-box" style="margin-top:2rem; padding:1.1rem 1rem; background:#171a22; border-radius:14px;">
-            <a id="link-suporte-compra" href="#" target="_blank" style="color:rgba(255,255,255,0.7); font-weight:500; font-size:0.85rem; text-decoration:none;">Problemas com sua compra? <span style="font-weight:800; color:rgba(255,255,255,0.9); text-decoration:underline;">Clique aqui</span></a>
-        </p>
+        <!-- ⚡ No lugar do link de suporte, o Regulamento em formato de "balãozinho" que abre ali
+             mesmo na página — mesmo estilo já usado no sorteio.html oficial. -->
+        <div id="secao-regulamento-checkout" class="hidden" style="margin-top:1.5rem;">
+            <button id="btn-toggle-regulamento-checkout" type="button" class="w-full flex justify-between items-center rounded-lg px-4 py-3 text-left" style="background:#1c2029;">
+                <span class="font-semibold text-white"><i class="bi bi-file-earmark-text"></i> Regulamento</span>
+                <i id="icone-regulamento-checkout" class="bi bi-chevron-down text-gray-400"></i>
+            </button>
+            <div id="corpo-regulamento-checkout" class="hidden rounded-b-lg px-4 py-3 text-sm whitespace-pre-line" style="background:#12141b; border:1px solid #1c2029; color:#94a3b8;"></div>
+        </div>
 
         <footer style="text-align:center; margin-top:1.5rem; padding:0.5rem 1rem 2rem; font-size:0.75rem;">
-            <a id="link-regulamento-checkout" href="#" target="_blank" style="color:#cbd5e0; font-weight:800;">Regulamento</a>, <a href="/termos-de-uso" target="_blank" style="color:#cbd5e0; font-weight:800;">Termos de Uso</a> e <a href="/politica-de-privacidade" target="_blank" style="color:#cbd5e0; font-weight:800;">Política de Privacidade</a>
+            <a href="/termos-de-uso" target="_blank" style="color:#cbd5e0; font-weight:800; text-decoration:underline;">Termos de Uso</a> e <a href="/politica-de-privacidade" target="_blank" style="color:#cbd5e0; font-weight:800; text-decoration:underline;">Política de Privacidade</a>
         </footer>
     </main>
 
@@ -395,7 +401,7 @@
         <div id="popup-combos-roleta-conteudo" style="background:#2a303c; border-radius:16px; padding:1.5rem; max-width:420px; width:100%; max-height:85vh; overflow-y:auto;">
             <div class="flex justify-between items-center mb-2">
                 <h3 id="popup-combos-roleta-titulo" class="text-lg font-semibold text-white mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-400 font-normal">combos</span></h3>
-                <button id="close-popup-combos-roleta" style="background:none; border:none; color:#a0aec0; font-size:1.5rem;">×</button>
+                <button id="close-popup-combos-roleta" style="background:none; border:none; color:#94a3b8; font-size:1.5rem;">×</button>
             </div>
             <p class="text-xs text-gray-500 mb-3">Compre mais títulos agora e ganhe roletas extras pra tentar de novo!</p>
             <div id="lista-combos-roleta-checkout" class="space-y-3"></div>
@@ -411,7 +417,7 @@
                 <button id="close-modal-roleta" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
             <p id="modal-roleta-instrucao" style="color:#c7ccd4; font-size:0.78rem; margin-bottom:6px; line-height:1.4;">🎯 Escolha uma cor: se a bolinha parar nela, você ganha o prêmio!</p>
-            <p id="valor-premio-roleta" class="hidden" style="color:#4ade80; font-weight:800; font-size:0.95rem; margin-bottom:10px;"></p>
+            <p id="valor-premio-roleta" class="hidden" style="color:#22c55e; font-weight:800; font-size:0.95rem; margin-bottom:10px;"></p>
             <div style="position:relative; width:260px; height:260px; margin:0 auto;">
                 <div id="ponteiro-roleta" style="position:absolute; top:-8px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 8px; z-index:10; transition: transform .08s;">
                     <div style="width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d1d5db); box-shadow:0 2px 4px rgba(0,0,0,0.6);"></div>
@@ -450,7 +456,7 @@
                 <h3 class="text-lg font-semibold text-white">Confirmar nova compra</h3>
                 <button id="close-modal-upsell-confirmar" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
-            <p class="text-sm text-gray-300 mb-4">Você está adquirindo <b id="upsell-confirmar-qtd" class="text-white">-</b> título(s) a mais de <b id="upsell-confirmar-nome" class="text-white">-</b>, por <b id="upsell-confirmar-valor" style="color:#4ade80;">-</b>.</p>
+            <p class="text-sm text-gray-300 mb-4">Você está adquirindo <b id="upsell-confirmar-qtd" class="text-white">-</b> título(s) a mais de <b id="upsell-confirmar-nome" class="text-white">-</b>, por <b id="upsell-confirmar-valor" style="color:#22c55e;">-</b>.</p>
             <div style="background:#1a1a1a; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px;">
                 <i class="bi bi-person-circle text-gray-400" style="font-size:1.5rem;"></i>
                 <div>
@@ -774,7 +780,7 @@
                 $('#card-premiado-kicker').text('ROLETA INSTANTÂNEA');
                 $('#card-premiado-subtitulo').text('Você caiu num giro premiado da nossa roleta.');
                 $('#card-premiado-icone').attr('class', 'bi bi-coin');
-                $('#card-premiado-valor').html(`${g.valor_premio || g.premio_titulo || 'Prêmio!'}${g.pago_dobro ? ' <span style="font-size:11px; color:#4ade80; font-weight:700;">(pago em dobro)</span>' : ''}`);
+                $('#card-premiado-valor').html(`${g.valor_premio || g.premio_titulo || 'Prêmio!'}${g.pago_dobro ? ' <span style="font-size:11px; color:#22c55e; font-weight:700;">(pago em dobro)</span>' : ''}`);
                 $('#card-premiado-extra-label').text('COR SORTEADA');
                 $('#card-premiado-extra-valor').html(`<span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:11px; height:11px; border-radius:50%; background:${corCirculo}; display:inline-block;"></span>${nomesCor[g.cor_sorteada] || g.cor_sorteada || '-'}</span>`);
                 $('#card-premiado').removeClass('hidden');
@@ -1419,9 +1425,11 @@
             PEDIDO_SORTEIO_ID = pedido.sorteio_id || null;
 
             // ⚡ Cabeçalho de marca do checkout — usa o mesmo ícone/logo já resolvido pro sorteio
-            $('#marca-checkout-nome').text(data.nome_marca_checkout || 'Prêmios Derrets');
-            if (logo_url) $('#marca-checkout-foto').css('background-image', `url('/imagem-cache?url=${encodeURIComponent(logo_url)}')`);
-            if (pedido.sorteios?.slug) $('#link-regulamento-checkout').attr('href', `/sorteio/${pedido.sorteios.slug}`);
+            $('#marca-checkout-nome').text(pedido.sorteios?.marca_checkout_nome || pedido.sorteios?.nome || 'Prêmios Derrets');
+            $('#marca-checkout-descricao').text(pedido.sorteios?.marca_checkout_descricao || 'Participe e concorra de verdade');
+            const fotoMarcaCheckout = pedido.sorteios?.marca_checkout_foto_url || logo_url;
+            if (fotoMarcaCheckout) $('#marca-checkout-foto').css('background-image', `url('/imagem-cache?url=${encodeURIComponent(fotoMarcaCheckout)}')`);
+
 
             // ⚡ Banner "Entrega grátis em [cidade]" — usa a cidade salva permanentemente no
             // cadastro do comprador (não depende de vir de uma prévenda nessa compra específica).
@@ -1462,7 +1470,7 @@
             $('#detalhe-total').text(formatarMoeda(pedido.valor_total));
             const precoOriginalTotal = Number(pedido.sorteios?.preco_cota || 0) * Number(pedido.quantidade_cotas || 0);
             if (precoOriginalTotal > Number(pedido.valor_total) + 0.001) {
-                $('#aguardando-valor-total').html(`<span style="display:block; font-size:0.72rem; color:#64748b; text-decoration:line-through; font-weight:500;">${formatarMoeda(precoOriginalTotal)}</span>${formatarMoeda(pedido.valor_total)}`);
+                $('#aguardando-valor-total').html(`<span style="display:block; font-size:0.72rem; color:#94a3b8; text-decoration:line-through; font-weight:500;">${formatarMoeda(precoOriginalTotal)}</span>${formatarMoeda(pedido.valor_total)}`);
             } else {
                 $('#aguardando-valor-total').text(formatarMoeda(pedido.valor_total));
             }
@@ -1477,10 +1485,12 @@
             }
             const suporteNum = String(pedido.sorteios?.suporte_whatsapp || '').replace(/\D/g, '');
             SUPORTE_WHATSAPP_GLOBAL = suporteNum || null;
-            if (suporteNum) {
-                const msgSuporte = encodeURIComponent(`Olá! Preciso de ajuda com meu pedido (${pedido.token || ''}).`);
-                $('#link-suporte-compra').attr('href', `https://wa.me/${suporteNum}?text=${msgSuporte}`);
-                $('#link-suporte-compra-box').removeClass('hidden');
+
+            // ⚡ Regulamento em formato de "balãozinho" — mesmo texto/lógica do sorteio.html oficial
+            const textoRegulamentoCheckout = [pedido.sorteios?.descricao, pedido.sorteios?.regulamento].filter(t => t && t.trim()).join('\n\n');
+            if (textoRegulamentoCheckout) {
+                $('#secao-regulamento-checkout').removeClass('hidden');
+                $('#corpo-regulamento-checkout').text(textoRegulamentoCheckout);
             }
 
             if (pagoInicial) {
@@ -1551,6 +1561,11 @@
             });
 
             $('#btn-copiar-pix-fixo').on('click', function() { $('#btn-copiar-pix').trigger('click'); });
+
+            $('#btn-toggle-regulamento-checkout').on('click', function() {
+                $('#corpo-regulamento-checkout').slideToggle(200);
+                $('#icone-regulamento-checkout').toggleClass('bi-chevron-down bi-chevron-up');
+            });
 
             $('#btn-mostrar-qr').on('click', function() {
                 const $qrContainer = $('#qr-code-container');
