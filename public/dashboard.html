@@ -707,6 +707,12 @@
                         </div>
                     </div>
 
+                    <div class="bg-darkCard border border-gray-800 rounded-xl p-4 mb-4">
+                        <h4 class="font-semibold text-white mb-1">Nome exibido no cabeçalho do checkout</h4>
+                        <p class="text-xs text-gray-500 mb-2">Aparece junto com a foto do sorteio, antes da pessoa pagar (ex: "Prêmios Derrets").</p>
+                        <input type="text" id="inp-nome-marca-checkout" class="input-dark" placeholder="Prêmios Derrets">
+                    </div>
+
                     <h4 class="font-semibold text-white mb-3">Criar novo disparo</h4>
                     <select id="push-sorteio" class="select-sorteio-dash input-dark mb-2"><option value="">Sem sorteio específico (link livre)</option></select>
                     <input id="push-titulo" class="input-dark mb-2" placeholder="Título (ex: 🔥 Chance em Dobro ativa agora!)">
@@ -3311,6 +3317,7 @@ function carregarConfigPushAdmin() {
     api('GET', '/api/admin/configuracoes').then(cfg => {
         if (cfg.LOGO_URL) $('#logo-preview-notif').css('background-image', `url(${cfg.LOGO_URL})`);
         $('#push-comprador-ativo').prop('checked', cfg.PUSH_ATIVO === 'true');
+        $('#inp-nome-marca-checkout').val(cfg.NOME_MARCA_CHECKOUT || '');
         $('#push-admin-reserva-ativo').prop('checked', cfg.PUSH_ADMIN_RESERVA_ATIVO !== 'false');
         $('#push-admin-reserva-titulo').val(cfg.PUSH_ADMIN_RESERVA_TITULO || '📝 Nova reserva!');
         $('#push-admin-reserva-corpo').val(cfg.PUSH_ADMIN_RESERVA_CORPO || '{cliente} reservou {quantidade} títulos — {valor}');
@@ -3351,6 +3358,12 @@ $(document).on('change', '#push-comprador-ativo', function() {
     const ligado = $(this).is(':checked');
     api('POST', '/api/admin/configuracoes', { PUSH_ATIVO: ligado ? 'true' : 'false' })
         .then(() => notificar(ligado ? 'Convite de notificação ativado pros compradores.' : 'Convite de notificação desativado pros compradores.', 'sucesso'))
+        .catch(() => notificar('Erro ao salvar.', 'erro'));
+});
+$(document).on('blur', '#inp-nome-marca-checkout', function() {
+    const nome = $(this).val().trim();
+    api('POST', '/api/admin/configuracoes', { NOME_MARCA_CHECKOUT: nome })
+        .then(() => notificar('Nome do checkout salvo!', 'sucesso'))
         .catch(() => notificar('Erro ao salvar.', 'erro'));
 });
 

@@ -644,6 +644,10 @@ async function getPublicMeta() {
       whatsapp_suporte: { ativo: cfg.SOCIAL_WHATSAPP_SUPORTE_ATIVO === 'true', numero: cfg.SOCIAL_WHATSAPP_SUPORTE_NUMERO || '' }
     },
     push_ativo: cfg.PUSH_ATIVO === 'true',
+    // ⚡ Nome exibido no cabeçalho do checkout, junto com a logo — reforça "quem está por trás"
+    // do sorteio, no lugar de qualquer notificação de "fulano comprou agora" (evitamos de
+    // propósito esse tipo de prova social).
+    nome_marca_checkout: cfg.NOME_MARCA_CHECKOUT || 'Prêmios Derrets',
     // ⚡ Roleta de desconto — só usada na página de teste (teste.html). Some por aqui MAS não
     // aparece em sorteio.html/funil-01.html porque só o teste.html tem o código que lê isso.
     roleta_desconto: {

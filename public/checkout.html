@@ -12,7 +12,7 @@
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"></noscript>
 
     <style>
-        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; }
+        html { touch-action: pan-y; } body { background-color: #20242e; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; touch-action: pan-y; padding-bottom: 80px; }
         .sino-balancando { animation: balancar-sino 1.8s ease-in-out infinite; transform-origin: top center; display: inline-block; }
         @keyframes balancar-sino { 0%, 100% { transform: rotate(0deg); } 10% { transform: rotate(-15deg); } 20% { transform: rotate(12deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 50% { transform: rotate(-4deg); } 60%, 100% { transform: rotate(0deg); } }
         .banner-push-pulse { animation: pulsar-gradiente-verde 3s ease-in-out infinite; }
@@ -44,13 +44,13 @@
         .cronometro { font-size: 1.25rem; color: #a0aec0; margin-top: 1rem; animation: pulse-opacity 2.2s ease-in-out infinite; }
         .cronometro strong { color: #f7b731; font-weight: 700; }
         .instrucao-passo { display: flex; align-items: flex-start; margin-bottom: 1rem; }
-        .instrucao-numero { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background-color: #16A34A; color: white; font-weight: 700; font-size: 0.875rem; text-align: center; line-height: 24px; margin-right: 12px; }
-        .instrucao-texto { color: #a0aec0; }
-        .pix-code-box { background-color: #20242e; border: 1px solid #4a5568; border-radius: 8px; padding: 0.75rem; max-height: 90px; overflow-y: auto; }
-        .pix-code-text { color: #a0aec0; font-size: 0.75rem; word-break: break-all; margin: 0; font-family: monospace; line-height: 1.4; }
-        .copia-cola-btn-full { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background-color: #16A34A; color: white; font-weight: 700; padding: 0.85rem; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; transition: background-color 0.2s; }
-        .copia-cola-btn-full:hover { background-color: #15803D; }
-        .btn-mostrar-qr { background: none; border: none; color: #a0aec0; font-weight: 600; margin-top: 1rem; cursor: pointer; }
+        .instrucao-numero { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background-color: #2a303c; color: #94a3b8; font-weight: 700; font-size: 0.72rem; text-align: center; line-height: 22px; margin-right: 10px; }
+        .instrucao-texto { color: #94a3b8; font-size: 0.82rem; }
+        .pix-code-box { background-color: #171b23; border: 1px solid #2a303c; border-radius: 8px; padding: 0.65rem 0.75rem; overflow-x: auto; white-space: nowrap; }
+        .pix-code-text { color: #64748b; font-size: 0.7rem; margin: 0; font-family: monospace; line-height: 1.4; white-space: nowrap; }
+        .copia-cola-btn-full { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: linear-gradient(135deg,#1a8754,#22a866); color: white; font-weight: 800; padding: 1rem; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; transition: filter 0.2s; box-shadow: 0 6px 16px rgba(26,135,84,0.35); }
+        .copia-cola-btn-full:hover { filter: brightness(1.08); }
+        .btn-mostrar-qr { background: none; border: none; color: #94a3b8; font-weight: 500; margin-top: 0.6rem; cursor: pointer; font-size: 0.82rem; text-decoration: underline; text-underline-offset: 2px; }
         .btn-mostrar-qr:hover { color: #fff; }
         #qr-code-container { background-color: #fff; padding: 1rem; border-radius: 8px; margin: 1rem auto 0 auto; max-width: 300px; width: 100%; }
         #qr-code-container img { width: 100%; height: auto; display: block; }
@@ -93,6 +93,57 @@
         .btn-grupo-vip:hover { background-color: #1ebe5a; }
         .skeleton { background: linear-gradient(90deg,#2a303c 25%,#343c4a 37%,#2a303c 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; border-radius: 8px; }
         @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+        /* ═══════════════════════════════════════════════════════════════════════════════════
+           TEMA CLARO PÓS-PAGAMENTO — só troca a APARÊNCIA dos elementos que continuam visíveis
+           depois do pagamento confirmado (os cartões de antes do pagamento já somem sozinhos
+           nesse momento, então nem precisam de versão clara). Os valores usados aqui são
+           exatamente os mesmos já usados no checkout-funil-01.html, pra ficar idêntico.
+           Ativado por uma única linha nova dentro de aprovarPagamentoFront() — nenhuma outra
+           lógica muda, só a cor.
+           ═══════════════════════════════════════════════════════════════════════════════════ */
+        body.tema-claro-pago { background-color: #eef0f2; color: #212b36; }
+        body.tema-claro-pago .card { background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        body.tema-claro-pago .card-flush-bottom { border-bottom: 1px solid rgba(0,0,0,0.06); }
+        body.tema-claro-pago .card-flush-top { border-top: 1px solid rgba(0,0,0,0.06); }
+        body.tema-claro-pago .detalhe-label { color: #1f2937; }
+        body.tema-claro-pago .detalhe-valor { color: #6b7280; }
+        body.tema-claro-pago .detalhe-id { color: #6b7280; }
+        body.tema-claro-pago .titulos-aviso { color: rgba(0,0,0,0.55); }
+        body.tema-claro-pago .card-small-title { color: rgba(0,0,0,0.85); }
+        body.tema-claro-pago .card-small-desc { color: #64748b; }
+        body.tema-claro-pago #card-detalhes-compra h3 { color: #1f2937; }
+        body.tema-claro-pago #card-detalhes-compra .text-white { color: #1f2937 !important; }
+        body.tema-claro-pago #card-detalhes-compra .text-gray-400 { color: #6b7280 !important; }
+        body.tema-claro-pago #link-suporte-compra-box { background: #fff !important; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        body.tema-claro-pago #link-suporte-compra-box a { color: rgba(0,0,0,0.6) !important; }
+        body.tema-claro-pago #link-suporte-compra-box a span { color: rgba(0,0,0,0.85) !important; }
+        body.tema-claro-pago footer a { color: #1f2937 !important; }
+        body.tema-claro-pago #card-premiado > div:last-child { background: #fff !important; }
+        body.tema-claro-pago #card-premiado-subtitulo { color: #475569 !important; }
+        body.tema-claro-pago #card-premiado-valor { color: #1e293b !important; }
+        body.tema-claro-pago #card-premiado .bi-telephone-fill { color: #94a3b8 !important; }
+        body.tema-claro-pago #card-premiado > div:last-child > div:last-child { background: #f1f5f9 !important; color: #475569 !important; }
+        body.tema-claro-pago #upsell-nome-sorteio { color: #1e293b !important; }
+        body.tema-claro-pago #upsell-foto { background-color: #f1f5f9 !important; }
+        body.tema-claro-pago #upsell-qtd-numero { background: #fff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
+        body.tema-claro-pago .text-green-400 { color: #15803d !important; }
+        body.tema-claro-pago .text-yellow-400 { color: #b45309 !important; }
+        body.tema-claro-pago .text-gray-400 { color: #6b7280 !important; }
+        /* Modal da roleta (só existe pós-pagamento) — mesmos valores do checkout-funil-01.html */
+        body.tema-claro-pago #modal-roleta-conteudo { background-color: #ffffff !important; }
+        body.tema-claro-pago #modal-roleta-titulo { color: #1f2937 !important; }
+        body.tema-claro-pago #close-modal-roleta { color: #6b7280 !important; }
+        body.tema-claro-pago #close-modal-roleta:hover { color: #111827 !important; }
+        body.tema-claro-pago #modal-roleta-instrucao { color: #4b5563 !important; }
+        body.tema-claro-pago #valor-premio-roleta { color: #15803d !important; }
+        body.tema-claro-pago #roda-roleta { box-shadow: 0 0 0 6px #4b5563, 0 8px 20px rgba(0,0,0,0.35), inset 0 0 14px rgba(0,0,0,0.4) !important; }
+        body.tema-claro-pago #resultado-roleta { color: #1f2937 !important; }
+        body.tema-claro-pago #aviso-escolha-numero { color: #dc2626 !important; }
+        body.tema-claro-pago #btn-roleta-anterior { color: #4b5563 !important; }
+        body.tema-claro-pago #popup-combos-roleta-conteudo { background-color: #ffffff !important; }
+        body.tema-claro-pago #popup-combos-roleta-titulo { color: #1f2937 !important; }
+        body.tema-claro-pago #close-popup-combos-roleta { color: #6b7280 !important; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -103,12 +154,24 @@
     <main id="checkout-container" class="container mx-auto max-w-2xl p-4">
         <div style="height:0.5rem;"></div>
 
-        <div id="card-aguardando" class="card flex items-center space-x-4">
-            <i class="bi bi-hourglass-split aguardando-icon"></i>
-            <div>
-                <h2 class="aguardando-title">Aguardando pagamento!</h2>
-                <p class="text-gray-400">Realize o pagamento</p>
+        <!-- ⚡ Identidade de quem está por trás do sorteio — no lugar de qualquer "notificação de
+             compra" (evitamos de propósito esse tipo de prova social, sinalização de terceiros
+             mostra que ela pode passar a sensação de artificial). Fica no grupo que já existia de
+             elementos que somem juntos assim que o pagamento é confirmado. -->
+        <div id="header-marca-checkout" style="display:flex; align-items:center; gap:10px; margin-bottom:0.9rem;">
+            <div id="marca-checkout-foto" style="width:40px; height:40px; border-radius:50%; background:#171b23; background-size:cover; background-position:center; border:2px solid #1a8754; flex-shrink:0;"></div>
+            <div style="font-size:0.72rem; color:#e2e8f0; line-height:1.3;">
+                <b id="marca-checkout-nome" style="color:#fff; font-size:0.78rem;"></b> <i class="bi bi-patch-check-fill" style="color:#4ade80; font-size:0.7rem;"></i><br>
+                <span style="color:#94a3b8;">Participe e concorra de verdade</span>
             </div>
+        </div>
+
+        <div id="card-aguardando" class="card card-flush-bottom" style="padding:0.9rem 1.1rem; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:0.62rem; color:#64748b; letter-spacing:0.03em;">VALOR TOTAL</div>
+                <div id="aguardando-valor-total" class="aguardando-title" style="color:#4ade80; font-size:1.3rem;">R$ 0,00</div>
+            </div>
+            <p id="cronometro-box" class="cronometro" style="margin:0; font-size:0.8rem; display:flex; align-items:center; gap:5px; color:#94a3b8;"><i class="bi bi-clock" style="font-size:0.78rem;"></i> expira em <strong id="cronometro" style="color:#e2e8f0;">--:--</strong></p>
         </div>
 
         <div id="card-expirado" class="card flex items-center space-x-4 hidden">
@@ -145,32 +208,30 @@
 
         <div id="bonus-tag-box" class="text-center"></div>
 
-        <p id="cronometro-box" class="cronometro text-center">Você tem <strong id="cronometro">--:--</strong> para pagar</p>
 
-        <div id="card-instrucoes" class="card">
-            <div class="instrucao-passo">
-                <div class="instrucao-numero">1</div>
-                <div class="instrucao-texto">Copie o código PIX abaixo.</div>
-            </div>
 
+        <div id="card-instrucoes" class="card card-flush-top">
             <div class="pix-code-box mb-3">
                 <p id="pixCopiaCola" class="pix-code-text"></p>
             </div>
-            <button id="btn-copiar-pix" class="copia-cola-btn-full mb-4">
+            <button id="btn-copiar-pix" class="copia-cola-btn-full">
                 <i class="bi bi-clipboard-fill"></i> Copiar Código PIX
             </button>
+            <p class="text-center" style="font-size:0.68rem; color:#64748b; margin:0.6rem 0 0.9rem;">Pagamento processado com segurança</p>
 
-            <div class="instrucao-passo">
-                <div class="instrucao-numero">2</div>
-                <div class="instrucao-texto">Abra o app do seu banco e escolha a opção PIX, como se fosse fazer uma transferência.</div>
-            </div>
-            <div class="instrucao-passo">
-                <div class="instrucao-numero">3</div>
-                <div class="instrucao-texto">Selecione a opção PIX copia e cola, cole a chave copiada e confirme o pagamento.</div>
-            </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:0.9rem;">
+                <div class="instrucao-passo">
+                    <div class="instrucao-numero">2</div>
+                    <div class="instrucao-texto">Abra o app do seu banco e escolha a opção PIX, como se fosse fazer uma transferência.</div>
+                </div>
+                <div class="instrucao-passo" style="margin-bottom:0;">
+                    <div class="instrucao-numero">3</div>
+                    <div class="instrucao-texto">Selecione a opção PIX copia e cola, cole a chave copiada e confirme o pagamento.</div>
+                </div>
 
-            <div class="text-center">
-                <button id="btn-mostrar-qr" class="btn-mostrar-qr">Mostrar QR Code</button>
+                <div class="text-center">
+                    <button id="btn-mostrar-qr" class="btn-mostrar-qr">Mostrar QR Code</button>
+                </div>
             </div>
 
             <div id="qr-code-container" class="hidden text-center">
@@ -315,15 +376,25 @@
         </p>
 
         <footer style="text-align:center; margin-top:1.5rem; padding:0.5rem 1rem 2rem; font-size:0.75rem;">
-            <a href="/termos-de-uso" target="_blank" style="color:#cbd5e0; font-weight:800;">Termos de Uso</a> e <a href="/politica-de-privacidade" target="_blank" style="color:#cbd5e0; font-weight:800;">Política de Privacidade</a>
+            <a id="link-regulamento-checkout" href="#" target="_blank" style="color:#cbd5e0; font-weight:800;">Regulamento</a>, <a href="/termos-de-uso" target="_blank" style="color:#cbd5e0; font-weight:800;">Termos de Uso</a> e <a href="/politica-de-privacidade" target="_blank" style="color:#cbd5e0; font-weight:800;">Política de Privacidade</a>
         </footer>
     </main>
 
+    <!-- ⚡ Atalho fixo do mesmo botão de copiar — só dispara o clique no botão de verdade lá em
+         cima (nenhuma lógica nova, só um jeito extra de alcançar a mesma ação sem precisar rolar
+         a página até o topo). Entra e sai do ar exatamente junto dos outros elementos do estado
+         "aguardando pagamento". -->
+    <div id="barra-fixa-copiar-pix" style="position:fixed; left:0; right:0; bottom:0; z-index:400; padding:0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom)); background:linear-gradient(to top, #20242e 55%, transparent);">
+        <button id="btn-copiar-pix-fixo" class="copia-cola-btn-full">
+            <i class="bi bi-clipboard-fill"></i> Copiar Código PIX
+        </button>
+    </div>
+
     <!-- Popup dos combos de roleta — só aparece depois que a pessoa gira e não ganha, ou clicando em "Tentar novamente" -->
     <div id="popup-combos-roleta" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50 p-4">
-        <div style="background:#2a303c; border-radius:16px; padding:1.5rem; max-width:420px; width:100%; max-height:85vh; overflow-y:auto;">
+        <div id="popup-combos-roleta-conteudo" style="background:#2a303c; border-radius:16px; padding:1.5rem; max-width:420px; width:100%; max-height:85vh; overflow-y:auto;">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-lg font-semibold text-white mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-400 font-normal">combos</span></h3>
+                <h3 id="popup-combos-roleta-titulo" class="text-lg font-semibold text-white mb-1">🎯 Roleta Instantânea <span class="text-sm text-gray-400 font-normal">combos</span></h3>
                 <button id="close-popup-combos-roleta" style="background:none; border:none; color:#a0aec0; font-size:1.5rem;">×</button>
             </div>
             <p class="text-xs text-gray-500 mb-3">Compre mais títulos agora e ganhe roletas extras pra tentar de novo!</p>
@@ -334,12 +405,12 @@
 
     <!-- Modal da roleta girando -->
     <div id="modal-roleta" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 p-4">
-        <div class="bg-[#1f2430] rounded-2xl p-6 max-w-sm w-full text-center relative">
+        <div id="modal-roleta-conteudo" class="bg-[#1f2430] rounded-2xl p-6 max-w-sm w-full text-center relative">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-white font-semibold">Roleta <span id="roleta-indice">1 de 1</span></h3>
+                <h3 id="modal-roleta-titulo" class="text-white font-semibold">Roleta <span id="roleta-indice">1 de 1</span></h3>
                 <button id="close-modal-roleta" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
-            <p style="color:#c7ccd4; font-size:0.78rem; margin-bottom:6px; line-height:1.4;">🎯 Escolha uma cor: se a bolinha parar nela, você ganha o prêmio!</p>
+            <p id="modal-roleta-instrucao" style="color:#c7ccd4; font-size:0.78rem; margin-bottom:6px; line-height:1.4;">🎯 Escolha uma cor: se a bolinha parar nela, você ganha o prêmio!</p>
             <p id="valor-premio-roleta" class="hidden" style="color:#4ade80; font-weight:800; font-size:0.95rem; margin-bottom:10px;"></p>
             <div style="position:relative; width:260px; height:260px; margin:0 auto;">
                 <div id="ponteiro-roleta" style="position:absolute; top:-8px; left:50%; transform:translateX(-50%) rotate(0deg); transform-origin: 50% 8px; z-index:10; transition: transform .08s;">
@@ -574,7 +645,7 @@
                 if (segundos <= 0) {
                     clearInterval(timerInterval);
                     $cronometro.text("Expirado");
-                    $('#card-aguardando, #card-instrucoes, #card-modo-teste, #cronometro-box').hide();
+                    $('#card-aguardando, #card-instrucoes, #card-modo-teste, #cronometro-box, #header-marca-checkout, #barra-fixa-copiar-pix').hide();
                     $('#card-expirado').removeClass('hidden');
                     $('#detalhe-situacao').text('Expirado').removeClass('text-yellow-400').addClass('text-red-500');
                     try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/expirado`); } catch (e) {}
@@ -782,7 +853,8 @@
 
         function aprovarPagamentoFront(data) {
             isPago = true;
-            $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-modo-teste').hide();
+            $('body').addClass('tema-claro-pago');
+            $('#card-aguardando, #card-expirado, #cronometro-box, #card-instrucoes, #card-modo-teste, #header-marca-checkout, #barra-fixa-copiar-pix').hide();
             $('#card-pago').removeClass('hidden').show().addClass('card-flush-bottom');
             $('#card-sorteio').removeClass('card-flush-bottom').addClass('card-flush-top');
             $('#card-detalhes-compra').removeClass('card-flush-top');
@@ -1291,7 +1363,7 @@
                         aprovarPagamentoFront(data);
                     } else if (ds === 'expirado' || data.status === '0') {
                         clearInterval(timerInterval);
-                        $('#card-aguardando, #card-instrucoes, #card-modo-teste, #cronometro-box').hide();
+                        $('#card-aguardando, #card-instrucoes, #card-modo-teste, #cronometro-box, #header-marca-checkout, #barra-fixa-copiar-pix').hide();
                         $('#card-expirado').removeClass('hidden');
                         $('#detalhe-situacao').text('Expirado').removeClass('text-yellow-400').addClass('text-red-500');
                         try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/expirado`); } catch (e) {}
@@ -1310,6 +1382,11 @@
             PEDIDO_TELEFONE = pedido.usuarios?.telefone || null;
             PEDIDO_NOME = pedido.usuarios?.nome_completo || null;
             PEDIDO_SORTEIO_ID = pedido.sorteio_id || null;
+
+            // ⚡ Cabeçalho de marca do checkout — usa o mesmo ícone/logo já resolvido pro sorteio
+            $('#marca-checkout-nome').text(data.nome_marca_checkout || 'Prêmios Derrets');
+            if (logo_url) $('#marca-checkout-foto').css('background-image', `url('/imagem-cache?url=${encodeURIComponent(logo_url)}')`);
+            if (pedido.sorteios?.slug) $('#link-regulamento-checkout').attr('href', `/sorteio/${pedido.sorteios.slug}`);
 
             // ⚡ Banner "Entrega grátis em [cidade]" — usa a cidade salva permanentemente no
             // cadastro do comprador (não depende de vir de uma prévenda nessa compra específica).
@@ -1348,6 +1425,12 @@
             $('#detalhe-expira').text(pedido.expira_em ? new Date(pedido.expira_em).toLocaleString('pt-BR') : '');
             $('#detalhe-quantidade').text(pedido.quantidade_cotas || 0);
             $('#detalhe-total').text(formatarMoeda(pedido.valor_total));
+            const precoOriginalTotal = Number(pedido.sorteios?.preco_cota || 0) * Number(pedido.quantidade_cotas || 0);
+            if (precoOriginalTotal > Number(pedido.valor_total) + 0.001) {
+                $('#aguardando-valor-total').html(`<span style="display:block; font-size:0.72rem; color:#64748b; text-decoration:line-through; font-weight:500;">${formatarMoeda(precoOriginalTotal)}</span>${formatarMoeda(pedido.valor_total)}`);
+            } else {
+                $('#aguardando-valor-total').text(formatarMoeda(pedido.valor_total));
+            }
             if (pedido.promocao_titulo) {
                 $('#badge-desconto-resumo').removeClass('hidden');
                 $('#linha-desconto').removeClass('hidden');
@@ -1427,9 +1510,11 @@
                 navigator.clipboard.writeText($('#pixCopiaCola').text() || '');
                 const $btn = $(this);
                 $btn.html('<i class="bi bi-check-lg"></i> Copiado!');
-                notificar('Código Pix copiado! 📋', 'sucesso');
+                notificar('Código Pix copiado!', 'sucesso');
                 setTimeout(() => $btn.html('<i class="bi bi-clipboard-fill"></i> Copiar Código PIX'), 2000);
             });
+
+            $('#btn-copiar-pix-fixo').on('click', function() { $('#btn-copiar-pix').trigger('click'); });
 
             $('#btn-mostrar-qr').on('click', function() {
                 const $qrContainer = $('#qr-code-container');
