@@ -920,17 +920,17 @@
                                 <div style="position:relative; width:180px; height:180px;">
                                     <svg width="180" height="180" viewBox="0 0 180 180" style="transform:rotate(-90deg);">
                                         <circle cx="90" cy="90" r="78" fill="none" stroke="#242a37" stroke-width="14"/>
-                                        <circle id="anel-porcentagem" cx="90" cy="90" r="78" fill="none" stroke="url(#gradientePorcentagem)" stroke-width="14" stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490" style="transition: stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1);"/>
+                                        <circle id="anel-porcentagem" cx="90" cy="90" r="78" fill="none" stroke="url(#gradientePorcentagem)" stroke-width="14" stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490" style="transition: stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1); filter: drop-shadow(0 0 8px rgba(250,204,21,0.45));"/>
                                         <defs>
                                             <linearGradient id="gradientePorcentagem" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stop-color="#22a866"/>
-                                                <stop offset="100%" stop-color="#1a8754"/>
+                                                <stop offset="0%" stop-color="#facc15"/>
+                                                <stop offset="100%" stop-color="#f59e0b"/>
                                             </linearGradient>
                                         </defs>
                                     </svg>
                                     <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                                        <span id="numero-porcentagem-gerada" style="font-size:2.6rem; font-weight:800; color:#fff; line-height:1;">0%</span>
-                                        <span style="font-size:0.7rem; color:#8b93a3; margin-top:4px; text-transform:uppercase; letter-spacing:0.04em;">vendido</span>
+                                        <span id="numero-porcentagem-gerada" style="font-size:2.6rem; font-weight:800; background:linear-gradient(135deg,#facc15,#f59e0b); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1;">0%</span>
+                                        <span style="font-size:0.7rem; color:#8b93a3; margin-top:4px; text-transform:uppercase; letter-spacing:0.08em; font-weight:600;">✦ vendido ✦</span>
                                     </div>
                                 </div>
                             </div>
