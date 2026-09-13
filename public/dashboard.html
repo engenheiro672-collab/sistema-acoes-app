@@ -909,6 +909,32 @@
                             </select>
                             <input name="total_cotas" id="inp-total-cotas" class="input-dark mt-2 hidden" placeholder="Ex: 500000">
                         </div>
+
+                        <div class="col-span-2 border-t border-gray-800 pt-4 mt-1">
+                            <label class="text-sm text-gray-400">🎯 Gerador de Porcentagem <span class="text-gray-600">(só visual, pra tirar print — não muda nenhum dado real)</span></label>
+                            <div class="flex gap-2 mt-2">
+                                <input type="text" id="inp-gerador-qtd" class="input-dark" placeholder="Quantidade (ex: 8000000)" oninput="this.value=this.value.replace(/\D/g,'')">
+                                <button type="button" class="btn-primary" style="white-space:nowrap;" onclick="gerarPorcentagemVisual()">Gerar</button>
+                            </div>
+                            <div id="box-porcentagem-gerada" class="hidden mt-4" style="display:flex; justify-content:center; padding:1.5rem; background:radial-gradient(circle at center, #1a1f2b, #0f1218); border-radius:16px;">
+                                <div style="position:relative; width:180px; height:180px;">
+                                    <svg width="180" height="180" viewBox="0 0 180 180" style="transform:rotate(-90deg);">
+                                        <circle cx="90" cy="90" r="78" fill="none" stroke="#242a37" stroke-width="14"/>
+                                        <circle id="anel-porcentagem" cx="90" cy="90" r="78" fill="none" stroke="url(#gradientePorcentagem)" stroke-width="14" stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490" style="transition: stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1);"/>
+                                        <defs>
+                                            <linearGradient id="gradientePorcentagem" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stop-color="#22a866"/>
+                                                <stop offset="100%" stop-color="#1a8754"/>
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
+                                    <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                                        <span id="numero-porcentagem-gerada" style="font-size:2.6rem; font-weight:800; color:#fff; line-height:1;">0%</span>
+                                        <span style="font-size:0.7rem; color:#8b93a3; margin-top:4px; text-transform:uppercase; letter-spacing:0.04em;">vendido</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div><label class="text-sm text-gray-400">Mínimo por compra</label><input name="minimo_cotas_compra" id="inp-min" class="input-dark mt-1"></div>
                         <div><label class="text-sm text-gray-400">Máximo por compra</label>
                             <select name="maximo_cotas_compra" id="inp-max" class="input-dark mt-1">
@@ -1796,6 +1822,35 @@ function onTotalCotasChange() {
     if (val === 'outro') { $('#inp-total-cotas').removeClass('hidden').val(''); }
     else { $('#inp-total-cotas').addClass('hidden').val(val); }
 }
+function gerarPorcentagemVisual() {
+    const totalCotas = Number($('#inp-total-cotas').val() || 0);
+    const qtdDigitada = Number($('#inp-gerador-qtd').val() || 0);
+    if (!totalCotas) { notificar('Defina o "Total de Cotas" desse sorteio primeiro, aí sim dá pra calcular a porcentagem.', 'aviso'); return; }
+    if (!qtdDigitada) { notificar('Digita uma quantidade pra gerar a porcentagem.', 'aviso'); return; }
+
+    const percentual = Math.min(100, (qtdDigitada / totalCotas) * 100);
+    const circunferencia = 490; // 2 * π * 78 (o raio do círculo lá em cima)
+    const offsetFinal = circunferencia - (circunferencia * percentual / 100);
+
+    $('#box-porcentagem-gerada').removeClass('hidden');
+    // Reseta pro começo antes de animar de novo, senão gerar duas vezes seguidas não teria efeito visual
+    $('#anel-porcentagem').css('transition', 'none').attr('stroke-dashoffset', circunferencia);
+    $('#numero-porcentagem-gerada').text('0%');
+
+    setTimeout(() => {
+        $('#anel-porcentagem').css('transition', 'stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1)').attr('stroke-dashoffset', offsetFinal);
+        // Conta o número subindo junto com a animação do anel, pra ficar tudo sincronizado
+        const duracaoMs = 1600, inicioEm = Date.now();
+        const passo = () => {
+            const decorrido = Math.min(1, (Date.now() - inicioEm) / duracaoMs);
+            const valorAtual = percentual * (1 - Math.pow(1 - decorrido, 3)); // easing suave, combina com o do anel
+            $('#numero-porcentagem-gerada').text(valorAtual.toFixed(percentual < 10 ? 1 : 0) + '%');
+            if (decorrido < 1) requestAnimationFrame(passo);
+        };
+        requestAnimationFrame(passo);
+    }, 30);
+}
+
 function setTotalCotasValor(valor) {
     const v = String(valor);
     if (v === '1000000' || v === '10000000') { $('#inp-total-cotas-select').val(v); $('#inp-total-cotas').addClass('hidden').val(v); }
