@@ -1489,6 +1489,7 @@
 
             <div class="flex gap-2 mb-4">
                 <button class="tab-btn active" data-gw="mercadopago" onclick="mudarGatewayTab('mercadopago', this)">Mercado Pago</button>
+                <button class="tab-btn" data-gw="avexpay" onclick="mudarGatewayTab('avexpay', this)">AVEX Pay</button>
                 <button class="tab-btn" data-gw="pay2m" onclick="mudarGatewayTab('pay2m', this)">Pay2M</button>
                 <button class="tab-btn" data-gw="paggue" onclick="mudarGatewayTab('paggue', this)">Paggue</button>
             </div>
@@ -1502,6 +1503,15 @@
                     <form id="form-gateway-mp">
                         <label class="block mb-4"><span class="text-gray-400">Access Token</span><input name="MERCADOPAGO_ACCESS_TOKEN" id="conf-mercadopago-token" class="input-dark mt-1" placeholder="Cole aqui o token do Mercado Pago"></label>
                         <button type="submit" class="btn-primary">Salvar e ativar Mercado Pago</button>
+                    </form>
+                </div>
+
+                <div id="gw-tab-avexpay" class="gw-tab hidden">
+                    <p class="text-xs text-gray-500 mb-3">Pegue a Public Key e a Secret Key no painel da AVEX Pay → Credenciais de API. Diferente dos outros, o webhook da AVEX <b>não precisa ser colado em lugar nenhum</b> — a URL é enviada automaticamente em cada cobrança: <span id="webhook-url-avexpay" class="text-purple-300"></span>.</p>
+                    <form id="form-gateway-avexpay">
+                        <label class="block mb-4"><span class="text-gray-400">Public Key</span><input name="AVEX_PUBLIC_KEY" id="conf-avexpay-public" class="input-dark mt-1" placeholder="pk_..."></label>
+                        <label class="block mb-4"><span class="text-gray-400">Secret Key</span><input name="AVEX_SECRET_KEY" id="conf-avexpay-secret" class="input-dark mt-1" placeholder="sk_..."></label>
+                        <button type="submit" class="btn-primary">Salvar e ativar AVEX Pay</button>
                     </form>
                 </div>
 
@@ -4405,14 +4415,17 @@ function mudarGatewayTab(gw, el) {
 
 function carregarGateway() {
     $('#webhook-url').text(`${DOMINIO_PUBLICO}/api/webhook/pagamento`);
+    $('#webhook-url-avexpay').text(`${DOMINIO_PUBLICO}/api/webhook/avexpay`);
     api('GET', '/api/admin/configuracoes').then(cfg => {
         $('#conf-mercadopago-token').val(cfg.MERCADOPAGO_ACCESS_TOKEN || '');
+        $('#conf-avexpay-public').val(cfg.AVEX_PUBLIC_KEY || '');
+        $('#conf-avexpay-secret').val(cfg.AVEX_SECRET_KEY || '');
         $('#conf-pay2m-id').val(cfg.PAY2M_CLIENT_ID || '');
         $('#conf-pay2m-secret').val(cfg.PAY2M_CLIENT_SECRET || '');
         $('#conf-paggue-token').val(cfg.PAGGUE_ACCESS_TOKEN || '');
         $('#conf-modo-teste').prop('checked', cfg.MODO_TESTE_PAGAMENTO === 'true' || cfg.MODO_TESTE_PAGAMENTO === 'on');
         const ativo = (cfg.GATEWAY_PROVIDER || 'mercadopago');
-        const idx = { mercadopago: 0, pay2m: 1, paggue: 2 }[ativo] ?? 0;
+        const idx = { mercadopago: 0, avexpay: 1, pay2m: 2, paggue: 3 }[ativo] ?? 0;
         mudarGatewayTab(ativo, $('[data-gw]').get(idx));
     });
 }
@@ -4425,6 +4438,11 @@ $('#form-gateway-mp').on('submit', function(e) {
     e.preventDefault();
     api('POST', '/api/admin/configuracoes', { MERCADOPAGO_ACCESS_TOKEN: $('#conf-mercadopago-token').val(), GATEWAY_PROVIDER: 'mercadopago' })
         .then(() => notificar('Mercado Pago salvo e ativado como gateway principal!', 'sucesso'));
+});
+$('#form-gateway-avexpay').on('submit', function(e) {
+    e.preventDefault();
+    api('POST', '/api/admin/configuracoes', { AVEX_PUBLIC_KEY: $('#conf-avexpay-public').val(), AVEX_SECRET_KEY: $('#conf-avexpay-secret').val(), GATEWAY_PROVIDER: 'avexpay' })
+        .then(() => notificar('AVEX Pay salvo e ativado como gateway principal!', 'sucesso'));
 });
 $('#form-gateway-pay2m').on('submit', function(e) {
     e.preventDefault();

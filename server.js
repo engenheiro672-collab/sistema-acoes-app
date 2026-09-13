@@ -351,6 +351,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/webhook/pagamento', express.raw({ type: 'application/json' }));
+app.use('/api/webhook/avexpay', express.raw({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '20mb' }));
 
@@ -2101,6 +2102,61 @@ async function criarPagamentoMercadoPago(pedido, usuario) {
   } catch (err) { console.error('❌ Erro Conexão MP:', err.message); return null; }
 }
 
+// ⚡ AVEX Pay — integração conferida direto na documentação oficial (app.avexpay.com.br/doc),
+// não é um "endpoint ilustrativo" como Pay2M/Paggue acima.
+async function criarPagamentoAvexPay(pedido, usuario) {
+  const cfg = await fetchConfigFromDB();
+  const publicKey = (cfg.AVEX_PUBLIC_KEY || '').trim();
+  const secretKey = (cfg.AVEX_SECRET_KEY || '').trim();
+  if (!publicKey || !secretKey) { console.warn('⚠️ AVEX Pay: Public/Secret key não configuradas!'); return null; }
+
+  const cpfLimpoUsuario = usuario.cpf ? String(usuario.cpf).replace(/\D/g, '') : '';
+  const cpfEnvio = cpfEhValido(cpfLimpoUsuario) ? cpfLimpoUsuario : gerarCpfValido();
+  const emailValido = (usuario.email && usuario.email.includes('@') && usuario.email.length > 5) ? usuario.email : `c${usuario.telefone.replace(/\D/g, '')}@email.com`;
+
+  const body = {
+    amount: Number(parseFloat(pedido.valor_total).toFixed(2)),
+    description: `Pedido ${pedido.id} - Rifa`,
+    customer: {
+      name: usuario.nome_completo || 'Cliente',
+      document: cpfEnvio,
+      email: emailValido,
+      phone: (usuario.telefone || '').replace(/\D/g, '')
+    },
+    // ⚡ external_id é o NOSSO id do pedido — usado depois pra achar o pedido certo quando o
+    // webhook chegar, sem precisar depender só do transaction_id que a AVEX gera.
+    external_id: String(pedido.id),
+    callback_url: `${DOMINIO_PUBLICO_SERVIDOR}/api/webhook/avexpay`
+  };
+
+  try {
+    const resp = await fetch('https://app.avexpay.com.br/api/v1/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Public-Key': publicKey, 'X-Secret-Key': secretKey },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      let corpoErro = '';
+      try { corpoErro = await resp.text(); } catch {}
+      console.error(`❌ AVEX Pay recusou o pagamento (HTTP ${resp.status}):`, corpoErro);
+      return null;
+    }
+    const data = await resp.json();
+    if (data.success && data.data?.qr_code) {
+      // ⚡ A AVEX já manda o QR code como data-URI completa (data:image/svg+xml;base64,...),
+      // diferente do Mercado Pago (que manda cru, sem prefixo) — aqui não precisa completar nada.
+      return {
+        gateway_payment_id: String(data.data.transaction_id),
+        pix_copia_cola: data.data.qr_code,
+        pix_qr_code_base64: data.data.qr_code_image || '',
+        provider: 'avexpay'
+      };
+    }
+    console.error('❌ AVEX Pay respondeu OK mas sem QR code de Pix:', JSON.stringify(data));
+    return null;
+  } catch (err) { console.error('❌ Erro Conexão AVEX Pay:', err.message); return null; }
+}
+
 async function criarPagamentoPay2M(pedido) {
   const cfg = await fetchConfigFromDB();
   const clientId = cfg.PAY2M_CLIENT_ID;
@@ -2143,7 +2199,8 @@ async function criarPagamentoGateway(pedido, usuario) {
   const provider = (cfg.GATEWAY_PROVIDER || 'mercadopago').toLowerCase();
 
   let resultado = null;
-  if (provider === 'pay2m') resultado = await criarPagamentoPay2M(pedido);
+  if (provider === 'avexpay') resultado = await criarPagamentoAvexPay(pedido, usuario);
+  else if (provider === 'pay2m') resultado = await criarPagamentoPay2M(pedido);
   else if (provider === 'paggue') resultado = await criarPagamentoPaggue(pedido);
   else resultado = await criarPagamentoMercadoPago(pedido, usuario);
 
@@ -2808,6 +2865,36 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
             }
           }
         } catch (e) { console.error('Erro verificando MP:', e); }
+      }
+    } else if (pedido.status !== 'pago' && pedido.payment_provider === 'avexpay') {
+      // ⚡ Mesma rede de segurança, só que consultando a AVEX Pay pelo external_id (que é o
+      // próprio id do nosso pedido, mandado na hora de criar a cobrança).
+      const cfg = await fetchConfigFromDB();
+      const publicKey = (cfg.AVEX_PUBLIC_KEY || '').trim();
+      const secretKey = (cfg.AVEX_SECRET_KEY || '').trim();
+      if (publicKey && secretKey) {
+        try {
+          const resp = await fetch('https://app.avexpay.com.br/api/v1/check-transaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Public-Key': publicKey, 'X-Secret-Key': secretKey },
+            body: JSON.stringify({ external_id: String(pedido.id) })
+          });
+          if (resp.ok) {
+            const info = await resp.json();
+            if (info.success && info.data?.status === 'completed') {
+              const { data: linhaAtualizadaStatus } = await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', pedido.id).eq('status', 'aguardando').select('id');
+              const foiEssaChamadaQueMarcouPago = (linhaAtualizadaStatus || []).length > 0;
+              await gerarCotasUnicas(pedido);
+              const { data: updated } = await supabase.from('pedidos').select('*, sorteios(*), usuarios(*)').eq('id', pedido.id).single();
+              pedido = updated;
+              if (foiEssaChamadaQueMarcouPago) (async () => {
+                try {
+                  await enviarPushAdmin('venda', { valor: pedido.valor_total, quantidade: pedido.quantidade_cotas, cliente: pedido.usuarios?.nome_completo || 'Cliente', sorteio: pedido.sorteios?.nome });
+                } catch (e) { console.error('[pedidos/status] erro ao notificar admin', e.message); }
+              })();
+            }
+          }
+        } catch (e) { console.error('Erro verificando AVEX Pay:', e); }
       }
     }
 
@@ -4603,6 +4690,97 @@ async function estornarPedido(pedido, motivo) {
     console.warn(`🔴 [Estorno] ${pedido.cotas_array.length} cota(s) do pedido ${pedido.id} foram removidas e liberadas pra venda de novo.`);
   }
 }
+
+// ⚡ AVEX Pay assina bem mais simples que o Mercado Pago: HMAC-SHA256 do corpo BRUTO da
+// requisição usando a secret_key, comparado de forma seguro contra timing attack (mesma lógica
+// do hash_equals() que a própria documentação deles recomenda em PHP).
+function verificarAssinaturaAvexPay(corpoBruto, assinaturaRecebida, secretKey) {
+  if (!assinaturaRecebida || !secretKey) return false;
+  const esperada = crypto.createHmac('sha256', secretKey).update(corpoBruto).digest('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(esperada, 'utf8'), Buffer.from(String(assinaturaRecebida), 'utf8'));
+  } catch { return false; } // tamanhos diferentes = timingSafeEqual lança erro em vez de false
+}
+
+app.post('/api/webhook/avexpay', async (req, res) => {
+  try {
+    const corpoBruto = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body || {}));
+    let payload = {};
+    try { payload = JSON.parse(corpoBruto.toString('utf8')); } catch { payload = {}; }
+
+    const cfg = await fetchConfigFromDB();
+    const secretKey = (cfg.AVEX_SECRET_KEY || '').trim();
+    const assinaturaRecebida = req.headers['x-signature'];
+    if (secretKey) {
+      const valido = verificarAssinaturaAvexPay(corpoBruto, assinaturaRecebida, secretKey);
+      if (!valido) {
+        console.warn(`🚨 [Webhook AVEX] Assinatura INVÁLIDA — recusado. evento: ${payload.event}, x-signature: ${assinaturaRecebida}`);
+        return res.status(401).json({ error: 'assinatura inválida' });
+      }
+    } else {
+      console.warn('⚠️ AVEX_SECRET_KEY não configurada — webhook aceito sem verificar assinatura (configure pra fechar essa brecha).');
+    }
+
+    const evento = payload.event || '';
+    const externalId = payload.external_id || null;
+    console.log(`📩 [Webhook AVEX] Recebido — evento: ${evento}, external_id: ${externalId}, transaction_id: ${payload.transaction_id}`);
+
+    if (!externalId) return res.json({ ok: true });
+
+    // ⚡ Busca pelo external_id (o NOSSO id de pedido, mandado na criação) — mais confiável do
+    // que confiar só no transaction_id da AVEX pra achar o pedido certo.
+    const { data: pedido } = await supabase.from('pedidos').select('*').eq('id', externalId).maybeSingle();
+    if (!pedido) {
+      console.warn(`⚠️ [Webhook AVEX] Nenhum pedido encontrado com id = "${externalId}".`);
+      return res.json({ ok: true });
+    }
+
+    // ⚡ MED / infração com resultado de estorno — mesma função que já usamos pro chargeback do
+    // Mercado Pago, devolvendo as cotas pro "estoque".
+    if (evento === 'payment.infraction.resolved' && payload.infraction?.provider_status === 'refunded') {
+      await estornarPedido(pedido, 'infração/MED resolvida com estorno (AVEX Pay)');
+      return res.json({ ok: true });
+    }
+    // ⚡ MED aberta ou em revisão cautelar — ainda não é uma decisão final, só regista no log por
+    // enquanto (não estorna nem confirma nada sozinho).
+    if (evento === 'payment.infraction' || evento === 'payment.updated') {
+      console.warn(`⚠️ [Webhook AVEX] Pedido ${pedido.id} entrou em análise de compliance (${payload.infraction?.provider_status || evento}) — motivo: ${payload.infraction?.reason || '-'}`);
+      return res.json({ ok: true });
+    }
+    // Saques (cash-out) não fazem parte do fluxo de compra do comprador — só confirma recebimento.
+    if (String(evento).startsWith('withdrawal.')) return res.json({ ok: true });
+
+    if (evento !== 'payment.confirmed') {
+      console.log(`ℹ️ [Webhook AVEX] Pedido ${pedido.id}: evento "${evento}" não é confirmação de pagamento — não muda nada por enquanto.`);
+      return res.json({ ok: true });
+    }
+
+    console.log(`✅ [Webhook AVEX] Pedido ${pedido.id} confirmado como pago (status anterior: ${pedido.status}).`);
+    const { data: linhaAtualizada } = await supabase.from('pedidos').update({ status: 'pago', updated_at: new Date().toISOString() }).eq('id', pedido.id).eq('status', 'aguardando').select('id');
+    const foiEssaChamadaQueMarcouPago = (linhaAtualizada || []).length > 0;
+
+    if (!pedido.cotas_array || pedido.cotas_array.length === 0) {
+      await gerarCotasUnicas(pedido);
+    } else {
+      console.log(`ℹ️ [Webhook AVEX] Pedido ${pedido.id} já tinha cotas geradas — não gerou de novo (evita duplicar).`);
+    }
+
+    if (foiEssaChamadaQueMarcouPago) (async () => {
+      try {
+        const [{ data: userInfo }, { data: sorteioInfo }] = await Promise.all([
+          supabase.from('usuarios').select('nome_completo').eq('id', pedido.user_id).maybeSingle(),
+          supabase.from('sorteios').select('nome').eq('id', pedido.sorteio_id).maybeSingle()
+        ]);
+        await enviarPushAdmin('venda', { valor: pedido.valor_total, quantidade: pedido.quantidade_cotas, cliente: userInfo?.nome_completo || 'Cliente', sorteio: sorteioInfo?.nome });
+      } catch (e) { console.error('[Webhook AVEX] erro ao notificar admin', e.message); }
+    })();
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('webhook avexpay processing error', e);
+    return res.status(500).json({ error: 'erro interno' });
+  }
+});
 
 app.post('/api/webhook/pagamento', async (req, res) => {
   try {
