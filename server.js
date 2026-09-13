@@ -2564,12 +2564,21 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
   const { data: premiosRoletaDisponiveis } = await supabase.from('bilhetes_premiados').select('*').eq('sorteio_id', sorteio_id).eq('tipo', 'roleta').eq('status', 'disponivel');
   const premioAcertado = (premiosRoletaDisponiveis || []).find(p => numerosGeradosSet.has(p.numero_cota)) || null;
 
+  let confirmacaoDoConcursoRealmenteFuncionou = false;
   if (premioAcertado) {
     if (qtdGiros > 0) {
-      // Tem giro disponível: confirma o prêmio pra esse comprador
-      await supabase.from('bilhetes_premiados').update({
+      // Tem giro disponível: confirma o prêmio pra esse comprador. Importante: CONFERE se essa
+      // atualização realmente aconteceu (e não só assumir que sim) — sem essa conferência, se por
+      // qualquer motivo raro essa trava condicional (".eq('status','disponivel')") não encontrasse
+      // a linha pra atualizar, o código seguia como se tivesse dado certo mesmo assim, criando um
+      // giro "vencedor" sem o prêmio realmente vinculado direito no outro lado.
+      const { data: linhaConfirmada } = await supabase.from('bilhetes_premiados').update({
         status: 'reivindicada', usuario_id: user_id, pedido_id: pedido.id, reivindicada_em: new Date().toISOString()
-      }).eq('id', premioAcertado.id).eq('status', 'disponivel');
+      }).eq('id', premioAcertado.id).eq('status', 'disponivel').select('id');
+      confirmacaoDoConcursoRealmenteFuncionou = (linhaConfirmada || []).length > 0;
+      if (!confirmacaoDoConcursoRealmenteFuncionou) {
+        console.error(`🚨 [roleta] Pedido ${pedido?.id} — encontrou o prêmio ${premioAcertado.id} mas a confirmação NÃO afetou nenhuma linha (já tinha sido reivindicado por outro pedido antes). Esse giro não vai ser marcado como vencedor.`);
+      }
     } else {
       // Comprou uma cota premiada da roleta mas não tem giro pra usar — reatribui esse prêmio
       // pra um número de cota que ainda não foi vendido, pra não se perder.
@@ -2594,7 +2603,7 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
     return;
   }
 
-  const houveVitoria = premioAcertado && qtdGiros > 0;
+  const houveVitoria = confirmacaoDoConcursoRealmenteFuncionou;
   const novasLinhas = [];
   for (let i = 0; i < qtdGiros; i++) {
     const éOGiroVencedor = houveVitoria && i === 0;
@@ -2607,10 +2616,16 @@ async function atribuirGirosRoleta(sorteio_id, pedido, user_id, numerosGerados) 
       girado: false, created_at: new Date().toISOString()
     });
   }
-  await supabase.from('roleta_giros').insert(novasLinhas).then(({ error }) => {
-    if (error) console.error(`[roleta] Pedido ${pedido?.id} — ERRO ao inserir giros:`, error.message);
-    else console.log(`[roleta] Pedido ${pedido?.id} — ${novasLinhas.length} giro(s) inserido(s) com sucesso.`);
-  });
+  const { error: erroInsercaoGiros } = await supabase.from('roleta_giros').insert(novasLinhas);
+  if (erroInsercaoGiros) {
+    console.error(`🚨 [roleta] Pedido ${pedido?.id} — ERRO ao inserir giros (tentando de novo em 1s):`, erroInsercaoGiros.message);
+    await new Promise(r => setTimeout(r, 1000));
+    const { error: erroSegundaTentativa } = await supabase.from('roleta_giros').insert(novasLinhas);
+    if (erroSegundaTentativa) console.error(`🚨🚨 [roleta] Pedido ${pedido?.id} — ERRO na 2ª tentativa também, giro(s) NÃO foram criados:`, erroSegundaTentativa.message);
+    else console.log(`[roleta] Pedido ${pedido?.id} — ${novasLinhas.length} giro(s) inserido(s) na 2ª tentativa.`);
+  } else {
+    console.log(`[roleta] Pedido ${pedido?.id} — ${novasLinhas.length} giro(s) inserido(s) com sucesso.`);
+  }
   registrarEventoLead({ usuario_id: user_id, sorteio_id, pedido_id: pedido?.id, tipo_evento: 'giro_roleta', cidade: pedido?.cidade || null, prevenda_id: pedido?.prevenda_id || null, metadata: { quantidade_giros: novasLinhas.length } });
 }
 
