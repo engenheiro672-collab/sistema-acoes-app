@@ -1389,13 +1389,14 @@
                             </div>
                             <div>
                                 <label class="text-xs text-gray-400">Tema da prévenda</label>
-                                <select id="cidade-tema" class="input-dark mt-1">
+                                <select id="cidade-tema" class="input-dark mt-1" onchange="onTemaPrevendaChange(this.value)">
                                     <option value="escuro">Fundo escuro</option>
                                     <option value="claro">Fundo claro (combina com o funil-01)</option>
                                     <option value="teste">🧪 Prévenda Teste (funil experimental, sem afetar as outras)</option>
                                     <option value="direto">🎯 Direto no site (sem prévenda — pergunta aparece em cima do próprio sorteio)</option>
                                     <option value="simples">🪶 Simples e leve (só foto + botão, ideal como porta de entrada antes do site principal)</option>
                                     <option value="avancar">➡️ Só avançar (sem pergunta nenhuma — só foto + botão, direto pro funil escolhido)</option>
+                                    <option value="010">⚡ Pré-venda 010 (carregamento instantâneo + vídeo, pra tráfego pago)</option>
                                 </select>
                             </div>
                             <div>
@@ -1410,6 +1411,17 @@
                                     <option value="checkout.html">checkout.html (padrão)</option>
                                 </select>
                             </div>
+                        </div>
+                        <div id="box-campos-prevenda-010" class="grid grid-cols-1 gap-3 mb-3 hidden">
+                            <div>
+                                <label class="text-xs text-gray-400">Link do vídeo de fundo (Cloudflare Stream)</label>
+                                <input id="cidade-video-url" class="input-dark mt-1" placeholder="https://...cloudflarestream.com/.../manifest/video.m3u8">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Link da foto de capa (tela de carregamento — aparece na hora, antes do vídeo)</label>
+                                <input id="cidade-imagem-capa-url" class="input-dark mt-1" placeholder="https://...">
+                            </div>
+                            <p class="text-xs text-gray-500">💡 O nome, a foto e a descrição da marca (selo verificado) que aparecem nessa pré-venda são os mesmos configurados na aba Geral do sorteio, em "Marca do checkout". O percentual "Vendidos" é calculado automaticamente com base nas cotas já vendidas desse sorteio.</p>
                         </div>
                         <button type="button" id="btn-salvar-cidade" class="btn-primary" onclick="criarPrevenda()">Criar Prévenda</button>
                         <button type="button" id="btn-cancelar-edicao-cidade" class="hidden text-gray-400 hover:text-white text-sm ml-3" onclick="cancelarEdicaoPrevenda()">Cancelar edição</button>
@@ -3573,6 +3585,9 @@ function onCidadeSorteioChange(id) {
     $('#box-add-cidade').toggleClass('opacity-50 pointer-events-none', !id);
     if (id) carregarPrevendas(id); else $('#lista-prevendas').empty();
 }
+function onTemaPrevendaChange(tema) {
+    $('#box-campos-prevenda-010').toggleClass('hidden', tema !== '010');
+}
 function carregarPrevendas(sorteioId) {
     api('GET', `/api/admin/sorteios/${sorteioId}/prevendas`).then(d => {
         PREVENDAS_CACHE_ATUAL = d.prevendas || [];
@@ -3602,7 +3617,7 @@ function renderListaPrevendas() {
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 class="font-semibold text-white">${p.nome}</h4>
                             <span class="badge badge-outro">📍 ${p.cidade}</span>
-                            <span class="badge badge-outro">${({claro:'☀️ Claro', teste:'🧪 Teste', direto:'🎯 Direto no site', simples:'🪶 Simples', avancar:'➡️ Só avançar'})[p.tema] || '🌙 Escuro'}</span>
+                            <span class="badge badge-outro">${({claro:'☀️ Claro', teste:'🧪 Teste', direto:'🎯 Direto no site', simples:'🪶 Simples', avancar:'➡️ Só avançar', '010':'⚡ Pré-venda 010'})[p.tema] || '🌙 Escuro'}</span>
                             <span class="badge badge-outro">${canalLabel(p.canal)}</span>
                             ${p.ativo === false ? '<span class="badge badge-outro">Inativa</span>' : ''}
                         </div>
@@ -3630,6 +3645,9 @@ function abrirEdicaoPrevenda(id) {
     $('#cidade-tema').val(p.tema || 'escuro');
     $('#cidade-arquivo-html').val(p.funis?.arquivo_html || 'sorteio.html');
     $('#cidade-arquivo-checkout').val(p.funis?.arquivo_checkout_html || 'checkout.html');
+    $('#cidade-video-url').val(p.video_url || '');
+    $('#cidade-imagem-capa-url').val(p.imagem_capa_url || '');
+    onTemaPrevendaChange(p.tema || 'escuro');
     $('#btn-salvar-cidade').text('Salvar alterações').addClass('bg-blue-600').removeClass('btn-primary');
     $('#btn-cancelar-edicao-cidade').removeClass('hidden');
     $('html, body').animate ? null : window.scrollTo(0, document.getElementById('box-add-cidade').offsetTop - 80);
@@ -3637,6 +3655,7 @@ function abrirEdicaoPrevenda(id) {
 function cancelarEdicaoPrevenda() {
     PREVENDA_EDITANDO_ID = null;
     $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
+    $('#cidade-video-url').val(''); $('#cidade-imagem-capa-url').val('');
     $('#btn-salvar-cidade').text('Criar Prévenda').removeClass('bg-blue-600').addClass('btn-primary');
     $('#btn-cancelar-edicao-cidade').addClass('hidden');
 }
@@ -3651,7 +3670,9 @@ function criarPrevenda() {
         canal: $('#cidade-canal').val(),
         tema: $('#cidade-tema').val(),
         arquivo_html: $('#cidade-arquivo-html').val(),
-        arquivo_checkout_html: $('#cidade-arquivo-checkout').val()
+        arquivo_checkout_html: $('#cidade-arquivo-checkout').val(),
+        video_url: $('#cidade-video-url').val(),
+        imagem_capa_url: $('#cidade-imagem-capa-url').val()
     };
     if (PREVENDA_EDITANDO_ID) {
         api('PUT', `/api/admin/prevendas/${PREVENDA_EDITANDO_ID}`, payload).then(() => {
@@ -3663,6 +3684,7 @@ function criarPrevenda() {
     }
     api('POST', `/api/admin/sorteios/${SORTEIO_CIDADE_ID}/prevendas`, payload).then(() => {
         $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
+        $('#cidade-video-url').val(''); $('#cidade-imagem-capa-url').val('');
         carregarPrevendas(SORTEIO_CIDADE_ID);
         notificar('Prévenda criada!', 'sucesso');
     }).catch(err => notificar('Erro ao criar prévenda: ' + (err.error || ''), 'erro'));
