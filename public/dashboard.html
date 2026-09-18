@@ -274,6 +274,7 @@
             <li><a id="nav-push" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('push', this)"><i class="bi bi-bell w-6 text-lg"></i> Notificação Push</a></li>
             <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
             <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
+            <li><a id="nav-gerador-porcentagem" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('gerador-porcentagem', this)"><i class="bi bi-bullseye w-6 text-lg"></i> Gerador de Porcentagem</a></li>
             <li class="border-t border-gray-800 my-2"></li>
             <li><a id="nav-minha-conta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('minha-conta', this)"><i class="bi bi-gear w-6 text-lg"></i> Conta & Identidade</a></li>
             <li><a id="nav-gateway" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('gateway', this)"><i class="bi bi-credit-card w-6 text-lg"></i> Gateway Pix</a></li>
@@ -835,6 +836,43 @@
             <div id="resultado-maior-menor-cota" class="space-y-2"></div>
         </div>
 
+        <!-- ===================== GERADOR DE PORCENTAGEM (pra print) ===================== -->
+        <div id="page-gerador-porcentagem" class="page-section">
+            <h2 class="text-2xl font-bold mb-2">🎯 Gerador de Porcentagem</h2>
+            <p class="text-sm opacity-60 mb-6">Só visual, pra tirar print — não muda nenhum dado real do sorteio.</p>
+
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 max-w-lg mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <select id="select-gerador-porcentagem-sorteio" class="select-sorteio-dash input-dark" onchange="onGeradorSorteioChange(this.value)"><option value="">Selecione um sorteio...</option></select>
+                    <div class="flex gap-2">
+                        <input type="text" id="inp-gerador-qtd" class="input-dark" placeholder="Porcentagem (ex: 62)" oninput="this.value=this.value.replace(/[^0-9.]/g,'')">
+                        <button type="button" class="btn-primary" style="white-space:nowrap;" onclick="gerarPorcentagemVisual()">Gerar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel escuro, sem nada do tema roxo do painel — do tamanho normal de tela de
+                 celular, pra quando você abrir essa página no seu celular e tirar print, sair
+                 limpo: só o cartão, sem sobrar nada do admin ao redor. -->
+            <div style="background:#0d0f14; border-radius:16px; min-height:calc(100vh - 280px); display:flex; align-items:center; justify-content:center; padding:2rem 1rem;">
+                <div id="box-porcentagem-gerada" class="hidden" style="width:100%; max-width:360px;">
+                    <div style="background:#171b23; border:1px solid #262c3a; border-radius:16px; padding:1.1rem 1.2rem; position:relative;">
+                        <span style="position:absolute; top:1rem; right:1.1rem; color:#5b6472; font-weight:800; letter-spacing:0.12em; font-size:0.9rem;">•••</span>
+                        <div id="print-nome-sorteio" style="color:#fff; font-weight:800; font-size:1.15rem; padding-right:2rem;">Nome do sorteio</div>
+                        <div style="color:#22c55e; font-weight:700; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; margin-top:0.3rem;">ATIVA</div>
+                        <div id="print-preco-cota" style="color:#fff; font-weight:800; font-size:1.05rem; margin-top:0.45rem;">R$ 0,00 <span style="color:#8b93a3; font-weight:600; font-size:0.85rem;">/ cota</span></div>
+                        <div style="position:relative; height:26px; border-radius:999px; background:#0d0f14; margin-top:0.9rem; overflow:hidden;">
+                            <div id="barra-porcentagem-print" style="position:absolute; inset:0; width:0%; border-radius:999px; background:linear-gradient(90deg,#1a8754,#5be584); transition:width 1.1s cubic-bezier(.22,1,.36,1);"></div>
+                            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+                                <span id="numero-porcentagem-gerada" style="color:#fff; font-weight:800; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,0.45);">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p id="txt-gerador-vazio" class="text-gray-500 text-sm">Escolha o sorteio, digite a porcentagem e clique em Gerar.</p>
+            </div>
+        </div>
+
         <!-- Tela cheia de revelação do ganhador (efeito "ao vivo") -->
         <div id="tela-ganhador" class="fixed inset-0 z-[100] hidden items-center justify-center" style="background: radial-gradient(circle, rgba(109,40,217,0.35) 0%, rgba(5,6,10,0.97) 70%);">
             <canvas id="confete-canvas" class="fixed inset-0 pointer-events-none"></canvas>
@@ -910,27 +948,6 @@
                             <input name="total_cotas" id="inp-total-cotas" class="input-dark mt-2 hidden" placeholder="Ex: 500000">
                         </div>
 
-                        <div class="col-span-2 border-t border-gray-800 pt-4 mt-1">
-                            <label class="text-sm text-gray-400">🎯 Gerador de Porcentagem <span class="text-gray-600">(só visual, pra tirar print — não muda nenhum dado real)</span></label>
-                            <div class="flex gap-2 mt-2">
-                                <input type="text" id="inp-gerador-qtd" class="input-dark" placeholder="Porcentagem (ex: 62)" oninput="this.value=this.value.replace(/[^0-9.]/g,'')">
-                                <button type="button" class="btn-primary" style="white-space:nowrap;" onclick="gerarPorcentagemVisual()">Gerar</button>
-                            </div>
-                            <div id="box-porcentagem-gerada" class="hidden mt-4">
-                                <div style="max-width:360px; background:#171b23; border:1px solid #262c3a; border-radius:16px; padding:1.1rem 1.2rem; position:relative;">
-                                    <span style="position:absolute; top:1rem; right:1.1rem; color:#5b6472; font-weight:800; letter-spacing:0.12em; font-size:0.9rem;">•••</span>
-                                    <div id="print-nome-sorteio" style="color:#fff; font-weight:800; font-size:1.15rem; padding-right:2rem;">Nome do sorteio</div>
-                                    <div style="color:#22c55e; font-weight:700; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; margin-top:0.3rem;">ATIVA</div>
-                                    <div id="print-preco-cota" style="color:#fff; font-weight:800; font-size:1.05rem; margin-top:0.45rem;">R$ 0,00 <span style="color:#8b93a3; font-weight:600; font-size:0.85rem;">/ cota</span></div>
-                                    <div style="position:relative; height:26px; border-radius:999px; background:#0d0f14; margin-top:0.9rem; overflow:hidden;">
-                                        <div id="barra-porcentagem-print" style="position:absolute; inset:0; width:0%; border-radius:999px; background:linear-gradient(90deg,#1a8754,#5be584); transition:width 1.1s cubic-bezier(.22,1,.36,1);"></div>
-                                        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-                                            <span id="numero-porcentagem-gerada" style="color:#fff; font-weight:800; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,0.45);">0%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         <div><label class="text-sm text-gray-400">Mínimo por compra</label><input name="minimo_cotas_compra" id="inp-min" class="input-dark mt-1"></div>
                         <div><label class="text-sm text-gray-400">Máximo por compra</label>
                             <select name="maximo_cotas_compra" id="inp-max" class="input-dark mt-1">
@@ -1834,16 +1851,20 @@ function onTotalCotasChange() {
     if (val === 'outro') { $('#inp-total-cotas').removeClass('hidden').val(''); }
     else { $('#inp-total-cotas').addClass('hidden').val(val); }
 }
+function onGeradorSorteioChange(sorteioId) {
+    const s = SORTEIOS_CACHE.find(x => x.id === sorteioId);
+    if (!s) { $('#print-nome-sorteio').text('Nome do sorteio'); $('#print-preco-cota').html('R$ 0,00 <span style="color:#8b93a3; font-weight:600; font-size:0.85rem;">/ cota</span>'); return; }
+    $('#print-nome-sorteio').text(s.nome || 'Nome do sorteio');
+    $('#print-preco-cota').html(formatBR(s.preco_cota) + ' <span style="color:#8b93a3; font-weight:600; font-size:0.85rem;">/ cota</span>');
+}
 function gerarPorcentagemVisual() {
+    if (!$('#select-gerador-porcentagem-sorteio').val()) return notificar('Selecione o sorteio primeiro.', 'erro');
     // ⚡ Agora é direto: o número digitado JÁ É a porcentagem (50, 10, 80...), sem precisar
     // calcular a partir de quantidade de cotas — bem mais rápido na hora de tirar o print.
     const percentual = Math.max(0, Math.min(100, Number($('#inp-gerador-qtd').val() || 0)));
     if (!$('#inp-gerador-qtd').val()) { notificar('Digita a porcentagem que você quer mostrar (ex: 62).', 'aviso'); return; }
 
-    // Puxa nome e preço direto do formulário do sorteio que já está aberto — nada digitado à mão.
-    $('#print-nome-sorteio').text($('#inp-nome').val() || 'Nome do sorteio');
-    $('#print-preco-cota').html((($('#inp-preco-display').val() || 'R$ 0,00')) + ' <span style="color:#8b93a3; font-weight:600; font-size:0.85rem;">/ cota</span>');
-
+    $('#txt-gerador-vazio').addClass('hidden');
     $('#box-porcentagem-gerada').removeClass('hidden');
     // Reseta pro começo antes de animar de novo, senão gerar duas vezes seguidas não teria efeito visual
     $('#barra-porcentagem-print').css('transition', 'none').css('width', '0%');
@@ -1961,7 +1982,7 @@ function navTo(page, el) {
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
     if (page === 'visitantes-live') { iniciarDashboardLive(); }
-    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'upsell' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota') { popularSelectsSorteios(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'upsell' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota' || page === 'gerador-porcentagem') { popularSelectsSorteios(); }
     if (page === 'push') { carregarPagePush(); }
     if (page === 'gateway') { carregarGateway(); }
     if (page === 'marketing') { carregarMarketing(); }

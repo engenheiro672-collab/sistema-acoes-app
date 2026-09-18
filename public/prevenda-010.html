@@ -170,7 +170,13 @@
             document.getElementById('marca-prevenda-foto').style.backgroundImage = "url('" + fotoMarca + "')";
         }
         var percentual = Math.max(0, Math.min(100, Number(sorteio.percentual_vendido || 0)));
-        document.getElementById('txt-percentual-vendidos').textContent = (percentual < 1 && percentual > 0 ? percentual.toFixed(1) : Math.round(percentual)) + '%';
+        // ⚡ Mostra a casa decimal sempre que ela existir de verdade (52.7 → "52.7%"), só arredonda
+        // pra número inteiro quando o valor configurado já é redondo (73 → "73%").
+        var percentualTexto = (percentual % 1 !== 0) ? percentual.toFixed(1) : Math.round(percentual);
+        document.getElementById('txt-percentual-vendidos').textContent = percentualTexto + '%';
+        // ⚡ Esse era o bug: só o texto era preenchido, a largura da barra nunca era setada e ficava
+        // travada no 0% do CSS. Agora os dois andam juntos.
+        document.getElementById('barra-percentual-vendidos').style.width = percentual + '%';
 
         var video = document.getElementById('video-fundo');
         if (prevenda.video_url) video.src = prevenda.video_url;
