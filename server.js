@@ -1186,7 +1186,11 @@ async function getPrevendaPublicData(slug) {
   const fotoEscolhida = galeria[0] || prevenda.sorteios?.foto_url || '';
   const totalCotasSorteio = Number(prevenda.sorteios?.total_cotas || 0);
   const cotasVendidasSorteio = Number(prevenda.sorteios?.cotas_vendidas || 0);
-  const percentualVendido = totalCotasSorteio > 0 ? Math.min(100, (cotasVendidasSorteio / totalCotasSorteio) * 100) : 0;
+  // ⚡ Só na Pré-venda 010: se um percentual manual foi configurado no dashboard, ele manda —
+  // ignora o cálculo automático. Sem valor manual, continua calculando pelas cotas vendidas.
+  const percentualVendido = (prevenda.percentual_manual !== null && prevenda.percentual_manual !== undefined)
+    ? Math.max(0, Math.min(100, Number(prevenda.percentual_manual)))
+    : (totalCotasSorteio > 0 ? Math.min(100, (cotasVendidasSorteio / totalCotasSorteio) * 100) : 0);
   const dados = {
     prevenda: {
       id: prevenda.id, nome: prevenda.nome, cidade: prevenda.cidade, tema: prevenda.tema || 'escuro', sorteio_id: prevenda.sorteio_id,
@@ -1353,6 +1357,7 @@ app.post('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) 
       sorteio_id, nome: body.nome, slug, cidade: body.cidade, canal: body.canal || 'facebook_ads',
       tema: ['claro', 'teste', 'direto', 'simples', 'avancar', '010'].includes(body.tema) ? body.tema : 'escuro',
       video_url: body.video_url || null, imagem_capa_url: body.imagem_capa_url || null,
+      percentual_manual: (body.percentual_manual !== undefined && body.percentual_manual !== '') ? Number(body.percentual_manual) : null,
       funil_id: funilCriado.id, ativo: true, created_at: new Date().toISOString()
     }).select().single();
     if (error) return fail(res, error.message);
@@ -1514,6 +1519,7 @@ app.put('/api/admin/prevendas/:id', ensureAdminAuth, async (req, res) => {
     if (body.ativo !== undefined) payloadPrevenda.ativo = !!body.ativo;
     if (body.video_url !== undefined) payloadPrevenda.video_url = body.video_url || null;
     if (body.imagem_capa_url !== undefined) payloadPrevenda.imagem_capa_url = body.imagem_capa_url || null;
+    if (body.percentual_manual !== undefined) payloadPrevenda.percentual_manual = (body.percentual_manual !== '' && body.percentual_manual !== null) ? Number(body.percentual_manual) : null;
 
     if (Object.keys(payloadPrevenda).length > 0) {
       const { error } = await supabase.from('prevendas').update(payloadPrevenda).eq('id', req.params.id);

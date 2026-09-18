@@ -1421,7 +1421,11 @@
                                 <label class="text-xs text-gray-400">Link da foto de capa (tela de carregamento — aparece na hora, antes do vídeo)</label>
                                 <input id="cidade-imagem-capa-url" class="input-dark mt-1" placeholder="https://...">
                             </div>
-                            <p class="text-xs text-gray-500">💡 O nome, a foto e a descrição da marca (selo verificado) que aparecem nessa pré-venda são os mesmos configurados na aba Geral do sorteio, em "Marca do checkout". O percentual "Vendidos" é calculado automaticamente com base nas cotas já vendidas desse sorteio.</p>
+                            <div>
+                                <label class="text-xs text-gray-400">Percentual "Vendidos" (opcional — deixe vazio pra calcular automático pelas cotas vendidas)</label>
+                                <input id="cidade-percentual-manual" type="number" min="0" max="100" step="0.1" class="input-dark mt-1" placeholder="Ex: 73">
+                            </div>
+                            <p class="text-xs text-gray-500">💡 O nome, a foto e a descrição da marca (selo verificado) que aparecem nessa pré-venda são os mesmos configurados na aba Geral do sorteio, em "Marca do checkout". O percentual "Vendidos" é calculado automaticamente com base nas cotas já vendidas desse sorteio — a menos que você digite um valor no campo acima, que passa a mandar no lugar do cálculo automático.</p>
                         </div>
                         <button type="button" id="btn-salvar-cidade" class="btn-primary" onclick="criarPrevenda()">Criar Prévenda</button>
                         <button type="button" id="btn-cancelar-edicao-cidade" class="hidden text-gray-400 hover:text-white text-sm ml-3" onclick="cancelarEdicaoPrevenda()">Cancelar edição</button>
@@ -3647,6 +3651,7 @@ function abrirEdicaoPrevenda(id) {
     $('#cidade-arquivo-checkout').val(p.funis?.arquivo_checkout_html || 'checkout.html');
     $('#cidade-video-url').val(p.video_url || '');
     $('#cidade-imagem-capa-url').val(p.imagem_capa_url || '');
+    $('#cidade-percentual-manual').val(p.percentual_manual !== null && p.percentual_manual !== undefined ? p.percentual_manual : '');
     onTemaPrevendaChange(p.tema || 'escuro');
     $('#btn-salvar-cidade').text('Salvar alterações').addClass('bg-blue-600').removeClass('btn-primary');
     $('#btn-cancelar-edicao-cidade').removeClass('hidden');
@@ -3655,7 +3660,7 @@ function abrirEdicaoPrevenda(id) {
 function cancelarEdicaoPrevenda() {
     PREVENDA_EDITANDO_ID = null;
     $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
-    $('#cidade-video-url').val(''); $('#cidade-imagem-capa-url').val('');
+    $('#cidade-video-url').val(''); $('#cidade-imagem-capa-url').val(''); $('#cidade-percentual-manual').val('');
     $('#btn-salvar-cidade').text('Criar Prévenda').removeClass('bg-blue-600').addClass('btn-primary');
     $('#btn-cancelar-edicao-cidade').addClass('hidden');
 }
@@ -3672,7 +3677,8 @@ function criarPrevenda() {
         arquivo_html: $('#cidade-arquivo-html').val(),
         arquivo_checkout_html: $('#cidade-arquivo-checkout').val(),
         video_url: $('#cidade-video-url').val(),
-        imagem_capa_url: $('#cidade-imagem-capa-url').val()
+        imagem_capa_url: $('#cidade-imagem-capa-url').val(),
+        percentual_manual: $('#cidade-percentual-manual').val()
     };
     if (PREVENDA_EDITANDO_ID) {
         api('PUT', `/api/admin/prevendas/${PREVENDA_EDITANDO_ID}`, payload).then(() => {
@@ -3684,7 +3690,7 @@ function criarPrevenda() {
     }
     api('POST', `/api/admin/sorteios/${SORTEIO_CIDADE_ID}/prevendas`, payload).then(() => {
         $('#cidade-nome').val(''); $('#cidade-nome-exibido').val('');
-        $('#cidade-video-url').val(''); $('#cidade-imagem-capa-url').val('');
+        $('#cidade-video-url').val(''); $('#cidade-imagem-capa-url').val(''); $('#cidade-percentual-manual').val('');
         carregarPrevendas(SORTEIO_CIDADE_ID);
         notificar('Prévenda criada!', 'sucesso');
     }).catch(err => notificar('Erro ao criar prévenda: ' + (err.error || ''), 'erro'));
