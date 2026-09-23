@@ -200,23 +200,31 @@
            a passo de um jeito bem didático antes da pessoa cair na tela de compartilhar de verdade. */
         #overlay-instrucao-compartilhar { position: fixed; inset: 0; background: rgba(20,22,27,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: flex-end; justify-content: center; z-index: 210; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
         #overlay-instrucao-compartilhar.aberto { opacity: 1; pointer-events: auto; }
-        #overlay-instrucao-compartilhar .modal-instagram { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 20px 18px 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.22,1,.36,1); box-shadow: 0 -8px 30px rgba(0,0,0,0.25); }
+        /* ⚡ box-sizing + max-height/overflow — garante que a folha nunca "estoura" a tela em
+           celulares menores (o padding não soma por cima da largura, e se o texto for mais alto
+           que a tela, ela ganha rolagem interna em vez de cortar o botão "Continuar" lá embaixo). */
+        #overlay-instrucao-compartilhar .modal-instagram { box-sizing: border-box; background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform 0.3s cubic-bezier(.22,1,.36,1); box-shadow: 0 -8px 30px rgba(0,0,0,0.25); }
         #overlay-instrucao-compartilhar.aberto .modal-instagram { transform: translateY(0); }
-        .instrucao-compartilhar-icone { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+        .instrucao-compartilhar-icone { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; flex-shrink: 0; }
         .instrucao-compartilhar-icone svg { width: 24px; height: 24px; }
         .instrucao-compartilhar-icone.tema-whatsapp { background: #25D366; }
         .instrucao-compartilhar-icone.tema-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); }
         .instrucao-compartilhar-passos { text-align: left; margin-bottom: 16px; }
         /* ⚡ Era "display:flex" antes — como o texto de cada passo mistura texto solto com <b>, o
            flex tratava CADA <b> como uma "coluna" separada e quebrava tudo em blocos tortos. Com
-           bloco normal (sem flex), o texto flui como um parágrafo único, do jeito certo. */
-        .instrucao-compartilhar-passo { font-size: 0.8rem; color: #4b5563; line-height: 1.5; background: #f4f5f7; border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; }
+           bloco normal (sem flex) + word-break, o texto flui como um parágrafo único e nunca
+           estoura a largura da tela, mesmo em celulares pequenos (iPhone SE etc). */
+        .instrucao-compartilhar-passo { font-size: 0.8rem; color: #4b5563; line-height: 1.55; background: #f4f5f7; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; word-break: break-word; overflow-wrap: break-word; }
         .instrucao-compartilhar-passo:last-child { margin-bottom: 0; }
         .instrucao-compartilhar-passo b { color: #1f2937; }
-        #btn-continuar-instrucao-compartilhar { width: 100%; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
+        #btn-continuar-instrucao-compartilhar { width: 100%; box-sizing: border-box; color: #fff; border: none; border-radius: 10px; padding: 13px 10px; font-size: 0.82rem; font-weight: 800; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #btn-continuar-instrucao-compartilhar.tema-whatsapp { background: #25D366; }
         #btn-continuar-instrucao-compartilhar.tema-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); }
-        #btn-fechar-instrucao-compartilhar { display: block; width: 100%; text-align: center; background: none; border: none; color: #9aa1ad; font-size: 0.76rem; font-weight: 700; padding: 10px; cursor: pointer; }
+        #btn-fechar-instrucao-compartilhar { display: block; width: 100%; box-sizing: border-box; text-align: center; background: none; border: none; color: #9aa1ad; font-size: 0.76rem; font-weight: 700; padding: 10px; cursor: pointer; }
+        @media (max-width: 360px) {
+            .instrucao-compartilhar-passo { font-size: 0.75rem; padding: 9px 10px; }
+            #btn-continuar-instrucao-compartilhar { font-size: 0.76rem; }
+        }
     </style>
 </head>
 <body class="min-h-screen">
