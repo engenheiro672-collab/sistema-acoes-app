@@ -1347,11 +1347,18 @@ app.post('/api/public/prevenda/avancou-site', async (req, res) => {
 
 // Chamado pelo sorteio.html quando a página abre com ?ref=codigo — só conta o clique, não afeta
 // nada mais (nenhuma trava, nenhum pagamento, só estatística).
+// ⚡ "tipo" separa o que é cada clique pro "Visão geral" do dashboard:
+// - 'acesso'    → alguém abriu o site pelo link de indicação de outra pessoa (chamado pelo sorteio.html)
+// - 'copiar'    → o próprio indicador clicou em "Copiar" o link dele, no card do checkout
+// - 'whatsapp'  → o próprio indicador clicou pra compartilhar no WhatsApp
+// - 'instagram' → o próprio indicador clicou pra compartilhar no Instagram
+const TIPOS_CLIQUE_INDICACAO_VALIDOS = ['acesso', 'copiar', 'whatsapp', 'instagram'];
 app.post('/api/public/indicacao/clique', limitePublicoSensivel, async (req, res) => {
   try {
-    const { codigo, sorteio_id } = req.body || {};
+    const { codigo, sorteio_id, tipo } = req.body || {};
     if (!codigo || !sorteio_id) return res.status(400).json({ error: 'Dados inválidos' });
-    await supabase.from('indicacao_cliques').insert({ codigo: String(codigo).trim().slice(0, 40), sorteio_id, created_at: new Date().toISOString() });
+    const tipoSeguro = TIPOS_CLIQUE_INDICACAO_VALIDOS.includes(tipo) ? tipo : 'acesso';
+    await supabase.from('indicacao_cliques').insert({ codigo: String(codigo).trim().slice(0, 40), sorteio_id, tipo: tipoSeguro, created_at: new Date().toISOString() });
     return res.json({ ok: true });
   } catch (err) { console.error('POST /api/public/indicacao/clique', err); return res.status(500).json({ error: 'erro' }); }
 });
@@ -1370,10 +1377,20 @@ app.get('/api/admin/sorteios/:id/indicacoes', ensureAdminAuth, async (req, res) 
       .select('id, indicado_por, status, valor_total, quantidade_cotas, created_at, usuarios(nome_completo, telefone)')
       .eq('sorteio_id', sorteio_id).not('indicado_por', 'is', null).order('created_at', { ascending: false });
 
-    const { data: cliques } = await supabase.from('indicacao_cliques').select('codigo').eq('sorteio_id', sorteio_id);
+    const { data: cliques } = await supabase.from('indicacao_cliques').select('codigo, tipo').eq('sorteio_id', sorteio_id);
 
+    // ⚡ "cliques" por código = só os do tipo 'acesso' (gente que abriu o site pelo link daquele
+    // indicador) — as ações 'copiar'/'whatsapp'/'instagram' entram só no total geral abaixo, porque
+    // são o PRÓPRIO indicador usando o card dele, não visitas de quem foi indicado.
     const cliquesPorCodigo = {};
-    for (const c of (cliques || [])) cliquesPorCodigo[c.codigo] = (cliquesPorCodigo[c.codigo] || 0) + 1;
+    let totalCopiar = 0, totalWhatsapp = 0, totalInstagram = 0, totalAcessos = 0;
+    for (const c of (cliques || [])) {
+      const t = c.tipo || 'acesso';
+      if (t === 'acesso') { cliquesPorCodigo[c.codigo] = (cliquesPorCodigo[c.codigo] || 0) + 1; totalAcessos++; }
+      else if (t === 'copiar') totalCopiar++;
+      else if (t === 'whatsapp') totalWhatsapp++;
+      else if (t === 'instagram') totalInstagram++;
+    }
 
     const indicadosPorCodigo = {};
     for (const p of (indicados || [])) {
@@ -1384,7 +1401,7 @@ app.get('/api/admin/sorteios/:id/indicacoes', ensureAdminAuth, async (req, res) 
       });
     }
 
-    const linhas = (indicadores || []).map(ind => {
+    const todosIndicadores = (indicadores || []).map(ind => {
       const listaIndicados = indicadosPorCodigo[ind.codigo_indicacao] || [];
       return {
         codigo: ind.codigo_indicacao,
@@ -1396,9 +1413,31 @@ app.get('/api/admin/sorteios/:id/indicacoes', ensureAdminAuth, async (req, res) 
         total_pagos: listaIndicados.filter(i => i.status === 'pago').length,
         indicados: listaIndicados
       };
-    }).sort((a, b) => (b.total_pagos - a.total_pagos) || (b.cliques - a.cliques));
+    });
 
-    return ok(res, { indicadores: linhas });
+    // ⚡ A lista que aparece no dashboard mostra só quem de fato indicou alguém (senão ficaria
+    // gigante, com todo mundo que já comprou — a maioria nunca chega a usar o link). Ordenado do
+    // maior pro menor número de indicados por padrão; o front pode reordenar.
+    const linhas = todosIndicadores
+      .filter(ind => ind.total_indicados > 0)
+      .sort((a, b) => (b.total_indicados - a.total_indicados) || (b.total_pagos - a.total_pagos) || (b.cliques - a.cliques));
+
+    const totalIndicacoesReservado = (indicados || []).filter(p => p.status === 'aguardando').length;
+    const totalIndicacoesPago = (indicados || []).filter(p => p.status === 'pago').length;
+
+    return ok(res, {
+      indicadores: linhas,
+      visao_geral: {
+        total_compradores: todosIndicadores.length, // pessoas que pagaram e receberam o card
+        total_copiaram_link: totalCopiar,
+        total_cliques_whatsapp: totalWhatsapp,
+        total_cliques_instagram: totalInstagram,
+        total_acessos_indicacao: totalAcessos, // gente que abriu o site por algum link de indicação
+        total_indicacoes: (indicados || []).length, // pedidos criados via link de indicação (reservado + pago)
+        total_indicacoes_reservado: totalIndicacoesReservado,
+        total_indicacoes_pago: totalIndicacoesPago
+      }
+    });
   } catch (err) { console.error('GET /api/admin/sorteios/:id/indicacoes', err); return fail(res); }
 });
 
@@ -1854,6 +1893,18 @@ async function getCheckoutPublicData(token) {
   const isPago = pedido.status === 'pago';
   const derived_status = (isPago ? 'aprovado' : (pedido.expira_em && new Date(pedido.expira_em).getTime() < Date.now() ? 'expirado' : 'pendente'));
 
+  // ⚡ "Indique e Ganhe" — rede de segurança: se o pedido já está pago mas (por algum motivo, ex:
+  // foi pago antes dessa função existir) ainda não tem código de indicação, gera agora mesmo. Isso
+  // garante que o card apareça mesmo ao recarregar/reabrir o checkout de um pedido já pago, não só
+  // na primeira vez que o pagamento é detectado pelo polling.
+  if (isPago && !pedido.codigo_indicacao) {
+    try {
+      const novoCodigo = await gerarCodigoIndicacaoUnico(pedido.usuarios?.nome_completo);
+      await supabase.from('pedidos').update({ codigo_indicacao: novoCodigo }).eq('id', pedido.id);
+      pedido.codigo_indicacao = novoCodigo;
+    } catch (e) { console.error('[getCheckoutPublicData] erro ao gerar código de indicação tardio', e.message); }
+  }
+
   const sorteioDoPedido = pedido.sorteios || {};
 
   // ⚡ Nenhuma dessas 4 consultas depende do resultado das outras — só do "pedido" que já veio
@@ -1899,6 +1950,14 @@ async function getCheckoutPublicData(token) {
     // compra, nunca a logo geral do painel admin.
     logo_url: sorteioDoPedido.icone_tela_inicio_url || sorteioDoPedido.foto_url || meta.logo_url,
     pixels, modo_teste_pagamento, roleta_tiers, bilhete_premiado_instantaneo, roleta_premiada,
+    // ⚡ "Indique e Ganhe" — igual ao endpoint de status: só vem preenchido quando o pedido já está
+    // pago. Precisa vir aqui também (não só no /status) pra o card continuar aparecendo quando a
+    // pessoa sai e volta pro checkout, ou quando o admin reabre o link de um pedido já pago.
+    indicacao: (isPago && pedido.codigo_indicacao) ? {
+      codigo: pedido.codigo_indicacao,
+      link: `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${sorteioDoPedido.slug || ''}${funil?.slug ? '/' + funil.slug : ''}?ref=${encodeURIComponent(pedido.codigo_indicacao)}&refnome=${encodeURIComponent((pedido.usuarios?.nome_completo || '').trim().split(/\s+/)[0] || '')}`,
+      foto_sorteio: sorteioDoPedido.foto_indicacao_url || sorteioDoPedido.foto_url || ''
+    } : null,
     // ⚡ Widget "Participe novamente" — só ativa se o admin ligou a chavinha pra esse sorteio.
     upsell_checkout: sorteioDoPedido.upsell_checkout_ativo ? {
       sorteio_id: sorteioDoPedido.id,

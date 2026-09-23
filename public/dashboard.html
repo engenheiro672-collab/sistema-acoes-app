@@ -892,9 +892,59 @@
                 </div>
             </div>
 
+            <div id="visao-geral-indicacoes" class="mb-6 hidden">
+                <p class="text-xs uppercase tracking-wide text-gray-500 font-bold mb-2">Visão geral</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Compradores (ganharam o card)</p>
+                        <p id="vg-total-compradores" class="text-xl font-bold text-white">0</p>
+                    </div>
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Copiaram o link</p>
+                        <p id="vg-total-copiaram" class="text-xl font-bold text-white">0</p>
+                    </div>
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Cliques em WhatsApp</p>
+                        <p id="vg-total-whatsapp" class="text-xl font-bold text-white">0</p>
+                    </div>
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Cliques em Instagram</p>
+                        <p id="vg-total-instagram" class="text-xl font-bold text-white">0</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Acessos via link de indicação</p>
+                        <p id="vg-total-acessos" class="text-xl font-bold text-white">0</p>
+                    </div>
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Indicações (total)</p>
+                        <p id="vg-total-indicacoes" class="text-xl font-bold text-white">0</p>
+                    </div>
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Reservados</p>
+                        <p id="vg-total-reservado" class="text-xl font-bold text-yellow-400">0</p>
+                    </div>
+                    <div class="bg-darkCard p-3 rounded-xl border border-gray-800">
+                        <p class="text-xs text-gray-500">Compras via indicação</p>
+                        <p id="vg-total-pago" class="text-xl font-bold text-green-400">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="indicadores-cabecalho" class="flex items-center justify-between mb-2 hidden">
+                <p class="text-xs uppercase tracking-wide text-gray-500 font-bold">Quem já indicou alguém</p>
+                <select id="select-indicacoes-ordenar" class="input-dark text-xs" style="width:auto; padding:4px 8px;" onchange="renderizarPaginaIndicacoes()">
+                    <option value="desc">Mais indicados primeiro</option>
+                    <option value="asc">Menos indicados primeiro</option>
+                </select>
+            </div>
+
             <div id="lista-indicacoes">
                 <p class="text-gray-500 text-sm">Selecione um sorteio pra ver as indicações.</p>
             </div>
+
+            <div id="paginacao-indicacoes"></div>
         </div>
 
         <!-- Tela cheia de revelação do ganhador (efeito "ao vivo") -->
@@ -1939,52 +1989,99 @@ function uploadFotoIndicacao(input) {
         }).catch(() => notificar('Erro ao enviar imagem.', 'erro'));
 }
 
+let INDICADORES_CACHE = [];
+let INDICACOES_PAGINA = 1;
+const INDICACOES_POR_PAGINA = 10;
+
 function carregarIndicacoes(sorteioId) {
-    if (!sorteioId) { $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Selecione um sorteio pra ver as indicações.</p>'); return; }
+    if (!sorteioId) {
+        $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Selecione um sorteio pra ver as indicações.</p>');
+        $('#visao-geral-indicacoes').addClass('hidden');
+        $('#indicadores-cabecalho').addClass('hidden');
+        $('#paginacao-indicacoes').empty();
+        return;
+    }
     $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Carregando...</p>');
     $.get(`/api/admin/sorteios/${sorteioId}/indicacoes`).done(function(resp) {
-        const linhas = resp.indicadores || [];
-        if (linhas.length === 0) {
-            $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Ninguém desse sorteio ainda tem um link de indicação (ele só é gerado depois que a pessoa paga uma compra).</p>');
-            return;
-        }
-        const html = linhas.map((ind, idx) => {
-            const idLinha = `indicacao-detalhe-${idx}`;
-            const linhasIndicados = ind.indicados.map(i => {
-                const corStatus = i.status === 'pago' ? 'text-green-400' : (i.status === 'cancelado' ? 'text-red-400' : 'text-yellow-400');
-                const rotuloStatus = i.status === 'pago' ? 'Pagou' : (i.status === 'cancelado' ? 'Cancelou' : 'Reservou, não pagou');
-                return `<div class="flex justify-between items-center py-2 border-b border-gray-800 last:border-0 text-sm">
-                    <div>
-                        <div class="font-semibold">${i.nome}</div>
-                        <div class="text-xs text-gray-500">${i.telefone ? formatarTelefone(i.telefone) : ''} · ${i.created_at ? new Date(i.created_at).toLocaleDateString('pt-BR') : ''}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="${corStatus} font-semibold text-xs">${rotuloStatus}</div>
-                        <div class="text-xs text-gray-400">${formatBR(i.valor_total)}</div>
-                    </div>
-                </div>`;
-            }).join('') || '<p class="text-xs text-gray-500 py-2">Ninguém comprou por esse link ainda.</p>';
+        INDICADORES_CACHE = resp.indicadores || [];
+        INDICACOES_PAGINA = 1;
 
-            return `<div class="bg-darkCard rounded-xl border border-gray-800 p-4 mb-3">
-                <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('${idLinha}').classList.toggle('hidden')">
-                    <div>
-                        <div class="font-bold text-white">${ind.nome}</div>
-                        <div class="text-xs text-gray-500">${ind.telefone ? formatarTelefone(ind.telefone) : ''} · código <span class="font-mono text-gray-400">${ind.codigo}</span></div>
-                    </div>
-                    <div class="flex gap-4 text-center">
-                        <div><div class="text-xs text-gray-500">Cliques</div><div class="font-bold text-white">${ind.cliques}</div></div>
-                        <div><div class="text-xs text-gray-500">Indicou</div><div class="font-bold text-white">${ind.total_indicados}</div></div>
-                        <div><div class="text-xs text-gray-500">Pagaram</div><div class="font-bold text-green-400">${ind.total_pagos}</div></div>
-                        <i class="bi bi-chevron-down text-gray-500 self-center"></i>
-                    </div>
-                </div>
-                <div id="${idLinha}" class="hidden mt-3 pt-3 border-t border-gray-800">${linhasIndicados}</div>
-            </div>`;
-        }).join('');
-        $('#lista-indicacoes').html(html);
+        const vg = resp.visao_geral || {};
+        $('#vg-total-compradores').text(vg.total_compradores || 0);
+        $('#vg-total-copiaram').text(vg.total_copiaram_link || 0);
+        $('#vg-total-whatsapp').text(vg.total_cliques_whatsapp || 0);
+        $('#vg-total-instagram').text(vg.total_cliques_instagram || 0);
+        $('#vg-total-acessos').text(vg.total_acessos_indicacao || 0);
+        $('#vg-total-indicacoes').text(vg.total_indicacoes || 0);
+        $('#vg-total-reservado').text(vg.total_indicacoes_reservado || 0);
+        $('#vg-total-pago').text(vg.total_indicacoes_pago || 0);
+        $('#visao-geral-indicacoes').removeClass('hidden');
+
+        renderizarPaginaIndicacoes();
     }).fail(function() {
         $('#lista-indicacoes').html('<p class="text-red-400 text-sm">Erro ao carregar as indicações. Tenta de novo.</p>');
+        $('#visao-geral-indicacoes').addClass('hidden');
+        $('#indicadores-cabecalho').addClass('hidden');
+        $('#paginacao-indicacoes').empty();
     });
+}
+
+// ⚡ Lista só quem de fato indicou alguém (o back-end já filtra isso) — ordenada e paginada de 10
+// em 10, igual o resto do dashboard (pedidos/clientes), pra não virar uma lista gigante.
+function renderizarPaginaIndicacoes() {
+    if (INDICADORES_CACHE.length === 0) {
+        $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Ninguém desse sorteio indicou alguém ainda (o link é gerado assim que a pessoa paga, mas só aparece aqui depois que ela de fato compartilha e alguém compra pelo link dela).</p>');
+        $('#indicadores-cabecalho').addClass('hidden');
+        $('#paginacao-indicacoes').empty();
+        return;
+    }
+    $('#indicadores-cabecalho').removeClass('hidden');
+
+    const ordem = $('#select-indicacoes-ordenar').val() || 'desc';
+    const linhasOrdenadas = [...INDICADORES_CACHE].sort((a, b) => ordem === 'asc' ? (a.total_indicados - b.total_indicados) : (b.total_indicados - a.total_indicados));
+
+    const totalPaginas = Math.ceil(linhasOrdenadas.length / INDICACOES_POR_PAGINA);
+    if (INDICACOES_PAGINA > totalPaginas) INDICACOES_PAGINA = totalPaginas || 1;
+    const inicio = (INDICACOES_PAGINA - 1) * INDICACOES_POR_PAGINA;
+    const linhas = linhasOrdenadas.slice(inicio, inicio + INDICACOES_POR_PAGINA);
+
+    const html = linhas.map((ind) => {
+        const idLinha = `indicacao-detalhe-${ind.codigo}`;
+        const linhasIndicados = ind.indicados.map(i => {
+            const corStatus = i.status === 'pago' ? 'text-green-400' : (i.status === 'cancelado' ? 'text-red-400' : 'text-yellow-400');
+            const rotuloStatus = i.status === 'pago' ? 'Pagou' : (i.status === 'cancelado' ? 'Cancelou' : 'Reservou, não pagou');
+            return `<div class="flex justify-between items-center py-2 border-b border-gray-800 last:border-0 text-sm">
+                <div>
+                    <div class="font-semibold">${i.nome}</div>
+                    <div class="text-xs text-gray-500">${i.telefone ? formatarTelefone(i.telefone) : ''} · ${i.created_at ? new Date(i.created_at).toLocaleDateString('pt-BR') : ''}</div>
+                </div>
+                <div class="text-right">
+                    <div class="${corStatus} font-semibold text-xs">${rotuloStatus}</div>
+                    <div class="text-xs text-gray-400">${formatBR(i.valor_total)}</div>
+                </div>
+            </div>`;
+        }).join('') || '<p class="text-xs text-gray-500 py-2">Ninguém comprou por esse link ainda.</p>';
+
+        return `<div class="bg-darkCard rounded-xl border border-gray-800 p-4 mb-3">
+            <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('${idLinha}').classList.toggle('hidden')">
+                <div>
+                    <div class="font-bold text-white">${ind.nome}</div>
+                    <div class="text-xs text-gray-500">${ind.telefone ? formatarTelefone(ind.telefone) : ''} · código <span class="font-mono text-gray-400">${ind.codigo}</span></div>
+                </div>
+                <div class="flex gap-4 text-center">
+                    <div><div class="text-xs text-gray-500">Cliques</div><div class="font-bold text-white">${ind.cliques}</div></div>
+                    <div><div class="text-xs text-gray-500">Indicou</div><div class="font-bold text-white">${ind.total_indicados}</div></div>
+                    <div><div class="text-xs text-gray-500">Pagaram</div><div class="font-bold text-green-400">${ind.total_pagos}</div></div>
+                    <i class="bi bi-chevron-down text-gray-500 self-center"></i>
+                </div>
+            </div>
+            <div id="${idLinha}" class="hidden mt-3 pt-3 border-t border-gray-800">${linhasIndicados}</div>
+        </div>`;
+    }).join('');
+    $('#lista-indicacoes').html(html);
+
+    if (totalPaginas <= 1) { $('#paginacao-indicacoes').empty(); }
+    else { $('#paginacao-indicacoes').html(gerarBotoesPaginacao(INDICACOES_PAGINA, totalPaginas, 'INDICACOES_PAGINA', 'renderizarPaginaIndicacoes')); }
 }
 
 function setTotalCotasValor(valor) {

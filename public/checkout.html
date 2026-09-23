@@ -989,9 +989,19 @@
             $('#card-indicacao').css('display', 'block');
         }
 
+        // ⚡ Métrica pro "Visão geral" do dashboard — registra a ação (copiar/whatsapp/instagram) do
+        // indicador nesse próprio card, sem travar nada se falhar (só estatística, nunca bloqueia).
+        function registrarCliqueIndicacao(tipo) {
+            try {
+                if (!INDICACAO_DATA?.codigo || !SORTEIO_ID_GLOBAL) return;
+                $.post('/api/public/indicacao/clique', { codigo: INDICACAO_DATA.codigo, sorteio_id: SORTEIO_ID_GLOBAL, tipo: tipo });
+            } catch (e) {}
+        }
+
         $('#btn-copiar-link-indicacao').on('click', function() {
             if (!INDICACAO_DATA) return;
             copiarTextoIndicacao(INDICACAO_DATA.link);
+            registrarCliqueIndicacao('copiar');
             const $btn = $(this);
             const $toast = $('#toast-copiado-indicacao');
             $btn.text('Copiado!').addClass('copiado');
@@ -1019,17 +1029,32 @@
             } catch (e) {}
         }
 
-        $('#btn-compartilhar-whatsapp-indicacao').on('click', function() {
+        $('#btn-compartilhar-whatsapp-indicacao').on('click', async function() {
             if (!INDICACAO_DATA) return;
+            registrarCliqueIndicacao('whatsapp');
             const mensagem = `🎁 Olha só, quero te indicar esse sorteio! Se você participar e for contemplado, eu ainda ganho um prêmio de indicação. Confere aqui: ${INDICACAO_DATA.link}`;
-            // ⚡ location.href (não window.open) — é o que faz o celular entender que é pra abrir o
-            // APP do WhatsApp de verdade (não uma aba de navegador nova), já indo direto pra tela de
-            // escolher com quem conversar, com a mensagem pronta.
+            // ⚡ O link direto (wa.me) abre sempre o app que o celular considera "padrão" pra esse
+            // link — se a pessoa tem WhatsApp normal E Business instalados, ele não deixa escolher
+            // entre os dois, e nem cai direto na telinha de escolher o contato/conversa. Quem faz
+            // isso de verdade é o menu de compartilhar NATIVO do celular (Web Share API): ele lista
+            // as duas contas de WhatsApp separadamente, e ao escolher uma, o WhatsApp já abre certinho
+            // na tela de selecionar contatos/conversas com a mensagem pronta — exatamente como um
+            // compartilhamento comum de link. Só cai pro link direto se o navegador não suportar.
+            try {
+                if (navigator.share) {
+                    await navigator.share({ text: mensagem });
+                    return;
+                }
+            } catch (e) {
+                // Pessoa cancelou o menu de compartilhar — não faz nada (não cai pro fallback nesse caso).
+                if (e && e.name === 'AbortError') return;
+            }
             window.location.href = 'https://wa.me/?text=' + encodeURIComponent(mensagem);
         });
 
         $('#btn-compartilhar-instagram-indicacao').on('click', async function() {
             if (!INDICACAO_DATA) return;
+            registrarCliqueIndicacao('instagram');
             copiarTextoIndicacao(INDICACAO_DATA.link);
             await tentarCompartilharInstagram();
         });
@@ -1180,6 +1205,7 @@
         let ROLETA_TIERS_GLOBAL = [];
         let TEM_COMBOS_ROLETA = false;
         let SORTEIO_SLUG_GLOBAL = '';
+        let SORTEIO_ID_GLOBAL = '';
 
         function renderCombosRoleta(tiers, sorteioSlug) {
             // Só guarda o conteúdo pronto — o popup em si só abre quando alguém perde um giro
@@ -1679,6 +1705,7 @@
             $('#sorteio-nome').text(pedido.sorteios?.nome || '');
             ROLETA_TIERS_GLOBAL = roleta_tiers || [];
             SORTEIO_SLUG_GLOBAL = pedido.sorteios?.slug || '';
+            SORTEIO_ID_GLOBAL = pedido.sorteios?.id || pedido.sorteio_id || '';
             if (pagoInicial) { try { renderCombosRoleta(ROLETA_TIERS_GLOBAL, SORTEIO_SLUG_GLOBAL); } catch (e) { console.error('renderCombosRoleta', e); } }
             $('#sorteio-qtd').text(`Cotas adquiridas: ${pedido.quantidade_cotas || 0}`);
             QUANTIDADE_PAGA = Number(pedido.quantidade_cotas || 0);
@@ -1726,7 +1753,10 @@
                     funil: FUNIL_DATA,
                     bilhete_premiado_instantaneo: data.bilhete_premiado_instantaneo || null,
                     roleta_premiada: data.roleta_premiada || null,
-                    upsell_checkout: data.upsell_checkout || null
+                    upsell_checkout: data.upsell_checkout || null,
+                    // ⚡ Sem isso, o card "Indique e Ganhe" só aparecia na primeira aprovação (via
+                    // polling) e sumia ao sair e voltar pro checkout já pago — agora persiste sempre.
+                    indicacao: data.indicacao || null
                 });
             } else {
                 try { if (TOKEN) history.replaceState(null, null, `/checkout/${TOKEN}/${derived_status || 'pendente'}`); } catch (e) {}
