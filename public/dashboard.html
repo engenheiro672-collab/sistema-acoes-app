@@ -879,8 +879,17 @@
             <h2 class="text-2xl font-bold mb-2">🎁 Indique e Ganhe</h2>
             <p class="text-sm opacity-60 mb-6">Quem já tem um link de indicação, quantos cliques ele teve, e quem comprou usando cada link — só rastreamento, o pagamento do prêmio de indicação é sempre decidido manualmente por você.</p>
 
-            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 max-w-lg mb-6">
-                <select id="select-indicacoes-sorteio" class="select-sorteio-dash input-dark" onchange="carregarIndicacoes(this.value)"><option value="">Selecione um sorteio...</option></select>
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 max-w-lg mb-4">
+                <select id="select-indicacoes-sorteio" class="select-sorteio-dash input-dark" onchange="onIndicacoesSorteioChange(this.value)"><option value="">Selecione um sorteio...</option></select>
+            </div>
+
+            <div id="box-foto-indicacao" class="bg-darkCard p-4 rounded-xl border border-gray-800 max-w-lg mb-6 hidden">
+                <p class="text-sm font-semibold text-white mb-1">Foto para compartilhar</p>
+                <p class="text-xs text-gray-500 mb-3">Usada quando alguém clica em WhatsApp/Instagram no card "Indique e Ganhe". Se não enviar nenhuma, usa a foto principal do sorteio.</p>
+                <div class="flex items-center gap-3">
+                    <img id="preview-foto-indicacao" class="hidden" style="width:56px; height:56px; object-fit:cover; border-radius:8px; border:1px solid #262c3a;">
+                    <input type="file" id="input-foto-indicacao" accept="image/*" class="input-dark" onchange="uploadFotoIndicacao(this)">
+                </div>
             </div>
 
             <div id="lista-indicacoes">
@@ -1900,6 +1909,36 @@ function gerarPorcentagemVisual() {
 }
 
 // ---------------- INDIQUE E GANHE ----------------
+function onIndicacoesSorteioChange(sorteioId) {
+    if (!sorteioId) { $('#box-foto-indicacao').addClass('hidden'); carregarIndicacoes(''); return; }
+    const s = SORTEIOS_CACHE.find(x => x.id === sorteioId);
+    $('#box-foto-indicacao').removeClass('hidden');
+    if (s && s.foto_indicacao_url) { $('#preview-foto-indicacao').attr('src', s.foto_indicacao_url).removeClass('hidden'); }
+    else { $('#preview-foto-indicacao').addClass('hidden'); }
+    $('#input-foto-indicacao').val('');
+    carregarIndicacoes(sorteioId);
+}
+
+function uploadFotoIndicacao(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const sorteioId = $('#select-indicacoes-sorteio').val();
+    if (!sorteioId) { notificar('Selecione o sorteio primeiro.', 'aviso'); input.value = ''; return; }
+    const fd = new FormData();
+    fd.append('foto', file);
+    fetch(`/api/admin/sorteios/${sorteioId}/upload-foto-indicacao`, { method: 'POST', credentials: 'include', body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.url) {
+                $('#preview-foto-indicacao').attr('src', d.url).removeClass('hidden');
+                const s = SORTEIOS_CACHE.find(x => x.id === sorteioId);
+                if (s) s.foto_indicacao_url = d.url;
+                notificar('Foto salva!', 'sucesso');
+            } else {
+                notificar(d.error || 'Erro ao enviar imagem.', 'erro');
+            }
+        }).catch(() => notificar('Erro ao enviar imagem.', 'erro'));
+}
+
 function carregarIndicacoes(sorteioId) {
     if (!sorteioId) { $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Selecione um sorteio pra ver as indicações.</p>'); return; }
     $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Carregando...</p>');

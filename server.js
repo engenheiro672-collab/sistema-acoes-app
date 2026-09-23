@@ -3081,7 +3081,9 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
       indicacao: (pedido.status === 'pago' && pedido.codigo_indicacao) ? {
         codigo: pedido.codigo_indicacao,
         link: `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${pedido.sorteios?.slug || ''}${funil?.slug ? '/' + funil.slug : ''}?ref=${encodeURIComponent(pedido.codigo_indicacao)}&refnome=${encodeURIComponent((pedido.usuarios?.nome_completo || '').trim().split(/\s+/)[0] || '')}`,
-        foto_sorteio: pedido.sorteios?.foto_url || ''
+        // ⚡ Se você subiu uma foto específica pro "Indique e Ganhe" (aba do dashboard), ela manda —
+        // senão cai pra foto principal do sorteio, nunca fica sem imagem nenhuma.
+        foto_sorteio: pedido.sorteios?.foto_indicacao_url || pedido.sorteios?.foto_url || ''
       } : null,
       upsell_checkout: pedido.sorteios?.upsell_checkout_ativo ? {
         sorteio_id: pedido.sorteios.id,
@@ -4004,6 +4006,24 @@ app.post('/api/admin/sorteios/:id/upload-marca-checkout', ensureAdminAuth, uploa
     const publicURL = pub?.publicUrl;
 
     await supabase.from('sorteios').update({ marca_checkout_foto_url: publicURL }).eq('id', req.params.id);
+    return ok(res, { url: publicURL });
+  } catch (e) { return fail(res); }
+});
+
+// ⚡ Foto própria pro compartilhamento do "Indique e Ganhe" — se não for enviada, o link continua
+// usando a foto principal do sorteio (fallback já tratado onde o link é montado).
+app.post('/api/admin/sorteios/:id/upload-foto-indicacao', ensureAdminAuth, upload.single('foto'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return fail(res, 'Arquivo não enviado', 400);
+    const { buffer: bufferComprimido, mimetype: mimeComprimido, extensao } = await comprimirImagem(file.buffer, file.mimetype, 1080);
+    const dest = `foto-indicacao/${req.params.id}-${Date.now()}.${extensao || 'png'}`;
+    const { error } = await supabase.storage.from('sorteios').upload(dest, bufferComprimido, { contentType: mimeComprimido, upsert: true });
+    if (error) return fail(res, error.message);
+    const { data: pub } = supabase.storage.from('sorteios').getPublicUrl(dest);
+    const publicURL = pub?.publicUrl;
+
+    await supabase.from('sorteios').update({ foto_indicacao_url: publicURL }).eq('id', req.params.id);
     return ok(res, { url: publicURL });
   } catch (e) { return fail(res); }
 });

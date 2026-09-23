@@ -370,12 +370,12 @@
                 <div class="modal-instagram-puxador"></div>
                 <div class="modal-instagram-check">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                    <span>Foto e link já copiados</span>
+                    <span>Foto baixada e link já copiado</span>
                 </div>
                 <div class="modal-instagram-titulo">Quase lá!</div>
-                <div class="modal-instagram-texto">Vamos te levar direto pro <b>Stories</b> com a foto do sorteio já carregada. Agora é só <b>adicionar o link</b> na foto (figurinha de link) e compartilhar com seus amigos.</div>
+                <div class="modal-instagram-texto">A foto do sorteio já foi baixada no seu celular. Abra o <b>Instagram</b>, crie um novo Stories e escolha essa foto (geralmente é a mais recente da sua galeria) — depois é só <b>adicionar o link</b> (figurinha de link) e compartilhar com seus amigos.</div>
                 <div class="modal-instagram-nota">Depois, se quiser compartilhar com alguém também no <b>Direct</b>, basta colar o link — ele já está copiado.</div>
-                <button id="btn-ir-instagram-indicacao" type="button">Ir para o Instagram</button>
+                <button id="btn-ir-instagram-indicacao" type="button">Entendi</button>
                 <button id="btn-fechar-modal-instagram" type="button">Fechar</button>
             </div>
         </div>
@@ -1022,43 +1022,60 @@
         $('#btn-compartilhar-whatsapp-indicacao').on('click', function() {
             if (!INDICACAO_DATA) return;
             const mensagem = `🎁 Olha só, quero te indicar esse sorteio! Se você participar e for contemplado, eu ainda ganho um prêmio de indicação. Confere aqui: ${INDICACAO_DATA.link}`;
-            window.open('https://wa.me/?text=' + encodeURIComponent(mensagem), '_blank');
+            // ⚡ location.href (não window.open) — é o que faz o celular entender que é pra abrir o
+            // APP do WhatsApp de verdade (não uma aba de navegador nova), já indo direto pra tela de
+            // escolher com quem conversar, com a mensagem pronta.
+            window.location.href = 'https://wa.me/?text=' + encodeURIComponent(mensagem);
         });
 
-        $('#btn-compartilhar-instagram-indicacao').on('click', function() {
+        $('#btn-compartilhar-instagram-indicacao').on('click', async function() {
             if (!INDICACAO_DATA) return;
             copiarTextoIndicacao(INDICACAO_DATA.link);
-            $('#overlay-instagram-indicacao').addClass('aberto');
+            await tentarCompartilharInstagram();
         });
         $('#btn-fechar-modal-instagram').on('click', function() { $('#overlay-instagram-indicacao').removeClass('aberto'); });
         $('#overlay-instagram-indicacao').on('click', function(e) { if (e.target === this) $(this).removeClass('aberto'); });
+        $('#btn-ir-instagram-indicacao').on('click', function() { $('#overlay-instagram-indicacao').removeClass('aberto'); });
 
-        $('#btn-ir-instagram-indicacao').on('click', async function() {
-            $('#overlay-instagram-indicacao').removeClass('aberto');
-            if (!INDICACAO_DATA) return;
-            // ⚡ Tenta abrir o Instagram já com a foto do sorteio carregada no Stories — isso só
-            // funciona de verdade com o app do Instagram instalado (iPhone tende a aceitar também a
-            // figurinha de link automática; Android costuma trazer só a foto, sem o link automático
-            // — por isso o link já fica copiado, pra colar manualmente se precisar).
-            try {
-                const foto = INDICACAO_DATA.foto_sorteio;
-                if (foto && navigator.userAgent && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // ⚡ A ÚNICA forma que um SITE (não um app) tem de entregar uma foto pronta pro Instagram
+        // Stories, de verdade, é o menu de compartilhar nativo do próprio celular (Web Share API com
+        // arquivo) — quando a pessoa escolhe "Instagram" nesse menu, ele já abre o Stories com a
+        // foto carregada sozinho. O truque de link direto (instagram-stories://) sem passar pelo
+        // menu do celular não injeta a imagem de verdade (é por isso que aparecia preto) — removi
+        // ele. Quando o celular não suporta esse menu (ou é desktop), cai pro modal de tutorial:
+        // baixa a foto e explica pra pessoa postar manualmente, com o link já copiado.
+        async function tentarCompartilharInstagram() {
+            const foto = INDICACAO_DATA?.foto_sorteio;
+            if (foto && navigator.canShare) {
+                try {
                     const resp = await fetch('/imagem-cache?url=' + encodeURIComponent(foto));
                     const blob = await resp.blob();
-                    const leitor = new FileReader();
-                    leitor.onload = function() {
-                        try {
-                            const base64 = leitor.result.split(',')[1];
-                            window.location.href = 'instagram-stories://share?source_application=premiosderrets' +
-                                '&backgroundImage=' + encodeURIComponent('data:' + blob.type + ';base64,' + base64);
-                        } catch (e) {}
-                    };
-                    leitor.readAsDataURL(blob);
-                    // Se o Instagram não abrir em ~1.2s (app não instalado, ou não é mobile), não faz mais nada —
-                    // a pessoa já tem a foto (pode salvar) e o link já copiado, pode postar manualmente.
+                    const arquivo = new File([blob], 'sorteio.jpg', { type: blob.type || 'image/jpeg' });
+                    if (navigator.canShare({ files: [arquivo] })) {
+                        await navigator.share({ files: [arquivo], text: 'Confere esse sorteio: ' + INDICACAO_DATA.link });
+                        return; // ⚡ Funcionou — o próprio celular já mostrou WhatsApp/Instagram/etc com a foto pronta.
+                    }
+                } catch (e) {
+                    // Pessoa cancelou o menu de compartilhar, ou o navegador recusou — cai pro tutorial abaixo.
                 }
-            } catch (e) { console.error('Erro ao preparar Stories do Instagram', e); }
-        });
+            }
+            mostrarTutorialInstagramManual(foto);
+        }
+
+        function mostrarTutorialInstagramManual(foto) {
+            if (foto) {
+                try {
+                    const linkBaixar = document.createElement('a');
+                    linkBaixar.href = '/imagem-cache?url=' + encodeURIComponent(foto);
+                    linkBaixar.download = 'sorteio.jpg';
+                    linkBaixar.target = '_blank';
+                    document.body.appendChild(linkBaixar);
+                    linkBaixar.click();
+                    document.body.removeChild(linkBaixar);
+                } catch (e) {}
+            }
+            $('#overlay-instagram-indicacao').addClass('aberto');
+        }
 
         $('#upsell-btn-comprar').on('click', function() {
             if (!UPSELL_DATA) return;
