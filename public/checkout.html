@@ -195,6 +195,25 @@
         .modal-instagram-nota { font-size: 0.72rem; color: #6b7280; line-height: 1.5; background: #f4f5f7; border-radius: 10px; padding: 10px 11px; margin-bottom: 16px; }
         #btn-ir-instagram-indicacao { width: 100%; background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
         #btn-fechar-modal-instagram { display: block; width: 100%; text-align: center; background: none; border: none; color: #9aa1ad; font-size: 0.76rem; font-weight: 700; padding: 10px; cursor: pointer; }
+
+        /* Modal "Como funciona" — aparece ANTES de abrir o WhatsApp/Instagram, pra explicar o passo
+           a passo de um jeito bem didático antes da pessoa cair na tela de compartilhar de verdade. */
+        #overlay-instrucao-compartilhar { position: fixed; inset: 0; background: rgba(20,22,27,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: flex-end; justify-content: center; z-index: 210; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        #overlay-instrucao-compartilhar.aberto { opacity: 1; pointer-events: auto; }
+        #overlay-instrucao-compartilhar .modal-instagram { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 20px 18px 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.22,1,.36,1); box-shadow: 0 -8px 30px rgba(0,0,0,0.25); }
+        #overlay-instrucao-compartilhar.aberto .modal-instagram { transform: translateY(0); }
+        .instrucao-compartilhar-icone { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+        .instrucao-compartilhar-icone svg { width: 24px; height: 24px; }
+        .instrucao-compartilhar-icone.tema-whatsapp { background: #25D366; }
+        .instrucao-compartilhar-icone.tema-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); }
+        .instrucao-compartilhar-passos { text-align: left; margin-bottom: 16px; }
+        .instrucao-compartilhar-passo { display: flex; gap: 8px; align-items: flex-start; font-size: 0.8rem; color: #4b5563; line-height: 1.5; background: #f4f5f7; border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; }
+        .instrucao-compartilhar-passo:last-child { margin-bottom: 0; }
+        .instrucao-compartilhar-passo b { color: #1f2937; }
+        #btn-continuar-instrucao-compartilhar { width: 100%; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
+        #btn-continuar-instrucao-compartilhar.tema-whatsapp { background: #25D366; }
+        #btn-continuar-instrucao-compartilhar.tema-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); }
+        #btn-fechar-instrucao-compartilhar { display: block; width: 100%; text-align: center; background: none; border: none; color: #9aa1ad; font-size: 0.76rem; font-weight: 700; padding: 10px; cursor: pointer; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -362,6 +381,18 @@
                         <div class="passo-texto">Se ele comprar por esse link e <b>for contemplado</b>, você também ganha o prêmio</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- "Como funciona" — abre ANTES do menu de compartilhar de verdade (WhatsApp ou Instagram) -->
+        <div id="overlay-instrucao-compartilhar">
+            <div class="modal-instagram">
+                <div class="modal-instagram-puxador"></div>
+                <div id="instrucao-compartilhar-icone" class="instrucao-compartilhar-icone"></div>
+                <div class="modal-instagram-titulo" style="text-align:center;">Como funciona</div>
+                <div id="instrucao-compartilhar-passos" class="instrucao-compartilhar-passos"></div>
+                <button id="btn-continuar-instrucao-compartilhar" type="button">Continuar</button>
+                <button id="btn-fechar-instrucao-compartilhar" type="button">Cancelar</button>
             </div>
         </div>
 
@@ -1029,10 +1060,58 @@
             } catch (e) {}
         }
 
-        $('#btn-compartilhar-whatsapp-indicacao').on('click', async function() {
+        // ⚡ Antes de abrir o WhatsApp ou o Instagram de verdade, mostra um passo a passo bem
+        // simples explicando o que vai acontecer — pra até quem nunca usou nada parecido entender
+        // o que vai aparecer na tela seguinte e o que precisa fazer (principalmente no Instagram,
+        // onde tem um passo manual de colar o link).
+        const ICONE_WHATSAPP_SVG_MODAL = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.6.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.4 0-.5C10 9 9.5 7.8 9.3 7.3c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.5-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>';
+        const ICONE_INSTAGRAM_SVG_MODAL = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="#fff" stroke="none"/></svg>';
+        let ACAO_PENDENTE_COMPARTILHAR = null;
+
+        function abrirInstrucaoCompartilhar(tipo, aoContinuar) {
+            ACAO_PENDENTE_COMPARTILHAR = aoContinuar;
+            const $icone = $('#instrucao-compartilhar-icone').removeClass('tema-whatsapp tema-instagram');
+            const $btn = $('#btn-continuar-instrucao-compartilhar').removeClass('tema-whatsapp tema-instagram');
+            if (tipo === 'whatsapp') {
+                $icone.addClass('tema-whatsapp').html(ICONE_WHATSAPP_SVG_MODAL);
+                $btn.addClass('tema-whatsapp').text('Continuar para o WhatsApp');
+                $('#instrucao-compartilhar-passos').html(`
+                    <div class="instrucao-compartilhar-passo">📱 Vamos abrir o <b>WhatsApp</b> com a mensagem do convite e o seu link já prontos.</div>
+                    <div class="instrucao-compartilhar-passo">👉 É só escolher pra quem você quer mandar (pode marcar mais de uma pessoa) e enviar.</div>
+                `);
+            } else {
+                $icone.addClass('tema-instagram').html(ICONE_INSTAGRAM_SVG_MODAL);
+                $btn.addClass('tema-instagram').text('Continuar para o Instagram');
+                $('#instrucao-compartilhar-passos').html(`
+                    <div class="instrucao-compartilhar-passo">📸 A foto do sorteio vai abrir e o Instagram vai perguntar onde postar: <b>Stories</b>, <b>Publicação</b> ou <b>Mensagem</b>.</div>
+                    <div class="instrucao-compartilhar-passo">🔗 Seu link já foi copiado. Se escolher <b>Stories</b>, toque na figurinha de link (🔗) e cole ele. Se for <b>Mensagem</b> ou <b>Publicação</b>, é só colar o link no texto.</div>
+                `);
+            }
+            $('#overlay-instrucao-compartilhar').addClass('aberto');
+        }
+
+        $('#btn-continuar-instrucao-compartilhar').on('click', function() {
+            $('#overlay-instrucao-compartilhar').removeClass('aberto');
+            const acao = ACAO_PENDENTE_COMPARTILHAR;
+            ACAO_PENDENTE_COMPARTILHAR = null;
+            // Pequeno delay pra deixar a folha do modal terminar de fechar antes de abrir o
+            // próximo menu (fica mais suave do que os dois se sobrepondo).
+            if (acao) setTimeout(acao, 250);
+        });
+        $('#btn-fechar-instrucao-compartilhar').on('click', function() { $('#overlay-instrucao-compartilhar').removeClass('aberto'); ACAO_PENDENTE_COMPARTILHAR = null; });
+        $('#overlay-instrucao-compartilhar').on('click', function(e) { if (e.target === this) { $(this).removeClass('aberto'); ACAO_PENDENTE_COMPARTILHAR = null; } });
+
+        $('#btn-compartilhar-whatsapp-indicacao').on('click', function() {
             if (!INDICACAO_DATA) return;
             registrarCliqueIndicacao('whatsapp');
-            const mensagem = `🎁 Olha só, quero te indicar esse sorteio! Se você participar e for contemplado, eu ainda ganho um prêmio de indicação. Confere aqui: ${INDICACAO_DATA.link}`;
+            abrirInstrucaoCompartilhar('whatsapp', enviarWhatsappIndicacao);
+        });
+
+        async function enviarWhatsappIndicacao() {
+            if (!INDICACAO_DATA) return;
+            // ⚡ Quebras de linha de verdade (não só um texto corrido) — fica mais fácil de ler
+            // quando a mensagem chega pro amigo.
+            const mensagem = `🎁 Olha só, quero te indicar esse sorteio!\n\nSe você participar e for contemplado, eu também ganho um prêmio de indicação.\n\nConfere aqui: ${INDICACAO_DATA.link}`;
             // ⚡ O link direto (wa.me) abre sempre o app que o celular considera "padrão" pra esse
             // link — se a pessoa tem WhatsApp normal E Business instalados, ele não deixa escolher
             // entre os dois, e nem cai direto na telinha de escolher o contato/conversa. Quem faz
@@ -1050,13 +1129,15 @@
                 if (e && e.name === 'AbortError') return;
             }
             window.location.href = 'https://wa.me/?text=' + encodeURIComponent(mensagem);
-        });
+        }
 
-        $('#btn-compartilhar-instagram-indicacao').on('click', async function() {
+        $('#btn-compartilhar-instagram-indicacao').on('click', function() {
             if (!INDICACAO_DATA) return;
             registrarCliqueIndicacao('instagram');
-            copiarTextoIndicacao(INDICACAO_DATA.link);
-            await tentarCompartilharInstagram();
+            abrirInstrucaoCompartilhar('instagram', async function() {
+                copiarTextoIndicacao(INDICACAO_DATA.link);
+                await tentarCompartilharInstagram();
+            });
         });
         $('#btn-fechar-modal-instagram').on('click', function() { $('#overlay-instagram-indicacao').removeClass('aberto'); });
         $('#overlay-instagram-indicacao').on('click', function(e) { if (e.target === this) $(this).removeClass('aberto'); });
@@ -1069,6 +1150,10 @@
         // menu do celular não injeta a imagem de verdade (é por isso que aparecia preto) — removi
         // ele. Quando o celular não suporta esse menu (ou é desktop), cai pro modal de tutorial:
         // baixa a foto e explica pra pessoa postar manualmente, com o link já copiado.
+        // ⚡ O texto (com o link) vai junto com a foto no compartilhamento — mas vale lembrar: o
+        // Instagram só usa esse texto de verdade em Mensagem/Publicação. No Stories, ele NÃO deixa
+        // nenhum app externo pré-preencher nada (só a foto) — por isso o modal "Como funciona" (que
+        // abre antes desse menu) já avisa pra colar o link manualmente ali.
         async function tentarCompartilharInstagram() {
             const foto = INDICACAO_DATA?.foto_sorteio;
             if (foto && navigator.canShare) {
@@ -1077,7 +1162,8 @@
                     const blob = await resp.blob();
                     const arquivo = new File([blob], 'sorteio.jpg', { type: blob.type || 'image/jpeg' });
                     if (navigator.canShare({ files: [arquivo] })) {
-                        await navigator.share({ files: [arquivo], text: 'Confere esse sorteio: ' + INDICACAO_DATA.link });
+                        const mensagemInstagram = `🎁 Olha só, quero te indicar esse sorteio!\n\nSe você participar e for contemplado, eu também ganho um prêmio de indicação.\n\nConfere aqui: ${INDICACAO_DATA.link}`;
+                        await navigator.share({ files: [arquivo], text: mensagemInstagram });
                         return; // ⚡ Funcionou — o próprio celular já mostrou WhatsApp/Instagram/etc com a foto pronta.
                     }
                 } catch (e) {
