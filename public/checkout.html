@@ -207,7 +207,10 @@
         .instrucao-compartilhar-icone.tema-whatsapp { background: #25D366; }
         .instrucao-compartilhar-icone.tema-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); }
         .instrucao-compartilhar-passos { text-align: left; margin-bottom: 16px; }
-        .instrucao-compartilhar-passo { display: flex; gap: 8px; align-items: flex-start; font-size: 0.8rem; color: #4b5563; line-height: 1.5; background: #f4f5f7; border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; }
+        /* ⚡ Era "display:flex" antes — como o texto de cada passo mistura texto solto com <b>, o
+           flex tratava CADA <b> como uma "coluna" separada e quebrava tudo em blocos tortos. Com
+           bloco normal (sem flex), o texto flui como um parágrafo único, do jeito certo. */
+        .instrucao-compartilhar-passo { font-size: 0.8rem; color: #4b5563; line-height: 1.5; background: #f4f5f7; border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; }
         .instrucao-compartilhar-passo:last-child { margin-bottom: 0; }
         .instrucao-compartilhar-passo b { color: #1f2937; }
         #btn-continuar-instrucao-compartilhar { width: 100%; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
@@ -1156,33 +1159,47 @@
         // abre antes desse menu) já avisa pra colar o link manualmente ali.
         async function tentarCompartilharInstagram() {
             const foto = INDICACAO_DATA?.foto_sorteio;
-            if (foto && navigator.canShare) {
+            // ⚡ Busca a foto UMA vez só (em blob) e reaproveita tanto pro compartilhamento quanto
+            // pro fallback de download — antes cada caminho buscava/tratava a foto do seu jeito, e
+            // o fallback usava um link direto pro endpoint remoto (target="_blank"), que em alguns
+            // navegadores não baixa e simplesmente NAVEGA pra foto em tela cheia (era o bug de "abrir
+            // a foto e precisar clicar em voltar"). Com blob local + URL.createObjectURL, o download
+            // funciona sem sair da página em nenhum caso.
+            let blobFoto = null;
+            if (foto) {
                 try {
                     const resp = await fetch('/imagem-cache?url=' + encodeURIComponent(foto));
-                    const blob = await resp.blob();
-                    const arquivo = new File([blob], 'sorteio.jpg', { type: blob.type || 'image/jpeg' });
+                    blobFoto = await resp.blob();
+                } catch (e) { blobFoto = null; }
+            }
+            if (blobFoto && navigator.canShare) {
+                try {
+                    const arquivo = new File([blobFoto], 'sorteio.jpg', { type: blobFoto.type || 'image/jpeg' });
                     if (navigator.canShare({ files: [arquivo] })) {
                         const mensagemInstagram = `🎁 Olha só, quero te indicar esse sorteio!\n\nSe você participar e for contemplado, eu também ganho um prêmio de indicação.\n\nConfere aqui: ${INDICACAO_DATA.link}`;
                         await navigator.share({ files: [arquivo], text: mensagemInstagram });
                         return; // ⚡ Funcionou — o próprio celular já mostrou WhatsApp/Instagram/etc com a foto pronta.
                     }
                 } catch (e) {
-                    // Pessoa cancelou o menu de compartilhar, ou o navegador recusou — cai pro tutorial abaixo.
+                    // Pessoa cancelou o menu de compartilhar de propósito — não mostra nada por cima disso.
+                    if (e && e.name === 'AbortError') return;
+                    // Qualquer outro erro (navegador recusou, etc.) — cai pro tutorial manual abaixo.
                 }
             }
-            mostrarTutorialInstagramManual(foto);
+            mostrarTutorialInstagramManual(blobFoto);
         }
 
-        function mostrarTutorialInstagramManual(foto) {
-            if (foto) {
+        function mostrarTutorialInstagramManual(blobFoto) {
+            if (blobFoto) {
                 try {
+                    const urlBlob = URL.createObjectURL(blobFoto);
                     const linkBaixar = document.createElement('a');
-                    linkBaixar.href = '/imagem-cache?url=' + encodeURIComponent(foto);
+                    linkBaixar.href = urlBlob;
                     linkBaixar.download = 'sorteio.jpg';
-                    linkBaixar.target = '_blank';
                     document.body.appendChild(linkBaixar);
                     linkBaixar.click();
                     document.body.removeChild(linkBaixar);
+                    setTimeout(() => URL.revokeObjectURL(urlBlob), 10000);
                 } catch (e) {}
             }
             $('#overlay-instagram-indicacao').addClass('aberto');
