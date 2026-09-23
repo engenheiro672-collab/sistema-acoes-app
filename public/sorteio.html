@@ -361,7 +361,8 @@
     </div>
 
     <div id="modal-checkout" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden" style="z-index:600;">
-        <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95" style="max-height:90vh; overflow-y:auto; background:linear-gradient(160deg, #262c3a, #1c2029); border:1px solid rgba(255,255,255,0.06);">
+        <div class="modal-content p-6 rounded-lg shadow-xl w-full max-w-lg mx-4 transform scale-95" style="max-height:90vh; overflow-y:auto; background:linear-gradient(160deg, #262c3a, #1c2029); border:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column;">
+            <div style="overflow-y:auto; flex:1; min-height:0;">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-white">Finalizar Pedido</h3>
                 <button id="close-modal-checkout" class="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -416,6 +417,7 @@
                 <p style="font-size:0.72rem; color:#a0aec0; text-align:center; margin-bottom:0.75rem; line-height:1.4;">
                     Ao efetuar o pagamento e confirmar a compra deste título, declaro que li e concordo com os <a href="/termos-de-uso" target="_blank" style="color:#e2e8f0; font-weight:700;">Termos de Uso</a>.
                 </p>
+            </div>
                 <button type="button" id="btn-finalizar-pedido-conhecido" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded text-lg">
                     Finalizar Pedido
                 </button>
@@ -484,6 +486,21 @@
         const FUNIL_SLUG = pathParts[2] || null;
         const URL_PARAMS = new URLSearchParams(window.location.search);
 
+        // ⚡ "Indique e Ganhe" — se veio pelo link de indicação de alguém (?ref=codigo&refnome=Nome),
+        // guarda na sessão (pra sobreviver à navegação até o checkout) e mostra no mesmo rodapé que
+        // já existia pra "entrega grátis por cidade" — só que com essa mensagem no lugar. Os dois
+        // nunca aparecem juntos: indicação tem prioridade quando os dois vierem por algum motivo.
+        var REF_INDICACAO = URL_PARAMS.get('ref');
+        var REF_INDICACAO_NOME = URL_PARAMS.get('refnome');
+        var REF_INDICACAO_VEIO_AGORA = !!REF_INDICACAO; // clique de verdade nesse link, agora — não é a sessão lembrando de antes
+        if (REF_INDICACAO) {
+            try {
+                sessionStorage.setItem('indicacao_codigo', REF_INDICACAO);
+                if (REF_INDICACAO_NOME) sessionStorage.setItem('indicacao_nome', REF_INDICACAO_NOME);
+            } catch (e) {}
+        }
+        if (!REF_INDICACAO) { try { REF_INDICACAO = sessionStorage.getItem('indicacao_codigo'); REF_INDICACAO_NOME = sessionStorage.getItem('indicacao_nome'); } catch (e) {} }
+
         // ⚡ Banner "Entrega grátis em [cidade]" — só ativa se veio da prévenda (parâmetro na URL,
         // ou guardado na sessão caso a troca de página tenha sido feita via pré-carregamento).
         // Pra qualquer acesso sem esse dado, o banner simplesmente nunca aparece.
@@ -491,15 +508,24 @@
             var cidade = URL_PARAMS.get('cidade');
             if (cidade) { try { sessionStorage.setItem('cidade_prevenda', cidade); } catch (e) {} }
             if (!cidade) { try { cidade = sessionStorage.getItem('cidade_prevenda'); } catch (e) {} }
+
+            var cidadeSegura = '';
             if (cidade) {
-                var el = document.getElementById('banner-entrega-cidade');
-                if (el) {
-                    var divEscape = document.createElement('div');
-                    divEscape.textContent = cidade;
-                    var cidadeSegura = divEscape.innerHTML;
-                    el.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + cidadeSegura + '</span>';
-                    el.style.display = 'block';
-                }
+                var divEscape = document.createElement('div');
+                divEscape.textContent = cidade;
+                cidadeSegura = divEscape.innerHTML;
+            }
+
+            var elBannerTopo = document.getElementById('banner-entrega-cidade');
+            if (REF_INDICACAO_NOME && elBannerTopo) {
+                var divEscapeRef = document.createElement('div');
+                divEscapeRef.textContent = REF_INDICACAO_NOME;
+                var nomeIndicacaoSeguro = divEscapeRef.innerHTML;
+                elBannerTopo.innerHTML = '<i class="bi bi-person-check-fill"></i> Indicação de <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + nomeIndicacaoSeguro + '</span>';
+                elBannerTopo.style.display = 'block';
+            } else if (cidade && elBannerTopo) {
+                elBannerTopo.innerHTML = '<i class="bi bi-truck"></i> Entrega grátis em <span style="color:#ff4d4d; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.55);">' + cidadeSegura + '</span>';
+                elBannerTopo.style.display = 'block';
             }
 
             // ⚡ Link de cidade "direto no site" (sem página de prévenda separada) — o parâmetro
@@ -1039,6 +1065,17 @@
         function renderPagina(data) {
             const { sorteio, bilhetes_premiados, roleta_tiers, roleta_resultados, funil, logo_url, pixels } = data;
             SORTEIO_DATA = sorteio || {};
+
+            // ⚡ "Indique e Ganhe" — registra o clique (só estatística) na primeira vez que a página
+            // carrega com o link de indicação de alguém na URL, agora que já sabemos o ID do sorteio.
+            if (REF_INDICACAO_VEIO_AGORA && REF_INDICACAO && SORTEIO_DATA.id) {
+                try {
+                    fetch('/api/public/indicacao/clique', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codigo: REF_INDICACAO, sorteio_id: SORTEIO_DATA.id })
+                    }).catch(function () {});
+                } catch (e) {}
+            }
             // ⚡ Ícone de "Adicionar à Tela de Início" pro COMPRADOR — usa a foto do próprio
             // sorteio, diferente da logo/ícone do painel administrativo (que é outra imagem,
             // configurada separadamente). Cada sorteio mostra sua própria foto como ícone.
@@ -1560,7 +1597,10 @@
                         veio_de_combo_roleta: VEIO_DE_COMBO_ROLETA,
                         cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(),
                         prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(),
-                        fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })()
+                        fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })(),
+                        // ⚡ "Indique e Ganhe" — se ela chegou pelo link de indicação de alguém, esse
+                        // código vai junto, pra esse novo pedido ficar amarrado a quem indicou.
+                        indicacao_codigo: (function(){ try { return sessionStorage.getItem('indicacao_codigo'); } catch(e){ return null; } })()
                     }),
                     beforeSend: function() {
                         $('#btn-participar').prop('disabled', true); $('#btn-participar-label').text('Processando...');

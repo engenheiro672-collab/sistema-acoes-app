@@ -275,6 +275,7 @@
             <li><a id="nav-top-comprador" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('top-comprador', this)"><i class="bi bi-cash-stack w-6 text-lg"></i> Top Comprador</a></li>
             <li><a id="nav-maior-menor-cota" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('maior-menor-cota', this)"><i class="bi bi-sort-numeric-down w-6 text-lg"></i> Maior/Menor Cota</a></li>
             <li><a id="nav-gerador-porcentagem" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('gerador-porcentagem', this)"><i class="bi bi-bullseye w-6 text-lg"></i> Gerador de Porcentagem</a></li>
+            <li><a id="nav-indicacoes" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('indicacoes', this)"><i class="bi bi-gift w-6 text-lg"></i> Indique e Ganhe</a></li>
             <li class="border-t border-gray-800 my-2"></li>
             <li><a id="nav-minha-conta" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('minha-conta', this)"><i class="bi bi-gear w-6 text-lg"></i> Conta & Identidade</a></li>
             <li><a id="nav-gateway" class="sidebar-item flex items-center w-full px-4 py-3 text-sm font-semibold" onclick="navTo('gateway', this)"><i class="bi bi-credit-card w-6 text-lg"></i> Gateway Pix</a></li>
@@ -870,6 +871,20 @@
                     </div>
                 </div>
                 <p id="txt-gerador-vazio" class="text-gray-500 text-sm">Escolha o sorteio, digite a porcentagem e clique em Gerar.</p>
+            </div>
+        </div>
+
+        <!-- ===================== INDIQUE E GANHE (aba própria) ===================== -->
+        <div id="page-indicacoes" class="page-section">
+            <h2 class="text-2xl font-bold mb-2">🎁 Indique e Ganhe</h2>
+            <p class="text-sm opacity-60 mb-6">Quem já tem um link de indicação, quantos cliques ele teve, e quem comprou usando cada link — só rastreamento, o pagamento do prêmio de indicação é sempre decidido manualmente por você.</p>
+
+            <div class="bg-darkCard p-4 rounded-xl border border-gray-800 max-w-lg mb-6">
+                <select id="select-indicacoes-sorteio" class="select-sorteio-dash input-dark" onchange="carregarIndicacoes(this.value)"><option value="">Selecione um sorteio...</option></select>
+            </div>
+
+            <div id="lista-indicacoes">
+                <p class="text-gray-500 text-sm">Selecione um sorteio pra ver as indicações.</p>
             </div>
         </div>
 
@@ -1884,6 +1899,55 @@ function gerarPorcentagemVisual() {
     }, 30);
 }
 
+// ---------------- INDIQUE E GANHE ----------------
+function carregarIndicacoes(sorteioId) {
+    if (!sorteioId) { $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Selecione um sorteio pra ver as indicações.</p>'); return; }
+    $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Carregando...</p>');
+    $.get(`/api/admin/sorteios/${sorteioId}/indicacoes`).done(function(resp) {
+        const linhas = resp.indicadores || [];
+        if (linhas.length === 0) {
+            $('#lista-indicacoes').html('<p class="text-gray-500 text-sm">Ninguém desse sorteio ainda tem um link de indicação (ele só é gerado depois que a pessoa paga uma compra).</p>');
+            return;
+        }
+        const html = linhas.map((ind, idx) => {
+            const idLinha = `indicacao-detalhe-${idx}`;
+            const linhasIndicados = ind.indicados.map(i => {
+                const corStatus = i.status === 'pago' ? 'text-green-400' : (i.status === 'cancelado' ? 'text-red-400' : 'text-yellow-400');
+                const rotuloStatus = i.status === 'pago' ? 'Pagou' : (i.status === 'cancelado' ? 'Cancelou' : 'Reservou, não pagou');
+                return `<div class="flex justify-between items-center py-2 border-b border-gray-800 last:border-0 text-sm">
+                    <div>
+                        <div class="font-semibold">${i.nome}</div>
+                        <div class="text-xs text-gray-500">${i.telefone ? formatarTelefone(i.telefone) : ''} · ${i.created_at ? new Date(i.created_at).toLocaleDateString('pt-BR') : ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="${corStatus} font-semibold text-xs">${rotuloStatus}</div>
+                        <div class="text-xs text-gray-400">${formatBR(i.valor_total)}</div>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-xs text-gray-500 py-2">Ninguém comprou por esse link ainda.</p>';
+
+            return `<div class="bg-darkCard rounded-xl border border-gray-800 p-4 mb-3">
+                <div class="flex justify-between items-center cursor-pointer" onclick="document.getElementById('${idLinha}').classList.toggle('hidden')">
+                    <div>
+                        <div class="font-bold text-white">${ind.nome}</div>
+                        <div class="text-xs text-gray-500">${ind.telefone ? formatarTelefone(ind.telefone) : ''} · código <span class="font-mono text-gray-400">${ind.codigo}</span></div>
+                    </div>
+                    <div class="flex gap-4 text-center">
+                        <div><div class="text-xs text-gray-500">Cliques</div><div class="font-bold text-white">${ind.cliques}</div></div>
+                        <div><div class="text-xs text-gray-500">Indicou</div><div class="font-bold text-white">${ind.total_indicados}</div></div>
+                        <div><div class="text-xs text-gray-500">Pagaram</div><div class="font-bold text-green-400">${ind.total_pagos}</div></div>
+                        <i class="bi bi-chevron-down text-gray-500 self-center"></i>
+                    </div>
+                </div>
+                <div id="${idLinha}" class="hidden mt-3 pt-3 border-t border-gray-800">${linhasIndicados}</div>
+            </div>`;
+        }).join('');
+        $('#lista-indicacoes').html(html);
+    }).fail(function() {
+        $('#lista-indicacoes').html('<p class="text-red-400 text-sm">Erro ao carregar as indicações. Tenta de novo.</p>');
+    });
+}
+
 function setTotalCotasValor(valor) {
     const v = String(valor);
     if (v === '1000000' || v === '10000000') { $('#inp-total-cotas-select').val(v); $('#inp-total-cotas').addClass('hidden').val(v); }
@@ -1982,7 +2046,7 @@ function navTo(page, el) {
     if (page === 'relatorios') { carregarRelatorios(); }
     if (page === 'links') { popularFiltroLinksSorteio(); carregarComparativoLinks(); }
     if (page === 'visitantes-live') { iniciarDashboardLive(); }
-    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'upsell' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota' || page === 'gerador-porcentagem') { popularSelectsSorteios(); }
+    if (page === 'buscar-ganhador' || page === 'bilhete-premiado' || page === 'roleta' || page === 'chance-dobro' || page === 'urgencia' || page === 'promocoes' || page === 'upsell' || page === 'push' || page === 'top-comprador' || page === 'maior-menor-cota' || page === 'gerador-porcentagem' || page === 'indicacoes') { popularSelectsSorteios(); }
     if (page === 'push') { carregarPagePush(); }
     if (page === 'gateway') { carregarGateway(); }
     if (page === 'marketing') { carregarMarketing(); }

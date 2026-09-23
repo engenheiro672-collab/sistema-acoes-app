@@ -562,6 +562,29 @@ function registrarEventoLead({ usuario_id = null, telefone = null, sorteio_id = 
   }).then(({ error }) => { if (error) console.error(`[eventos_lead] erro ao registrar "${tipo_evento}":`, error.message); });
 }
 
+// ============================================================================
+// 🎁 "INDIQUE E GANHE" — programa de indicação pós-pagamento. Cada pedido PAGO ganha um código de
+// indicação único (baseado no primeiro nome do comprador). Se alguém comprar através do link com
+// esse código, o novo pedido guarda quem indicou (pedidos.indicado_por). Não existe pagamento
+// automático nenhum aqui — é só rastreamento; o admin decide manualmente, olhando o dashboard, se
+// paga o prêmio de indicação ou não.
+// ============================================================================
+function primeiroNomeParaIndicacao(nomeCompleto) {
+  const primeiro = String(nomeCompleto || '').trim().split(/\s+/)[0] || 'amigo';
+  const limpo = primeiro.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '').slice(0, 16);
+  return limpo || 'amigo';
+}
+async function gerarCodigoIndicacaoUnico(nomeCompleto) {
+  const base = primeiroNomeParaIndicacao(nomeCompleto);
+  for (let tentativa = 0; tentativa < 20; tentativa++) {
+    const sufixo = Math.random().toString(36).slice(2, 6);
+    const candidato = `${base}${sufixo}`;
+    const { data } = await supabase.from('pedidos').select('id').eq('codigo_indicacao', candidato).maybeSingle();
+    if (!data) return candidato;
+  }
+  return `${base}${Date.now().toString(36)}`;
+}
+
 // ⚡⚡ API DE CONVERSÕES DO META — a "rede de segurança" server→Meta. Sempre que um evento também
 // disparar pelo Pixel do navegador, os dois usam o MESMO event_id — o Meta reconhece que é a
 // mesma coisa e não conta em dobro. Roda em segundo plano, nunca atrasa nem quebra a compra da
@@ -1316,6 +1339,67 @@ app.post('/api/public/prevenda/avancou-site', async (req, res) => {
     registrarEventoLead({ sorteio_id: prevenda.sorteio_id, tipo_evento: 'avancou_site', cidade: prevenda.cidade, prevenda_id });
     return res.json({ ok: true, prevenda_id });
   } catch (err) { console.error('POST avancou-site', err); return res.status(500).json({ error: 'erro' }); }
+});
+
+// ============================================================================
+// 🎁 "INDIQUE E GANHE" — rastreamento de cliques + aba de análise no dashboard.
+// ============================================================================
+
+// Chamado pelo sorteio.html quando a página abre com ?ref=codigo — só conta o clique, não afeta
+// nada mais (nenhuma trava, nenhum pagamento, só estatística).
+app.post('/api/public/indicacao/clique', limitePublicoSensivel, async (req, res) => {
+  try {
+    const { codigo, sorteio_id } = req.body || {};
+    if (!codigo || !sorteio_id) return res.status(400).json({ error: 'Dados inválidos' });
+    await supabase.from('indicacao_cliques').insert({ codigo: String(codigo).trim().slice(0, 40), sorteio_id, created_at: new Date().toISOString() });
+    return res.json({ ok: true });
+  } catch (err) { console.error('POST /api/public/indicacao/clique', err); return res.status(500).json({ error: 'erro' }); }
+});
+
+// Aba "Indicações" do dashboard — pra cada pessoa que já tem um código (comprou e pagou), mostra:
+// quantos cliques o link dela teve, quem comprou usando o código dela (com status), e os totais.
+app.get('/api/admin/sorteios/:id/indicacoes', ensureAdminAuth, async (req, res) => {
+  try {
+    const sorteio_id = req.params.id;
+
+    const { data: indicadores } = await supabase.from('pedidos')
+      .select('id, codigo_indicacao, created_at, usuarios(nome_completo, telefone)')
+      .eq('sorteio_id', sorteio_id).not('codigo_indicacao', 'is', null).order('created_at', { ascending: false });
+
+    const { data: indicados } = await supabase.from('pedidos')
+      .select('id, indicado_por, status, valor_total, quantidade_cotas, created_at, usuarios(nome_completo, telefone)')
+      .eq('sorteio_id', sorteio_id).not('indicado_por', 'is', null).order('created_at', { ascending: false });
+
+    const { data: cliques } = await supabase.from('indicacao_cliques').select('codigo').eq('sorteio_id', sorteio_id);
+
+    const cliquesPorCodigo = {};
+    for (const c of (cliques || [])) cliquesPorCodigo[c.codigo] = (cliquesPorCodigo[c.codigo] || 0) + 1;
+
+    const indicadosPorCodigo = {};
+    for (const p of (indicados || [])) {
+      if (!indicadosPorCodigo[p.indicado_por]) indicadosPorCodigo[p.indicado_por] = [];
+      indicadosPorCodigo[p.indicado_por].push({
+        nome: p.usuarios?.nome_completo || '(sem nome)', telefone: p.usuarios?.telefone || '',
+        status: p.status, valor_total: p.valor_total, quantidade_cotas: p.quantidade_cotas, created_at: p.created_at
+      });
+    }
+
+    const linhas = (indicadores || []).map(ind => {
+      const listaIndicados = indicadosPorCodigo[ind.codigo_indicacao] || [];
+      return {
+        codigo: ind.codigo_indicacao,
+        nome: ind.usuarios?.nome_completo || '(sem nome)',
+        telefone: ind.usuarios?.telefone || '',
+        criado_em: ind.created_at,
+        cliques: cliquesPorCodigo[ind.codigo_indicacao] || 0,
+        total_indicados: listaIndicados.length,
+        total_pagos: listaIndicados.filter(i => i.status === 'pago').length,
+        indicados: listaIndicados
+      };
+    }).sort((a, b) => (b.total_pagos - a.total_pagos) || (b.cliques - a.cliques));
+
+    return ok(res, { indicadores: linhas });
+  } catch (err) { console.error('GET /api/admin/sorteios/:id/indicacoes', err); return fail(res); }
 });
 
 app.get('/api/admin/sorteios/:id/prevendas', ensureAdminAuth, async (req, res) => {
@@ -2483,7 +2567,16 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
       }
     }
 
-    await safeUpdatePedidos(pedido.id, { cotas_geradas: 1, cotas_array: inserted.map(r => r.numero_cota), status: 'pago', updated_at: new Date().toISOString() });
+    // ⚡ "Indique e Ganhe" — todo pedido que vira PAGO ganha o código de indicação dele (só uma vez;
+    // se por algum motivo essa função rodar de novo pra um pedido que já tinha, não troca o código).
+    const { data: usuarioParaIndicacao } = await supabase.from('usuarios').select('telefone, nome_completo').eq('id', user_id).maybeSingle();
+    let codigoIndicacaoGerado = pedido.codigo_indicacao || null;
+    if (!codigoIndicacaoGerado) {
+      try { codigoIndicacaoGerado = await gerarCodigoIndicacaoUnico(usuarioParaIndicacao?.nome_completo); }
+      catch (e) { console.error('[gerarCotasUnicas] erro ao gerar código de indicação', e.message); }
+    }
+
+    await safeUpdatePedidos(pedido.id, { cotas_geradas: 1, cotas_array: inserted.map(r => r.numero_cota), status: 'pago', updated_at: new Date().toISOString(), codigo_indicacao: codigoIndicacaoGerado });
 
     // ⚡ Registra a "compra" de verdade na linha do tempo do lead — com o telefone dela pra
     // conseguir enxergar tudo isso na aba "Analisar" por cidade, mesmo sem ela ter passado pela
@@ -2492,7 +2585,7 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 
     // ⚡ Manda também pra API de Conversões — mesmo event_id que o Pixel do navegador usa (veja o
     // checkout.html), pra nunca duplicar a compra no Meta.
-    const { data: usuarioDaCompra } = await supabase.from('usuarios').select('telefone').eq('id', user_id).maybeSingle();
+    const usuarioDaCompra = usuarioParaIndicacao;
     enviarEventoParaMeta({
       eventName: 'Purchase', eventId: `purchase_${pedido.id}`, valor: pedido.valor_total,
       telefone: usuarioDaCompra?.telefone || null, fbclid: pedido.fbclid || null,
@@ -2675,7 +2768,7 @@ app.post('/api/public/roleta-desconto/girar', limitePublicoSensivel, async (req,
 
 app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) => {
   try {
-    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, codigo_desconto, origem } = req.body || {};
+    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, codigo_desconto, origem, indicacao_codigo } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
@@ -2789,11 +2882,17 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
 
     const cidadeFinalPedido = usuario.cidade || cidade || null;
     const prevendaIdFinalPedido = usuario.prevenda_id || prevenda_id || null;
+    // ⚡ "Indique e Ganhe" — se essa pessoa chegou através do link de indicação de alguém
+    // (?ref=codigo, capturado no sorteio.html e mandado junto aqui), guarda esse código no pedido.
+    // Só rastreamento — nenhum pagamento automático acontece por causa disso.
+    const codigoIndicacaoLimpo = indicacao_codigo ? String(indicacao_codigo).trim().slice(0, 40) : null;
+
     const { data: pedido } = await supabase.from('pedidos').insert({
       token, user_id: usuario.id, sorteio_id, quantidade_cotas: quantidade, valor_total, status: 'aguardando', expira_em: expira, funil_id: funilValido, link_id, promocao_titulo: promocao_aplicada, veio_de_combo_roleta: !!veio_de_combo_roleta || giros_bonus_upsell > 0, giros_bonus_upsell,
       cidade: cidadeFinalPedido, // ⚡ mesma cidade permanente do comprador (ou a da sessão, se ele ainda não tinha) — guardada aqui pra sempre poder filtrar/relatar vendas por cidade, sem precisar recalcular depois
       prevenda_id: prevendaIdFinalPedido, // ⚡ qual prévenda ESPECÍFICA (não só a cidade) trouxe esse comprador
       fbclid: usuario.fbclid || fbclid || null,
+      indicado_por: codigoIndicacaoLimpo,
       created_at: new Date().toISOString()
     }).select().single();
 
@@ -2946,6 +3045,16 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
       funil = f || null;
     }
 
+    // ⚡ "Indique e Ganhe" — rede de segurança: se o pedido já está pago mas (por algum motivo, ex:
+    // foi pago antes dessa função existir) ainda não tem código de indicação, gera agora mesmo.
+    if (pedido.status === 'pago' && !pedido.codigo_indicacao) {
+      try {
+        const novoCodigo = await gerarCodigoIndicacaoUnico(pedido.usuarios?.nome_completo);
+        await supabase.from('pedidos').update({ codigo_indicacao: novoCodigo }).eq('id', pedido.id);
+        pedido.codigo_indicacao = novoCodigo;
+      } catch (e) { console.error('[pedidos/status] erro ao gerar código de indicação tardio', e.message); }
+    }
+
     // ⚡ Mesma lógica do getCheckoutPublicData — bilhete instantâneo aparece assim que aprovado;
     // roleta só conta como "pra mostrar" depois de TODAS as roletas daquele pedido giradas.
     const [{ data: premiosDoPedido }, { data: girosDoPedido }] = await Promise.all([
@@ -2966,6 +3075,14 @@ app.get('/api/public/pedidos/:token/status', async (req, res) => {
       payment: { gateway_payment_id: pedido.gateway_payment_id, pix_copia_cola: pedido.pix_copia_cola, pix_qr_code_base64: pedido.pix_qr_code_base64, provider: pedido.payment_provider },
       pixel_data: { value: pedido.valor_total, currency: 'BRL', num_items: pedido.quantidade_cotas, sorteio_nome: pedido.sorteios?.nome, event_id: `purchase_${pedido.id}` },
       funil, bilhete_premiado_instantaneo, roleta_premiada,
+      // ⚡ "Indique e Ganhe" — só vem preenchido quando o pedido já está pago (é o código DESSE
+      // comprador, pronto pra ele indicar outras pessoas). O link já carrega o nome dele (primeiro
+      // nome) pra aparecer no rodapé de quem clicar, igual o banner de "entrega grátis por cidade".
+      indicacao: (pedido.status === 'pago' && pedido.codigo_indicacao) ? {
+        codigo: pedido.codigo_indicacao,
+        link: `${DOMINIO_PUBLICO_SERVIDOR}/sorteio/${pedido.sorteios?.slug || ''}${funil?.slug ? '/' + funil.slug : ''}?ref=${encodeURIComponent(pedido.codigo_indicacao)}&refnome=${encodeURIComponent((pedido.usuarios?.nome_completo || '').trim().split(/\s+/)[0] || '')}`,
+        foto_sorteio: pedido.sorteios?.foto_url || ''
+      } : null,
       upsell_checkout: pedido.sorteios?.upsell_checkout_ativo ? {
         sorteio_id: pedido.sorteios.id,
         nome: pedido.sorteios.nome,

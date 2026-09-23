@@ -144,6 +144,57 @@
         body.tema-claro-pago #popup-combos-roleta-conteudo { background-color: #ffffff !important; }
         body.tema-claro-pago #popup-combos-roleta-titulo { color: #1f2937 !important; }
         body.tema-claro-pago #close-popup-combos-roleta { color: #6b7280 !important; }
+
+        /* ═══════════════ "INDIQUE E GANHE" — card pós-pagamento ═══════════════
+           Fica sempre escondido até o pagamento ser aprovado E o servidor mandar o link pronto
+           (dado que só existe depois de pago). Fundo claro, igual o resto da tela pós-pagamento. */
+        #card-indicacao { display: none; position: relative; border-radius: 16px; overflow: hidden; margin: 0.75rem 0; background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05); }
+        #card-indicacao-topo { position: relative; background: linear-gradient(135deg, #0f5c38, #1a8754, #22a866, #5be584, #1a8754); background-size: 300% 300%; animation: pulsar-gradiente-verde 4s ease-in-out infinite; padding: 18px 16px 16px; text-align: center; overflow: hidden; }
+        #card-indicacao-topo::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.18), transparent 45%); }
+        #card-indicacao .selo-flutuante { position: absolute; top: 10px; right: 12px; background: rgba(0,0,0,0.24); border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; padding: 4px 10px 4px 8px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.02em; color: #fff; z-index: 2; display: flex; align-items: center; gap: 4px; }
+        #card-indicacao .selo-flutuante svg { width: 11px; height: 11px; flex-shrink: 0; }
+        #card-indicacao .icone-presente { position: relative; z-index: 2; width: 44px; height: 44px; margin: 0 auto; }
+        #card-indicacao-titulo { position: relative; z-index: 2; font-size: 1.02rem; font-weight: 800; color: #fff; margin-top: 6px; line-height: 1.3; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        #card-indicacao-titulo b { color: #fff; font-size: 1.3rem; display: block; margin-top: 1px; }
+        #card-indicacao-sub { position: relative; z-index: 2; font-size: 0.75rem; color: rgba(255,255,255,0.94); margin-top: 5px; line-height: 1.45; max-width: 290px; margin-inline: auto; }
+        #card-indicacao-corpo { padding: 14px 16px 16px; }
+        .linha-link-copiar { display: flex; align-items: center; gap: 8px; background: #f4f5f7; border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 10px; margin-bottom: 10px; position: relative; }
+        .linha-link-copiar span { flex: 1; font-size: 0.71rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'SF Mono', monospace; }
+        #btn-copiar-link-indicacao { flex-shrink: 0; background: linear-gradient(135deg, #1a8754, #22a866); color: #fff; border: none; border-radius: 7px; padding: 7px 13px; font-size: 0.72rem; font-weight: 800; cursor: pointer; transition: background 0.15s ease; }
+        #btn-copiar-link-indicacao.copiado { background: #15803d; }
+        #toast-copiado-indicacao { position: absolute; top: -34px; right: 0; background: #1a1d24; color: #fff; font-size: 0.68rem; font-weight: 700; padding: 6px 10px; border-radius: 7px; opacity: 0; transform: translateY(4px); transition: all 0.2s ease; pointer-events: none; white-space: nowrap; }
+        #toast-copiado-indicacao.visivel { opacity: 1; transform: translateY(0); }
+        #toast-copiado-indicacao::after { content: ''; position: absolute; bottom: -4px; right: 14px; width: 8px; height: 8px; background: #1a1d24; transform: rotate(45deg); }
+        .linha-icones-compartilhar-indicacao { display: flex; gap: 8px; margin-bottom: 14px; }
+        .btn-icone-compartilhar-indicacao { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; background: #f4f5f7; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 6px; cursor: pointer; transition: transform 0.1s ease; }
+        .btn-icone-compartilhar-indicacao:active { transform: scale(0.96); }
+        .btn-icone-compartilhar-indicacao .ico { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 9px; margin: 0 auto; }
+        .btn-icone-compartilhar-indicacao .ico svg { width: 17px; height: 17px; }
+        .btn-icone-compartilhar-indicacao span { font-size: 0.63rem; color: #374151; font-weight: 700; }
+        .ico-whats-indicacao { background: #25D366; }
+        .ico-insta-indicacao { background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); }
+        #card-indicacao .passo-a-passo { border-top: 1px dashed #e2e8f0; padding-top: 12px; }
+        #card-indicacao .passo-a-passo-titulo { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; color: #9aa1ad; text-transform: uppercase; margin-bottom: 8px; }
+        #card-indicacao .passo-item { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 7px; }
+        #card-indicacao .passo-numero { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; background: rgba(21,128,61,0.1); color: #15803d; font-size: 0.64rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+        #card-indicacao .passo-texto { font-size: 0.73rem; color: #4b5563; line-height: 1.4; }
+        #card-indicacao .passo-texto b { color: #1f2937; }
+
+        /* Modal de tutorial do Instagram (aparece por cima de tudo, fundo escurecido) */
+        #overlay-instagram-indicacao { position: fixed; inset: 0; background: rgba(20,22,27,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: flex-end; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        #overlay-instagram-indicacao.aberto { opacity: 1; pointer-events: auto; }
+        #overlay-instagram-indicacao .modal-instagram { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 20px 18px 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.22,1,.36,1); box-shadow: 0 -8px 30px rgba(0,0,0,0.25); }
+        #overlay-instagram-indicacao.aberto .modal-instagram { transform: translateY(0); }
+        .modal-instagram-puxador { width: 36px; height: 4px; background: #e2e8f0; border-radius: 999px; margin: 0 auto 14px; }
+        .modal-instagram-check { display: flex; align-items: center; gap: 8px; background: rgba(21,128,61,0.08); border: 1px solid rgba(21,128,61,0.2); border-radius: 10px; padding: 9px 11px; margin-bottom: 12px; }
+        .modal-instagram-check svg { width: 18px; height: 18px; flex-shrink: 0; color: #15803d; }
+        .modal-instagram-check span { font-size: 0.76rem; font-weight: 700; color: #15803d; }
+        .modal-instagram-titulo { font-size: 0.9rem; font-weight: 800; color: #1f2937; margin-bottom: 4px; }
+        .modal-instagram-texto { font-size: 0.78rem; color: #4b5563; line-height: 1.5; margin-bottom: 14px; }
+        .modal-instagram-texto b { color: #1f2937; }
+        .modal-instagram-nota { font-size: 0.72rem; color: #6b7280; line-height: 1.5; background: #f4f5f7; border-radius: 10px; padding: 10px 11px; margin-bottom: 16px; }
+        #btn-ir-instagram-indicacao { width: 100%; background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af); color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
+        #btn-fechar-modal-instagram { display: block; width: 100%; text-align: center; background: none; border: none; color: #9aa1ad; font-size: 0.76rem; font-weight: 700; padding: 10px; cursor: pointer; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -256,6 +307,79 @@
                 <p id="sorteio-qtd" class="card-small-desc">Cotas adquiridas: 0</p>
                 </div>
         </div>
+
+        <!-- ═══ "INDIQUE E GANHE" — só aparece depois do pagamento aprovado (JS preenche e mostra) ═══ -->
+        <div id="card-indicacao">
+            <div id="card-indicacao-topo">
+                <span class="selo-flutuante">
+                    <svg viewBox="0 0 24 24" fill="#facc15"><path d="M12 2c.3 2.8-1 4.7-2.6 6.4C7.8 10.1 6 12 6 15a6 6 0 0 0 12 0c0-2-1-3.4-2-4.6.6 1.6.2 2.9-.6 3.6-.2-2-1.2-3.3-2.6-4.6C11.4 8 11.8 5.6 12 2z"/></svg>
+                    Novo
+                </span>
+                <svg class="icone-presente" viewBox="0 0 64 64" fill="none">
+                    <rect x="10" y="26" width="44" height="30" rx="3" fill="#fff" fill-opacity="0.16" stroke="#fff" stroke-width="2.5"/>
+                    <rect x="6" y="18" width="52" height="12" rx="3" fill="#fff" fill-opacity="0.22" stroke="#fff" stroke-width="2.5"/>
+                    <rect x="29" y="18" width="6" height="38" fill="#fff" fill-opacity="0.5"/>
+                    <path d="M32 18c-4-8-16-8-16-1 0 3 4 1 16 1z" stroke="#fff" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+                    <path d="M32 18c4-8 16-8 16-1 0 3-4 1-16 1z" stroke="#fff" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+                </svg>
+                <div id="card-indicacao-titulo">Concorra a<b id="card-indicacao-valor">R$ 5.000</b>indicando um amigo!</div>
+                <div id="card-indicacao-sub">Se a pessoa que você indicar for contemplada no sorteio, você também ganha esse prêmio.</div>
+            </div>
+            <div id="card-indicacao-corpo">
+                <div class="linha-link-copiar">
+                    <div id="toast-copiado-indicacao">Link copiado!</div>
+                    <span id="txt-link-indicacao">-</span>
+                    <button id="btn-copiar-link-indicacao" type="button">Copiar</button>
+                </div>
+
+                <div class="linha-icones-compartilhar-indicacao">
+                    <button id="btn-compartilhar-whatsapp-indicacao" type="button" class="btn-icone-compartilhar-indicacao">
+                        <div class="ico ico-whats-indicacao">
+                            <svg viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.6.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.4 0-.5C10 9 9.5 7.8 9.3 7.3c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.5-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>
+                        </div>
+                        <span>WhatsApp</span>
+                    </button>
+                    <button id="btn-compartilhar-instagram-indicacao" type="button" class="btn-icone-compartilhar-indicacao">
+                        <div class="ico ico-insta-indicacao">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="#fff" stroke="none"/></svg>
+                        </div>
+                        <span>Instagram</span>
+                    </button>
+                </div>
+
+                <div class="passo-a-passo">
+                    <div class="passo-a-passo-titulo">Como funciona</div>
+                    <div class="passo-item">
+                        <div class="passo-numero">1</div>
+                        <div class="passo-texto"><b>Copie</b> seu link exclusivo acima</div>
+                    </div>
+                    <div class="passo-item">
+                        <div class="passo-numero">2</div>
+                        <div class="passo-texto"><b>Envie</b> pra um amigo pelo WhatsApp ou Instagram</div>
+                    </div>
+                    <div class="passo-item">
+                        <div class="passo-numero">3</div>
+                        <div class="passo-texto">Se ele comprar por esse link e <b>for contemplado</b>, você também ganha o prêmio</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="overlay-instagram-indicacao">
+            <div class="modal-instagram">
+                <div class="modal-instagram-puxador"></div>
+                <div class="modal-instagram-check">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    <span>Foto e link já copiados</span>
+                </div>
+                <div class="modal-instagram-titulo">Quase lá!</div>
+                <div class="modal-instagram-texto">Vamos te levar direto pro <b>Stories</b> com a foto do sorteio já carregada. Agora é só <b>adicionar o link</b> na foto (figurinha de link) e compartilhar com seus amigos.</div>
+                <div class="modal-instagram-nota">Depois, se quiser compartilhar com alguém também no <b>Direct</b>, basta colar o link — ele já está copiado.</div>
+                <button id="btn-ir-instagram-indicacao" type="button">Ir para o Instagram</button>
+                <button id="btn-fechar-modal-instagram" type="button">Fechar</button>
+            </div>
+        </div>
+        <!-- ═══ FIM "INDIQUE E GANHE" ═══ -->
 
         <div id="secao-roletas-checkout" class="card hidden text-center">
             <div id="texto-contador-roletas" style="font-size:13px; font-weight:700; color:#fff; margin-bottom:2px;">Você tem 0 roleta(s) para girar!</div>
@@ -854,6 +978,88 @@
             });
         }
 
+        // ═══════════════ "INDIQUE E GANHE" ═══════════════
+        // Só monta e mostra o card quando o servidor manda o link pronto (pedido já pago). Nunca
+        // mexe em nada da roleta, do card premiado ou do upsell — é um card totalmente à parte.
+        let INDICACAO_DATA = null;
+        function montarCardIndicacaoSeAplicavel(indicacao) {
+            if (!indicacao || !indicacao.link) return;
+            INDICACAO_DATA = indicacao;
+            $('#txt-link-indicacao').text(indicacao.link.replace(/^https?:\/\//, ''));
+            $('#card-indicacao').css('display', 'block');
+        }
+
+        $('#btn-copiar-link-indicacao').on('click', function() {
+            if (!INDICACAO_DATA) return;
+            copiarTextoIndicacao(INDICACAO_DATA.link);
+            const $btn = $(this);
+            const $toast = $('#toast-copiado-indicacao');
+            $btn.text('Copiado!').addClass('copiado');
+            $toast.text('Link copiado!').addClass('visivel');
+            setTimeout(function() {
+                $btn.text('Copiar').removeClass('copiado');
+                $toast.removeClass('visivel');
+            }, 1800);
+        });
+
+        function copiarTextoIndicacao(texto) {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto); return; }
+            } catch (e) {}
+            // Fallback pra navegadores/contextos sem Clipboard API (ex: alguns navegadores internos)
+            try {
+                const campoTemp = document.createElement('textarea');
+                campoTemp.value = texto;
+                campoTemp.style.position = 'fixed';
+                campoTemp.style.opacity = '0';
+                document.body.appendChild(campoTemp);
+                campoTemp.select();
+                document.execCommand('copy');
+                document.body.removeChild(campoTemp);
+            } catch (e) {}
+        }
+
+        $('#btn-compartilhar-whatsapp-indicacao').on('click', function() {
+            if (!INDICACAO_DATA) return;
+            const mensagem = `🎁 Olha só, quero te indicar esse sorteio! Se você participar e for contemplado, eu ainda ganho um prêmio de indicação. Confere aqui: ${INDICACAO_DATA.link}`;
+            window.open('https://wa.me/?text=' + encodeURIComponent(mensagem), '_blank');
+        });
+
+        $('#btn-compartilhar-instagram-indicacao').on('click', function() {
+            if (!INDICACAO_DATA) return;
+            copiarTextoIndicacao(INDICACAO_DATA.link);
+            $('#overlay-instagram-indicacao').addClass('aberto');
+        });
+        $('#btn-fechar-modal-instagram').on('click', function() { $('#overlay-instagram-indicacao').removeClass('aberto'); });
+        $('#overlay-instagram-indicacao').on('click', function(e) { if (e.target === this) $(this).removeClass('aberto'); });
+
+        $('#btn-ir-instagram-indicacao').on('click', async function() {
+            $('#overlay-instagram-indicacao').removeClass('aberto');
+            if (!INDICACAO_DATA) return;
+            // ⚡ Tenta abrir o Instagram já com a foto do sorteio carregada no Stories — isso só
+            // funciona de verdade com o app do Instagram instalado (iPhone tende a aceitar também a
+            // figurinha de link automática; Android costuma trazer só a foto, sem o link automático
+            // — por isso o link já fica copiado, pra colar manualmente se precisar).
+            try {
+                const foto = INDICACAO_DATA.foto_sorteio;
+                if (foto && navigator.userAgent && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    const resp = await fetch('/imagem-cache?url=' + encodeURIComponent(foto));
+                    const blob = await resp.blob();
+                    const leitor = new FileReader();
+                    leitor.onload = function() {
+                        try {
+                            const base64 = leitor.result.split(',')[1];
+                            window.location.href = 'instagram-stories://share?source_application=premiosderrets' +
+                                '&backgroundImage=' + encodeURIComponent('data:' + blob.type + ';base64,' + base64);
+                        } catch (e) {}
+                    };
+                    leitor.readAsDataURL(blob);
+                    // Se o Instagram não abrir em ~1.2s (app não instalado, ou não é mobile), não faz mais nada —
+                    // a pessoa já tem a foto (pode salvar) e o link já copiado, pode postar manualmente.
+                }
+            } catch (e) { console.error('Erro ao preparar Stories do Instagram', e); }
+        });
+
         $('#upsell-btn-comprar').on('click', function() {
             if (!UPSELL_DATA) return;
             const { totalCheio, totalFinal, descontoAtivo } = calcularValorUpsell(upsellQtd);
@@ -910,6 +1116,7 @@
 
             mostrarCardPremiadoSeAplicavel(data);
             montarCardUpsellSeAplicavel(data.upsell_checkout);
+            try { montarCardIndicacaoSeAplicavel(data.indicacao); } catch (e) { console.error('montarCardIndicacaoSeAplicavel', e); }
 
             try { mostrarBannerPushSeAplicavel(); } catch (e) { console.error('mostrarBannerPushSeAplicavel', e); }
 
