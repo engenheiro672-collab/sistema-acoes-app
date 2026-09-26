@@ -597,6 +597,15 @@ function gerarFbc(fbclid) {
   if (!fbclid) return null;
   return `fb.1.${Date.now()}.${fbclid}`;
 }
+// ⚡ O Meta exige o telefone com o DDI (código do país) antes de fazer o hash — sem isso, o hash
+// nunca bate com o telefone que a pessoa cadastrou no Facebook/Instagram dela (que sempre tem o
+// DDI), então o campo "conta" como enviado mas não ajuda a identificar ninguém de verdade.
+function telefoneComDDIParaMeta(telefone) {
+  const digitos = String(telefone || '').replace(/\D/g, '');
+  if (!digitos) return null;
+  if (digitos.length >= 12 && digitos.startsWith('55')) return digitos; // já veio com o DDI
+  return '55' + digitos;
+}
 
 /**
  * Manda um evento pra TODOS os pixels que tiverem token de API de Conversões configurado (o
@@ -604,7 +613,7 @@ function gerarFbc(fbclid) {
  * pixel específico. Sem token nenhum configurado em lugar nenhum, simplesmente não manda nada
  * (comportamento continua exatamente igual ao de hoje, só o Pixel do navegador).
  */
-async function enviarEventoParaMeta({ eventName, eventId, eventTime, valor, telefone, fbclid, urlPagina, ip, userAgent }) {
+async function enviarEventoParaMeta({ eventName, eventId, eventTime, valor, telefone, email, cpf, fbclid, fbc, urlPagina, ip, userAgent }) {
   try {
     const cfg = await fetchConfigFromDB();
     const pixelPrincipal = cfg.FACEBOOK_PIXEL_ID || process.env.FACEBOOK_PIXEL_ID || '';
@@ -618,9 +627,27 @@ async function enviarEventoParaMeta({ eventName, eventId, eventTime, valor, tele
     if (destinos.length === 0) return; // ninguém configurou token nenhum — não faz nada, silenciosamente
 
     const userData = {};
-    if (telefone) userData.ph = [sha256(String(telefone).replace(/\D/g, ''))];
-    const fbc = gerarFbc(fbclid);
-    if (fbc) userData.fbc = fbc;
+    const telComDDI = telefoneComDDIParaMeta(telefone);
+    if (telComDDI) userData.ph = [sha256(telComDDI)];
+    // ⚡ E-mail de verdade (nunca o placeholder sintético "c<telefone>@email.com" que a gente usa só
+    // internamente pro gateway de pagamento quando o sorteio não coleta e-mail de verdade) — mandar
+    // esse placeholder pro Meta só faria barulho à toa, nunca bate com nada de ninguém.
+    if (email && /@/.test(email) && !/^c\d+@email\.com$/i.test(String(email).trim())) {
+      userData.em = [sha256(String(email).trim().toLowerCase())];
+    }
+    // ⚡ "Identificação externa" — o Meta recomenda mandar algum identificador único da pessoa. Usamos
+    // o CPF (com hash, como todo dado sensível) quando ela informou; é um identificador mais forte
+    // que ajuda o Meta a casar o evento com o cadastro dela.
+    if (cpf) {
+      const cpfDigitos = String(cpf).replace(/\D/g, '');
+      if (cpfDigitos) userData.external_id = [sha256(cpfDigitos)];
+    }
+    // ⚡ Prioridade: o cookie "_fbc" de verdade (lido direto no navegador pelo próprio Pixel) —
+    // ele é o valor oficial que o Meta espera, e cobre casos em que a pessoa voltou ao site sem o
+    // "fbclid" de novo na URL, mas o cookie do clique original ainda estava salvo no navegador
+    // dela. Só reconstrói a partir do fbclid puro quando não tiver esse cookie disponível.
+    const fbcFinal = fbc || gerarFbc(fbclid);
+    if (fbcFinal) userData.fbc = fbcFinal;
     if (ip) userData.client_ip_address = ip;
     if (userAgent) userData.client_user_agent = userAgent;
 
@@ -2119,8 +2146,12 @@ app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, re
     const cidadeDaSessao = req.body?.cidade || null;
     const prevendaIdDaSessao = req.body?.prevenda_id || null;
     const fbclidDaSessao = req.body?.fbclid || null;
+    // ⚡ Valor de verdade do cookie "_fbc" (lido no navegador pelo próprio Pixel) — mais confiável
+    // que reconstruir a partir do fbclid puro, porque cobre quando a pessoa voltou sem o fbclid de
+    // novo na URL mas o cookie do clique original ainda estava salvo. Ver enviarEventoParaMeta.
+    const fbcDaSessao = req.body?.fbc_cookie || null;
     if (!telefone) return fail(res, 'Telefone é obrigatório', 400);
-    const { data: usuario } = await supabase.from('usuarios').select('id, nome_completo, email, cpf, endereco, cidade, prevenda_id, fbclid').eq('telefone', telefone).maybeSingle();
+    const { data: usuario } = await supabase.from('usuarios').select('id, nome_completo, email, cpf, endereco, cidade, prevenda_id, fbclid, fbc').eq('telefone', telefone).maybeSingle();
     if (!usuario) {
       // ⚡ Telefone nunca visto antes = lead genuinamente novo. Cria o cadastro JÁ AQUI (não
       // espera a compra) — assim, mesmo quem só verifica o telefone e nunca chega a comprar
@@ -2128,20 +2159,21 @@ app.post('/api/public/usuarios/verificar', limitePublicoSensivel, async (req, re
       // WhatsApp por cidade). O nome ainda não é conhecido nesse momento — fica em branco até a
       // pessoa preencher no formulário de compra, mais adiante.
       const { data: novoUsuario, error: erroNovoUsuario } = await supabase.from('usuarios').insert({
-        telefone, cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao || null, fbclid: fbclidDaSessao || null
+        telefone, cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao || null, fbclid: fbclidDaSessao || null, fbc: fbcDaSessao || null
       }).select('id').single();
       if (erroNovoUsuario) console.error('[usuarios/verificar] erro ao pré-cadastrar lead', erroNovoUsuario.message);
       registrarEventoLead({ usuario_id: novoUsuario?.id || null, telefone, sorteio_id, tipo_evento: 'lead', cidade: cidadeDaSessao || null, prevenda_id: prevendaIdDaSessao, metadata: fbclidDaSessao ? { fbclid: fbclidDaSessao } : null });
       return ok(res, { existe: false, ja_comprou_este_sorteio: false, cidade: cidadeDaSessao || null });
     }
 
-    // ⚡ Se ela ainda não tinha cidade/prévenda/fbclid salvos e chegou agora vindo de um anúncio, já
-    // grava aqui mesmo — não precisa nem esperar a compra pra "grudar" nela.
+    // ⚡ Se ela ainda não tinha cidade/prévenda/fbclid/fbc salvos e chegou agora vindo de um
+    // anúncio, já grava aqui mesmo — não precisa nem esperar a compra pra "grudar" nela.
     let cidadeFinal = usuario.cidade || null;
     const atualizacaoCidade = {};
     if (cidadeDaSessao && !usuario.cidade) atualizacaoCidade.cidade = cidadeDaSessao;
     if (prevendaIdDaSessao && !usuario.prevenda_id) atualizacaoCidade.prevenda_id = prevendaIdDaSessao;
     if (fbclidDaSessao && !usuario.fbclid) atualizacaoCidade.fbclid = fbclidDaSessao;
+    if (fbcDaSessao && !usuario.fbc) atualizacaoCidade.fbc = fbcDaSessao;
     if (Object.keys(atualizacaoCidade).length > 0) {
       await supabase.from('usuarios').update(atualizacaoCidade).eq('id', usuario.id);
       if (atualizacaoCidade.cidade) cidadeFinal = atualizacaoCidade.cidade;
@@ -2628,7 +2660,7 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
 
     // ⚡ "Indique e Ganhe" — todo pedido que vira PAGO ganha o código de indicação dele (só uma vez;
     // se por algum motivo essa função rodar de novo pra um pedido que já tinha, não troca o código).
-    const { data: usuarioParaIndicacao } = await supabase.from('usuarios').select('telefone, nome_completo').eq('id', user_id).maybeSingle();
+    const { data: usuarioParaIndicacao } = await supabase.from('usuarios').select('telefone, nome_completo, email, cpf').eq('id', user_id).maybeSingle();
     let codigoIndicacaoGerado = pedido.codigo_indicacao || null;
     if (!codigoIndicacaoGerado) {
       try { codigoIndicacaoGerado = await gerarCodigoIndicacaoUnico(usuarioParaIndicacao?.nome_completo); }
@@ -2647,7 +2679,8 @@ async function gerarCotasUnicas(pedido, opcoes = {}) {
     const usuarioDaCompra = usuarioParaIndicacao;
     enviarEventoParaMeta({
       eventName: 'Purchase', eventId: `purchase_${pedido.id}`, valor: pedido.valor_total,
-      telefone: usuarioDaCompra?.telefone || null, fbclid: pedido.fbclid || null,
+      telefone: usuarioDaCompra?.telefone || null, email: usuarioDaCompra?.email || null, cpf: usuarioDaCompra?.cpf || null,
+      fbclid: pedido.fbclid || null, fbc: pedido.fbc || null,
       urlPagina: `${DOMINIO_PUBLICO_SERVIDOR}/checkout/${pedido.token}`
     });
 
@@ -2827,7 +2860,7 @@ app.post('/api/public/roleta-desconto/girar', limitePublicoSensivel, async (req,
 
 app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) => {
   try {
-    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, codigo_desconto, origem, indicacao_codigo } = req.body || {};
+    const { sorteio_id, quantidade, nome_completo, telefone, email, cpf, endereco, funil_id, link_codigo, veio_de_combo_roleta, cidade, prevenda_id, fbclid, fbc_cookie, codigo_desconto, origem, indicacao_codigo } = req.body || {};
     if (!sorteio_id || !quantidade || !telefone) return res.status(400).json({ error: 'Dados incompletos' });
 
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
@@ -2839,7 +2872,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       // ⚡ Se ela chegou através de uma prévenda de cidade (ou de qualquer anúncio com fbclid), tudo
       // isso já fica gravado PERMANENTEMENTE no cadastro dela, desde a primeira compra — nunca mais
       // depende de vir pelo link de novo.
-      const { data: novo, error: nErr } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo, email, cpf: cpfLimpo, endereco, cidade: cidade || null, prevenda_id: prevenda_id || null, fbclid: fbclid || null }).select().single();
+      const { data: novo, error: nErr } = await supabase.from('usuarios').insert({ nome_completo, telefone: telefoneLimpo, email, cpf: cpfLimpo, endereco, cidade: cidade || null, prevenda_id: prevenda_id || null, fbclid: fbclid || null, fbc: fbc_cookie || null }).select().single();
       if (nErr) return fail(res, 'Erro ao criar usuário');
       usuario = novo;
     } else {
@@ -2854,6 +2887,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       if (cidade && !usuario.cidade) atualizacao.cidade = cidade;
       if (prevenda_id && !usuario.prevenda_id) atualizacao.prevenda_id = prevenda_id;
       if (fbclid && !usuario.fbclid) atualizacao.fbclid = fbclid;
+      if (fbc_cookie && !usuario.fbc) atualizacao.fbc = fbc_cookie;
       if (Object.keys(atualizacao).length > 0) {
         const { data: atualizado } = await supabase.from('usuarios').update(atualizacao).eq('id', usuario.id).select().single();
         if (atualizado) usuario = atualizado;
@@ -2951,6 +2985,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
       cidade: cidadeFinalPedido, // ⚡ mesma cidade permanente do comprador (ou a da sessão, se ele ainda não tinha) — guardada aqui pra sempre poder filtrar/relatar vendas por cidade, sem precisar recalcular depois
       prevenda_id: prevendaIdFinalPedido, // ⚡ qual prévenda ESPECÍFICA (não só a cidade) trouxe esse comprador
       fbclid: usuario.fbclid || fbclid || null,
+      fbc: usuario.fbc || fbc_cookie || null,
       indicado_por: codigoIndicacaoLimpo,
       created_at: new Date().toISOString()
     }).select().single();
@@ -2964,6 +2999,7 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     // ⚡ Registra o passo "iniciou o checkout" na linha do tempo do lead — base do CRM completo
     // por cidade (métricas de conversão real, sem depender de nada do Meta).
     const fbclidFinalPedido = usuario.fbclid || fbclid || null;
+    const fbcFinalPedido = usuario.fbc || fbc_cookie || null;
     registrarEventoLead({ usuario_id: usuario.id, telefone: telefoneLimpo, sorteio_id, pedido_id: pedido?.id, tipo_evento: 'iniciar_checkout', valor: valor_total, cidade: cidadeFinalPedido, prevenda_id: prevendaIdFinalPedido, metadata: { quantidade_cotas: quantidade, promocao: promocao_aplicada || null, fbclid: fbclidFinalPedido } });
 
     // ⚡ Manda também pra API de Conversões (só chega ao Meta de verdade se algum pixel tiver token
@@ -2972,7 +3008,8 @@ app.post('/api/public/pedidos/iniciar', limitePublicoSensivel, async (req, res) 
     const eventIdInitiateCheckout = `checkout_${pedido.id}`;
     enviarEventoParaMeta({
       eventName: 'InitiateCheckout', eventId: eventIdInitiateCheckout, valor: valor_total,
-      telefone: telefoneLimpo, fbclid: fbclidFinalPedido,
+      telefone: telefoneLimpo, email: usuario.email || null, cpf: usuario.cpf || null,
+      fbclid: fbclidFinalPedido, fbc: fbcFinalPedido,
       urlPagina: `${req.protocol}://${req.get('host')}/sorteio`, ip: req.ip, userAgent: req.headers['user-agent']
     });
 

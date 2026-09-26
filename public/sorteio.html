@@ -566,6 +566,19 @@
             var fbclidDaUrl = URL_PARAMS.get('fbclid');
             if (fbclidDaUrl) localStorage.setItem('fbclid_salvo', fbclidDaUrl);
         } catch (e) {}
+        // ⚡ Cookie "_fbc" — o próprio Pixel do Meta grava ele no navegador assim que a página
+        // carrega (quando a pessoa veio de um anúncio). É o valor OFICIAL que o Meta espera na
+        // API de Conversões — mais confiável que a gente reconstruir a partir só do "fbclid" da
+        // URL, porque continua funcionando mesmo se a pessoa voltar ao site depois sem o fbclid
+        // de novo na URL (o cookie já fica salvo por 90 dias). Isso é o que melhora a "Qualidade
+        // da correspondência de eventos" no Gerenciador de Eventos do Facebook.
+        function pegarCookieFbc() {
+            try {
+                const m = document.cookie.match(/(?:^|;\s*)_fbc=([^;]+)/);
+                if (m) return decodeURIComponent(m[1]);
+            } catch (e) {}
+            return null;
+        }
         const LINK_CODIGO = LK_DA_URL || (function() {
             try {
                 const salvo = JSON.parse(localStorage.getItem('lk_cravado') || 'null');
@@ -1468,7 +1481,7 @@
                 $('#btn-continuar-telefone').prop('disabled', true).text('Localizando comprador no sistema...');
                 $.ajax({
                     url: '/api/public/usuarios/verificar', type: 'POST', contentType: 'application/json',
-                    data: JSON.stringify({ telefone: telLimpo, sorteio_id: SORTEIO_DATA.id, cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(), prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(), fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })() })
+                    data: JSON.stringify({ telefone: telLimpo, sorteio_id: SORTEIO_DATA.id, cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(), prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(), fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })(), fbc_cookie: pegarCookieFbc() })
                 }).done(function(resp) {
                     $('#btn-continuar-telefone').prop('disabled', false).text('Continuar');
                     COMPRADOR_CONHECIDO = resp.existe ? resp : null;
@@ -1598,6 +1611,7 @@
                         cidade: (function(){ try { return sessionStorage.getItem('cidade_prevenda'); } catch(e){ return null; } })(),
                         prevenda_id: (function(){ try { return sessionStorage.getItem('prevenda_id_atual'); } catch(e){ return null; } })(),
                         fbclid: (function(){ try { return localStorage.getItem('fbclid_salvo'); } catch(e){ return null; } })(),
+                        fbc_cookie: pegarCookieFbc(),
                         // ⚡ "Indique e Ganhe" — se ela chegou pelo link de indicação de alguém, esse
                         // código vai junto, pra esse novo pedido ficar amarrado a quem indicou.
                         indicacao_codigo: (function(){ try { return sessionStorage.getItem('indicacao_codigo'); } catch(e){ return null; } })()
